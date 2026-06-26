@@ -17,7 +17,7 @@
     "postinstall": "wxt prepare && npm run copy-wasm",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "VITE_INKLY_E2E=true wxt build && playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",

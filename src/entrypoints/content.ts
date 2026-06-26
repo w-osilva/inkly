@@ -312,31 +312,34 @@ export default defineContentScript({
     ctx.addEventListener(window, 'scroll', scheduleRedraw, { capture: true });
     ctx.addEventListener(window, 'resize', scheduleRedraw);
 
-    // Expose apply for manual/e2e testing (removed in M3 UI work):
-    (window as any).__inklyApplyFirst = () => {
-      if (activeField && current[0]) {
-        applyReplacement(activeField, activeType, current[0], current[0].replacements[0]);
-      }
-    };
-    (window as any).__inklyAIRewrite = async (text: string) => {
-      const res = await runAI({ capability: 'rewrite', text });
-      return res.ok ? res.text : `ERROR:${res.error}`;
-    };
+    if (import.meta.env.VITE_INKLY_E2E) {
+      // Test-only hooks (e2e bridge). NEVER present in production builds.
+      // Expose apply for manual/e2e testing (removed in M3 UI work):
+      (window as any).__inklyApplyFirst = () => {
+        if (activeField && current[0]) {
+          applyReplacement(activeField, activeType, current[0], current[0].replacements[0]);
+        }
+      };
+      (window as any).__inklyAIRewrite = async (text: string) => {
+        const res = await runAI({ capability: 'rewrite', text });
+        return res.ok ? res.text : `ERROR:${res.error}`;
+      };
 
-    // e2e seam: the main-world test stub (loaded by the fixture page as a same-origin
-    // <script>, since page CSP blocks inline injection) round-trips a rewrite request
-    // here via window.postMessage. Content scripts run in an isolated world, so the
-    // window.__inklyAIRewrite above is not reachable from page.evaluate (main world);
-    // this listener bridges the gap by performing the real runAI call.
-    ctx.addEventListener(window, 'message', (e: MessageEvent) => {
-      const d = (e as MessageEvent).data;
-      if (e.source !== window || !d || d.__inkly !== 'ai-rewrite-req') return;
-      runAI({ capability: 'rewrite', text: d.text }).then((res) => {
-        window.postMessage(
-          { __inkly: 'ai-rewrite-res', id: d.id, result: res.ok ? res.text : `ERROR:${res.error}` },
-          '*',
-        );
+      // e2e seam: the main-world test stub (loaded by the fixture page as a same-origin
+      // <script>, since page CSP blocks inline injection) round-trips a rewrite request
+      // here via window.postMessage. Content scripts run in an isolated world, so the
+      // window.__inklyAIRewrite above is not reachable from page.evaluate (main world);
+      // this listener bridges the gap by performing the real runAI call.
+      ctx.addEventListener(window, 'message', (e: MessageEvent) => {
+        const d = (e as MessageEvent).data;
+        if (e.source !== window || !d || d.__inkly !== 'ai-rewrite-req') return;
+        runAI({ capability: 'rewrite', text: d.text }).then((res) => {
+          window.postMessage(
+            { __inkly: 'ai-rewrite-res', id: d.id, result: res.ok ? res.text : `ERROR:${res.error}` },
+            '*',
+          );
+        });
       });
-    });
+    }
   },
 });
