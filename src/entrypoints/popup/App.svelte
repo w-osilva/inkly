@@ -133,6 +133,7 @@
         </ul>
       {/if}
     </section>
+    <button class="ai-settings-link" onclick={() => browser.runtime.openOptionsPage()}>{t(lang, 'popup.aiSettings')}</button>
   {:else}
     <p class="muted">{t(lang, 'popup.loading')}</p>
   {/if}
@@ -152,4 +153,9 @@
   .dict { list-style: none; margin: 0; padding: 0; }
   .dict li { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; font-size: 13px; }
   .dict button { border: 0; background: none; cursor: pointer; color: #999; font-size: 15px; }
+  .ai-settings-link {
+    display: block; margin-top: 14px; border: 0; background: none; padding: 0;
+    color: #2d6cdf; cursor: pointer; font: inherit; font-size: 13px;
+  }
+  .ai-settings-link:hover { text-decoration: underline; }
 </style>
