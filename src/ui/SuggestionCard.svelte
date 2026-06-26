@@ -3,10 +3,11 @@
   import { t, categoryLabel } from '../core/i18n';
   import { ruleExplanation } from '../core/rule-descriptions';
 
-  const COLORS: Record<string, string> = {
-    correctness: '#e23b3b',
-    clarity: '#d99100',
-    suggestion: '#7b53d6',
+  // Severity → stripe/dot color, sourced from design tokens so it tracks dark mode.
+  const STRIPE: Record<string, string> = {
+    correctness: 'var(--inkly-sev-correct)',
+    clarity: 'var(--inkly-sev-clarity)',
+    suggestion: 'var(--inkly-sev-suggest)',
   };
 </script>
 
@@ -16,12 +17,12 @@
     class="inkly-card"
     role="group"
     aria-label="inkly suggestion"
-    style="left:{cardState.left}px; top:{cardState.top}px; border-left-color:{COLORS[cardState.severity]};"
+    style="left:{cardState.left}px; top:{cardState.top}px; --stripe:{STRIPE[cardState.severity] ?? STRIPE.suggestion};"
     onmouseenter={() => (cardState.hovered = true)}
     onmouseleave={() => (cardState.hovered = false)}
   >
     <button class="inkly-card__dismiss" aria-label={t(cardState.lang, 'card.dismiss')} onclick={() => cardState.onDismiss?.()}>×</button>
-    <p class="inkly-card__cat">{categoryLabel(cardState.lang, cardState.suggestion.category)}</p>
+    <p class="inkly-card__cat"><span class="inkly-card__dot" aria-hidden="true"></span>{categoryLabel(cardState.lang, cardState.suggestion.category)}</p>
     {#if cardState.suggestion}
       {@const explanation = ruleExplanation(cardState.lang, cardState.suggestion.ruleId, cardState.suggestion.message)}
       {#if explanation}
@@ -46,34 +47,59 @@
     position: fixed;
     z-index: 2147483647;
     max-width: 300px;
-    background: #fff;
-    color: #1a1a1a;
-    border: 1px solid #e0e0e0;
-    border-left-width: 4px;
-    border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
-    padding: 10px 12px;
-    font: 13px/1.4 -apple-system, system-ui, sans-serif;
+    overflow: hidden;
+    background: var(--inkly-bg);
+    color: var(--inkly-text);
+    border: 1px solid var(--inkly-border);
+    border-radius: var(--inkly-radius);
+    box-shadow: var(--inkly-shadow);
+    padding: 12px 14px;
+    font: 13px/1.45 var(--inkly-font);
     pointer-events: auto;
   }
+  /* Left severity stripe (3px), color from the per-card --stripe var. */
+  .inkly-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--stripe);
+  }
   .inkly-card__dismiss {
-    position: absolute; top: 4px; right: 6px;
-    border: 0; background: none; cursor: pointer; font-size: 16px; line-height: 1; color: #999;
+    position: absolute; top: 6px; right: 8px;
+    border: 0; background: none; cursor: pointer; font-size: 16px; line-height: 1;
+    color: var(--inkly-muted);
   }
+  .inkly-card__dismiss:hover { color: var(--inkly-text); }
   .inkly-card__cat {
-    margin: 0 16px 4px 0; font-size: 11px; text-transform: uppercase;
-    letter-spacing: 0.04em; color: #888;
+    display: flex; align-items: center; gap: 6px;
+    margin: 0 16px 5px 0; font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--inkly-muted);
   }
-  .inkly-card__msg { margin: 0 16px 8px 0; }
+  .inkly-card__dot {
+    flex: none; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--stripe);
+  }
+  .inkly-card__msg { margin: 0 16px 9px 0; color: var(--inkly-text); }
   .inkly-card__reps { display: flex; flex-wrap: wrap; gap: 6px; }
   .inkly-card__rep {
-    border: 1px solid #cdcdcd; border-radius: 6px; background: #f6f6f6;
-    padding: 3px 10px; cursor: pointer; font: inherit; font-weight: 600;
+    color: var(--inkly-accent);
+    background: var(--inkly-accent-tint);
+    border: 1px solid transparent;
+    border-radius: 7px;
+    padding: 4px 10px; cursor: pointer; font: inherit; font-weight: 600;
   }
-  .inkly-card__rep:hover { background: #ececec; }
+  .inkly-card__rep:hover {
+    background: var(--inkly-accent);
+    color: var(--inkly-accent-contrast);
+  }
   .inkly-card__dict {
-    display: block; margin-top: 8px; border: 0; background: none; padding: 0;
-    color: #2d6cdf; cursor: pointer; font: inherit; font-size: 12px;
+    display: block; width: 100%; margin-top: 10px; padding: 9px 0 0;
+    border: 0; border-top: 1px solid var(--inkly-border); background: none;
+    text-align: left; color: var(--inkly-accent); cursor: pointer;
+    font: inherit; font-size: 12px; font-weight: 600;
   }
   .inkly-card__dict:hover { text-decoration: underline; }
 </style>

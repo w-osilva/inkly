@@ -1,4 +1,8 @@
 import { browser } from 'wxt/browser';
+// Design tokens. With cssInjectionMode:'ui', WXT/Vite collects CSS imported by the
+// content entry and injects it into the shadow root, so :host token defs resolve
+// for the mounted Svelte components.
+import '../ui/tokens.css';
 import { classifyField, isEditableField } from '../core/field-detector';
 import { getFieldText } from '../core/text-model';
 import { mergeSuggestions } from '../core/orchestrator';

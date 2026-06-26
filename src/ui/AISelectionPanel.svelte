@@ -33,11 +33,20 @@
     onmouseenter={() => (aiPanelState.hovered = true)}
     onmouseleave={() => (aiPanelState.hovered = false)}
   >
+    {#if aiPanelState.phase !== 'error'}
+      <div class="inkly-ai__head" aria-hidden="true">
+        <span class="inkly-ai__mark"></span>
+        <span class="inkly-ai__brand">Inkly</span>
+        <span class="inkly-ai__kbd">⌥I</span>
+      </div>
+    {/if}
     {#if aiPanelState.phase === 'actions'}
-      <button class="inkly-ai__btn" onclick={() => aiPanelState.onAction?.('rewrite')}>✨ Rewrite</button>
-      <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.('translate')}>🌐 Translate</button>
-      <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.('synonyms')}>🔁 Synonyms</button>
-      <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.('analyze')}>🔍 Analyze</button>
+      <div class="inkly-ai__actions">
+        <button class="inkly-ai__btn" onclick={() => aiPanelState.onAction?.('rewrite')}>✨ Rewrite</button>
+        <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.('translate')}>🌐 Translate</button>
+        <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.('synonyms')}>🔁 Synonyms</button>
+        <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.('analyze')}>🔍 Analyze</button>
+      </div>
     {:else if aiPanelState.phase === 'loading'}
       {#if aiPanelState.streamingText}
         <p class="inkly-ai__result">{aiPanelState.streamingText}</p>
@@ -94,24 +103,70 @@
 <style>
   .inkly-ai {
     position: fixed; z-index: 2147483647; max-width: 320px;
-    background: #fff; color: #1a1a1a; border: 1px solid #e0e0e0; border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.16); padding: 8px 10px;
-    font: 13px/1.4 -apple-system, system-ui, sans-serif; pointer-events: auto;
+    background: var(--inkly-bg); color: var(--inkly-text);
+    border: 1px solid var(--inkly-border); border-radius: var(--inkly-radius);
+    box-shadow: var(--inkly-shadow); padding: 12px 14px;
+    font: 13px/1.45 var(--inkly-font); pointer-events: auto;
   }
-  .inkly-ai__result { margin: 0 0 8px; white-space: pre-wrap; }
-  .inkly-ai__row { display: flex; gap: 6px; }
+
+  /* Header row: placeholder mark + brand label + hotkey hint. */
+  .inkly-ai__head {
+    display: flex; align-items: center; gap: 7px; margin-bottom: 10px;
+  }
+  .inkly-ai__mark {
+    flex: none; width: 16px; height: 16px; border-radius: 5px;
+    background: var(--inkly-accent);
+  }
+  .inkly-ai__brand {
+    font-weight: 700; font-size: 13px; color: var(--inkly-text); letter-spacing: 0.01em;
+  }
+  .inkly-ai__kbd {
+    margin-left: auto; font-size: 11px; color: var(--inkly-muted);
+    border: 1px solid var(--inkly-border); border-radius: 5px; padding: 1px 5px;
+  }
+
+  .inkly-ai__result { margin: 0 0 10px; white-space: pre-wrap; color: var(--inkly-text); }
+  .inkly-ai__row { display: flex; gap: 8px; }
   .inkly-ai__loading, .inkly-ai__error { display: block; }
-  .inkly-ai__error { color: #c0392b; margin: 0 0 8px; }
+  .inkly-ai__loading { color: var(--inkly-muted); }
+  .inkly-ai__error { color: var(--inkly-sev-correct); margin: 0 0 8px; }
+
+  /* Actions: fixed 2×2 grid, no wrapping. Rewrite spans the full top row. */
+  .inkly-ai__actions {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
   .inkly-ai__btn {
-    border: 1px solid #7b53d6; background: #7b53d6; color: #fff; border-radius: 6px;
-    padding: 4px 12px; cursor: pointer; font: inherit; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+    justify-content: flex-start;
+    border: 1px solid var(--inkly-accent); background: var(--inkly-accent);
+    color: var(--inkly-accent-contrast); border-radius: var(--inkly-radius-sm);
+    padding: 9px 11px; cursor: pointer; font: inherit; font-weight: 600;
   }
-  .inkly-ai__btn--ghost { background: #f6f6f6; color: #333; border-color: #cdcdcd; }
-  .inkly-ai__btn:hover { filter: brightness(0.96); }
-  .inkly-ai__chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+  .inkly-ai__btn:hover { background: var(--inkly-accent-press); border-color: var(--inkly-accent-press); }
+  .inkly-ai__actions .inkly-ai__btn { grid-column: 1 / -1; justify-content: center; }
+  .inkly-ai__actions .inkly-ai__btn--ghost { grid-column: auto; }
+  .inkly-ai__btn--ghost {
+    background: var(--inkly-ghost-bg); color: var(--inkly-ghost-text);
+    border: 1px solid var(--inkly-ghost-border);
+  }
+  .inkly-ai__btn--ghost:hover {
+    background: var(--inkly-ghost-bg);
+    border-color: var(--inkly-accent); color: var(--inkly-accent);
+  }
+
+  /* Chips: horizontal scroller so tone/length never wrap raggedly. */
+  .inkly-ai__chips {
+    display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 8px;
+  }
   .inkly-ai__chip {
-    border: 1px solid #cdcdcd; background: #f6f6f6; color: #333; border-radius: 12px;
-    padding: 2px 10px; cursor: pointer; font: inherit; font-size: 12px;
+    flex: none; white-space: nowrap;
+    border: 1px solid var(--inkly-ghost-border); background: var(--inkly-ghost-bg);
+    color: var(--inkly-ghost-text); border-radius: 999px;
+    padding: 3px 11px; cursor: pointer; font: inherit; font-size: 12px;
   }
-  .inkly-ai__chip--active { background: #7b53d6; color: #fff; border-color: #7b53d6; }
+  .inkly-ai__chip:hover { border-color: var(--inkly-accent); color: var(--inkly-accent); }
+  .inkly-ai__chip--active {
+    background: var(--inkly-accent); color: var(--inkly-accent-contrast);
+    border-color: var(--inkly-accent);
+  }
 </style>
