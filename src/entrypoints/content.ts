@@ -7,6 +7,7 @@ import { OverlayRenderer } from '../ui/overlay-renderer';
 import { computeUnderlineStyles, type Rect } from '../ui/underline-layout';
 import { applyReplacement, applyRange } from '../core/apply-engine';
 import { debounce } from '../core/debounce';
+import { offsetToRange } from '../core/dom-offset';
 import type { FieldType, Suggestion } from '../core/types';
 import { mount } from 'svelte';
 import SuggestionCard from '../ui/SuggestionCard.svelte';
@@ -32,11 +33,8 @@ const CONTENTEDITABLE_FAMILY: ReadonlySet<FieldType> = new Set<FieldType>([
 /** Build client rects for a (offset,length) span: a Range for contenteditable, the field rect for textarea/input. */
 function getSpanRects(el: HTMLElement, type: FieldType, offset: number, length: number): Rect[] {
   if (CONTENTEDITABLE_FAMILY.has(type)) {
-    const textNode = el.firstChild;
-    if (!textNode || textNode.nodeType !== Node.TEXT_NODE) return [];
-    const range = document.createRange();
-    range.setStart(textNode, offset);
-    range.setEnd(textNode, offset + length);
+    const range = offsetToRange(el, offset, offset + length);
+    if (!range) return [];
     return Array.from(range.getClientRects()).map((r) => ({
       left: r.left, top: r.top, width: r.width, height: r.height,
     }));
