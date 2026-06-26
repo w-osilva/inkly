@@ -19,8 +19,14 @@ function setNativeValue(el: HTMLTextAreaElement | HTMLInputElement, value: strin
 
 /**
  * Replace an arbitrary [start, end) span in a field with `replacement`.
- * Returns true if applied, false if the field type is unsupported or
- * (for contenteditable) the element contains more than one text node.
+ *
+ * - textarea / input: applied via the native value setter + React tracker patch.
+ * - contenteditable (single OR multi text node): offset resolved by `offsetToRange`,
+ *   applied via `execCommand('insertText')` when available; falls back to a
+ *   Range-based insert otherwise.
+ *
+ * Returns false only when the offset range cannot be resolved (out of bounds)
+ * or the field type is unsupported (rich-editor framework types are deferred).
  */
 export function applyRange(
   el: HTMLElement,
@@ -50,9 +56,20 @@ export function applyRange(
       ok = false;
     }
     if (ok) return true;
-    // Generic Range fallback (works across multiple text nodes):
+    // Fallback runs only when execCommand is unavailable (e.g. very old engines / jsdom);
+    // real Chromium uses the execCommand path above, which preserves inline formatting.
     range.deleteContents();
-    if (replacement) range.insertNode(document.createTextNode(replacement));
+    if (replacement) {
+      const textNode = document.createTextNode(replacement);
+      range.insertNode(textNode);
+      // place the caret just after the inserted text
+      const sel2 = window.getSelection();
+      sel2?.removeAllRanges();
+      const after = document.createRange();
+      after.setStartAfter(textNode);
+      after.collapse(true);
+      sel2?.addRange(after);
+    }
     el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertReplacementText', data: replacement }));
     return true;
   }
@@ -61,8 +78,10 @@ export function applyRange(
 
 /**
  * Apply a replacement into a field. Returns true if applied.
- * M1 supports textarea/input. contenteditable + rich editors return false
- * (implemented in M4) — callers must handle false gracefully.
+ *
+ * Delegates to `applyRange`; supports textarea/input and (single/multi-node)
+ * contenteditable. Returns false for unresolved offset ranges or unsupported
+ * field types — callers must handle a false return gracefully.
  */
 export function applyReplacement(
   el: HTMLElement,
