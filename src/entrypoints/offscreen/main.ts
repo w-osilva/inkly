@@ -4,6 +4,7 @@ import { hasKey } from '../../core/ai/ai-config';
 import { buildMessages } from '../../core/ai/prompts';
 import { buildHttpRequest, parseChatCompletion } from '../../core/ai/openai-provider';
 import type { AIConfig, AIRequest, AIResponse } from '../../core/ai/ai-types';
+import { tryChromeAI } from '../../core/ai/chrome-ai';
 
 let linter: Linter | null = null;
 let setupPromise: Promise<void> | null = null;
@@ -52,6 +53,10 @@ async function lint(text: string): Promise<PlainLint[]> {
 // The offscreen document cannot read chrome.storage, so the service worker supplies the
 // resolved AIConfig with the request.
 async function runAI(request: AIRequest, config: AIConfig): Promise<AIResponse> {
+  // 1) Opportunistic free on-device tier (Chrome built-in Prompt API), if available.
+  const builtin = await tryChromeAI(request);
+  if (builtin !== null) return { ok: true, text: builtin };
+  // 2) Fall back to BYOK.
   if (!hasKey(config)) return { ok: false, error: 'no-api-key' };
   try {
     const messages = buildMessages(request);
