@@ -13,6 +13,7 @@ import { cardState } from '../ui/card-state.svelte';
 import { findHitIndex, type HitRect } from '../ui/hit-test';
 import { computeCardPosition } from '../ui/card-position';
 import { getSettings, onSettingsChanged, isEnabledForHost } from '../core/settings';
+import { isSuppressed } from '../core/suppression';
 
 const provider = new HarperProvider();
 
@@ -43,6 +44,8 @@ export default defineContentScript({
   cssInjectionMode: 'ui',
   async main(ctx) {
     let enabled = true;
+    let disabledCategories = new Set<string>();
+    let dictionary = new Set<string>();
     const host = location.host;
     let overlayHost: HTMLElement | null = null;
     const ui = await createShadowRootUi(ctx, {
@@ -96,6 +99,9 @@ export default defineContentScript({
       if (seq !== checkSeq || activeField !== field) return; // stale: focus/newer check
       current = mergeSuggestions(raw);
       current = current.filter((s) => !dismissed.has(suggestionKey(s)));
+      current = current.filter(
+        (s) => !isSuppressed(s, text.slice(s.offset, s.offset + s.length), disabledCategories, dictionary),
+      );
       if (cardState.visible) hideCard();
       drawUnderlines();
     }, 400);
@@ -182,11 +188,14 @@ export default defineContentScript({
 
     getSettings().then((s) => {
       enabled = isEnabledForHost(s, host);
+      disabledCategories = new Set(s.disabledCategories);
+      dictionary = new Set(s.dictionary);
     });
     onSettingsChanged((s) => {
       const next = isEnabledForHost(s, host);
-      if (next === enabled) return;
       enabled = next;
+      disabledCategories = new Set(s.disabledCategories);
+      dictionary = new Set(s.dictionary);
       if (!enabled) {
         runCheck.cancel();
         clearHoverTimers();
@@ -195,7 +204,8 @@ export default defineContentScript({
         hitRects = [];
         renderer.clear();
       } else {
-        // Re-enabled. While disabled, focusin was gated, so a field that was
+        // Re-enabled or settings changed (categories/dictionary).
+        // While disabled, focusin was gated, so a field that was
         // already focused was never adopted. Adopt the live focused editable
         // element (if any) so re-checking works without a blur/refocus.
         if (!activeField) {
