@@ -1,39 +1,60 @@
-import { describe, it, expect } from 'vitest';
-import { plainLintToSuggestion } from '../src/core/providers/harper-provider';
-import type { PlainLint } from '../src/entrypoints/harper-worker';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { LintResponse } from '../src/core/providers/harper-messages';
+import { fakeBrowser } from 'wxt/testing';
+import { HarperProvider } from '../src/core/providers/harper-provider';
 
-describe('plainLintToSuggestion', () => {
-  it('maps span {start,end} to offset/length', () => {
-    const lint: PlainLint = {
-      start: 7,
-      end: 14,
-      replacements: ['an apple'],
-      message: 'Use "an" before a vowel sound.',
-      kind: 'Agreement',
-    };
-    const s = plainLintToSuggestion(lint);
-    expect(s.offset).toBe(7);
-    expect(s.length).toBe(7);
-    expect(s.replacements).toEqual(['an apple']);
-    expect(s.category).toBe('Agreement');
-    expect(s.source).toBe('harper');
+// WxtVitest aliases `wxt/browser` → the virtual `mock-browser` module, which
+// re-exports `fakeBrowser` from `@webext-core/fake-browser`.  The provider's
+// `import { browser } from 'wxt/browser'` therefore resolves to the same
+// `fakeBrowser` object, so spying on `fakeBrowser.runtime` directly controls
+// what the provider sees.
+//
+// Mocking mechanism notes:
+// - `vi.spyOn` is created fresh in `beforeEach` and restored in `afterEach`.
+//   A module-level spy + `mockReset()` does NOT work: after mockReset the spy
+//   falls through to fakeBrowser's original sendMessage, which Vitest 4 tracks
+//   as a second rejection source — even when the provider catches it.
+// - For the rejection test, `mockImplementation(async () => { throw … })` is
+//   used instead of `mockRejectedValue(new Error(…))`.  Vitest 4 tracks all
+//   `Promise.reject()` / `new Error()` creation sites and marks them as
+//   "unhandled" if not consumed in the same microtask frame — `async throw`
+//   creates the rejection lazily (when the function is called and awaited),
+//   so it is consumed immediately and no false-positive fires.
+let sendMessage: ReturnType<typeof vi.spyOn<typeof fakeBrowser.runtime, 'sendMessage'>>;
+
+beforeEach(() => {
+  sendMessage = vi.spyOn(fakeBrowser.runtime, 'sendMessage');
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe('HarperProvider (remote client)', () => {
+  it('sends the correct message shape', async () => {
+    sendMessage.mockResolvedValue({ ok: true, lints: [] } satisfies LintResponse);
+    await new HarperProvider().check('hello', { fieldType: 'textarea', language: 'en' });
+    expect(sendMessage).toHaveBeenCalledWith({ type: 'inkly:harper:lint', text: 'hello' });
   });
 
-  it('clamps negative length to 0', () => {
-    const lint: PlainLint = { start: 5, end: 5, replacements: [], message: '', kind: 'Spelling' };
-    expect(plainLintToSuggestion(lint).length).toBe(0);
+  it('maps returned PlainLints to Suggestions', async () => {
+    sendMessage.mockResolvedValue({
+      ok: true,
+      lints: [{ start: 0, end: 3, replacements: ['the'], message: 'Spelling', kind: 'Spelling' }],
+    } satisfies LintResponse);
+    const out = await new HarperProvider().check('teh cat', { fieldType: 'textarea', language: 'en' });
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ offset: 0, length: 3, source: 'harper', severity: 'correctness' });
   });
 
-  it('maps correctness categories to a correctness severity', () => {
-    const lint: PlainLint = { start: 0, end: 3, replacements: ['the'], message: 'm', kind: 'Typo' };
-    expect(plainLintToSuggestion(lint).severity).toBe('correctness');
+  it('returns [] when the backend reports an error (never throws)', async () => {
+    sendMessage.mockResolvedValue({ ok: false, error: 'boom' } satisfies LintResponse);
+    const out = await new HarperProvider().check('x', { fieldType: 'input', language: 'en' });
+    expect(out).toEqual([]);
   });
 
-  it('preserves Harper Remove suggestions (empty-string replacement)', () => {
-    const lint: PlainLint = { start: 0, end: 4, replacements: [''], message: 'redundant', kind: 'Redundancy' };
-    const s = plainLintToSuggestion(lint);
-    expect(s.replacements).toEqual(['']);
-    // Redundancy is not a correctness category -> 'clarity'
-    expect(s.severity).toBe('clarity');
+  it('returns [] if the message round-trip rejects', async () => {
+    sendMessage.mockImplementation(async () => { throw new Error('disconnected'); });
+    const out = await new HarperProvider().check('x', { fieldType: 'input', language: 'en' });
+    expect(out).toEqual([]);
   });
 });
