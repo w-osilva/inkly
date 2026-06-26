@@ -38,6 +38,13 @@ const en: Dict = {
   'category.Typo': 'Typo',
   'category.Usage': 'Usage',
   'category.WordChoice': 'Word choice',
+  'popup.defaultTone': 'Default rewrite tone',
+  'tone.neutral': 'Neutral',
+  'tone.formal': 'Formal',
+  'tone.casual': 'Casual',
+  'tone.confident': 'Confident',
+  'tone.friendly': 'Friendly',
+  'tone.concise': 'Concise',
 };
 
 const ptBr: Dict = {
@@ -76,6 +83,13 @@ const ptBr: Dict = {
   'category.Typo': 'Erro de digitação',
   'category.Usage': 'Uso',
   'category.WordChoice': 'Escolha de palavra',
+  'popup.defaultTone': 'Tom padrão da reescrita',
+  'tone.neutral': 'Neutro',
+  'tone.formal': 'Formal',
+  'tone.casual': 'Casual',
+  'tone.confident': 'Confiante',
+  'tone.friendly': 'Amigável',
+  'tone.concise': 'Conciso',
 };
 
 export const MESSAGES: Record<Lang, Dict> = { en, 'pt-br': ptBr };

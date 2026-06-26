@@ -57,6 +57,22 @@
     settings = next;
     await setSettings(next);
   }
+
+  async function setDefaultTone(tone: string) {
+    const cur = await getSettings();
+    const next = { ...cur, defaultTone: tone };
+    settings = next;
+    await setSettings(next);
+  }
+
+  const TONE_OPTIONS = [
+    { id: '', key: 'tone.neutral' },
+    { id: 'formal', key: 'tone.formal' },
+    { id: 'casual', key: 'tone.casual' },
+    { id: 'confident', key: 'tone.confident' },
+    { id: 'friendly', key: 'tone.friendly' },
+    { id: 'concise', key: 'tone.concise' },
+  ];
 </script>
 
 <main>
@@ -68,6 +84,14 @@
         <option value="auto">{t(lang, 'lang.auto')}</option>
         <option value="en">{t(lang, 'lang.en')}</option>
         <option value="pt-br">{t(lang, 'lang.pt-br')}</option>
+      </select>
+    </label>
+    <label class="row">
+      <span>{t(lang, 'popup.defaultTone')}</span>
+      <select value={settings.defaultTone} onchange={(e) => setDefaultTone((e.currentTarget as HTMLSelectElement).value)}>
+        {#each TONE_OPTIONS as opt}
+          <option value={opt.id}>{t(lang, opt.key)}</option>
+        {/each}
       </select>
     </label>
     <label class="row">
