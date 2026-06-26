@@ -1,29 +1,14 @@
 import { classifyField, isEditableField } from '../core/field-detector';
 import { getFieldText } from '../core/text-model';
 import { mergeSuggestions } from '../core/orchestrator';
-import { StubProvider } from '../core/providers/stub-provider';
 import { HarperProvider } from '../core/providers/harper-provider';
 import { OverlayRenderer } from '../ui/overlay-renderer';
 import { computeUnderlineStyles, type Rect } from '../ui/underline-layout';
 import { applyReplacement } from '../core/apply-engine';
 import { debounce } from '../core/debounce';
-import type { FieldType, Provider, Suggestion } from '../core/types';
+import type { FieldType, Suggestion } from '../core/types';
 
-// M2a spike: use Harper if its WASM is reachable; fall back to the stub otherwise.
-// (StubProvider is intentionally kept — it's the offline/failure fallback and the
-// subject of the original e2e test.)
-function createProvider(): Provider {
-  try {
-    const workerUrl = browser.runtime.getURL('/harper-worker.js' as never) as unknown as string;
-    const wasmUrl = browser.runtime.getURL('wasm/harper_wasm_bg.wasm' as never) as unknown as string;
-    return new HarperProvider(workerUrl, wasmUrl);
-  } catch (err) {
-    console.warn('[inkly] Harper unavailable, falling back to StubProvider:', err);
-    return new StubProvider();
-  }
-}
-
-const provider = createProvider();
+const provider = new HarperProvider();
 
 // Field types whose text lives in the DOM as nodes → precise rects via a Range.
 const CONTENTEDITABLE_FAMILY: ReadonlySet<FieldType> = new Set<FieldType>([

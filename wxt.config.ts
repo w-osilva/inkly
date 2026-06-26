@@ -12,21 +12,5 @@ export default defineConfig({
     content_security_policy: {
       extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
     },
-    // Harper's WASM binary is fetched at runtime by the linter worker via
-    // browser.runtime.getURL('wasm/harper_wasm_bg.wasm'); it must be web-accessible.
-    web_accessible_resources: [
-      {
-        resources: [
-          'wasm/*.wasm',
-          // The Harper worker (unlisted script) is loaded from the extension
-          // origin by the content script; it and any shared chunks it imports
-          // must be web-accessible.
-          'harper-worker.js',
-          'chunks/*.js',
-          'assets/*.js',
-        ],
-        matches: ['<all_urls>'],
-      },
-    ],
   },
 });
