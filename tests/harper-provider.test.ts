@@ -41,7 +41,7 @@ describe('HarperProvider (remote client)', () => {
   it('maps returned PlainLints to Suggestions', async () => {
     sendMessage.mockResolvedValue({
       ok: true,
-      lints: [{ start: 0, end: 3, replacements: ['the'], message: 'Spelling', kind: 'Spelling' }],
+      lints: [{ start: 0, end: 3, replacements: ['the'], message: 'Spelling', kind: 'Spelling', ruleName: 'SpellCheck' }],
     } satisfies LintResponse);
     const out = await new HarperProvider().check('teh cat', { fieldType: 'textarea', language: 'en' });
     expect(out).toHaveLength(1);

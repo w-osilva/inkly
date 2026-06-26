@@ -21,28 +21,28 @@ function ensureLinter(): Linter {
 async function lint(text: string): Promise<PlainLint[]> {
   const l = ensureLinter();
   await setupPromise;
-  // 'plaintext' — editable fields are plain text, not markdown (Harper's default).
-  const lints = await l.lint(text, { language: 'plaintext' });
-  try {
-    return lints.map((lint) => {
+  // organizedLints groups the same lints by their per-rule PascalCase name.
+  const organized = await l.organizedLints(text, { language: 'plaintext' });
+  const out: PlainLint[] = [];
+  for (const [ruleName, lints] of Object.entries(organized)) {
+    for (const lint of lints) {
       const span = lint.span();
       const suggestions = lint.suggestions();
-      const plain: PlainLint = {
+      out.push({
         start: span.start,
         end: span.end,
         replacements: suggestions.map((s) => s.get_replacement_text()),
         message: lint.message(),
         kind: lint.lint_kind(),
-      };
-      // Harper's Lint/Span/Suggestion are wasm-backed and caller-owned: free
-      // them so the always-on shared engine doesn't leak on every keystroke.
+        ruleName,
+      });
+      // free wasm-backed objects after reading (mirrors the prior lint() hygiene)
       (span as { free?: () => void }).free?.();
       suggestions.forEach((s) => (s as { free?: () => void }).free?.());
-      return plain;
-    });
-  } finally {
-    lints.forEach((lint) => (lint as { free?: () => void }).free?.());
+      (lint as { free?: () => void }).free?.();
+    }
   }
+  return out;
 }
 
 browser.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse: (r: LintResponse) => void): true | undefined => {
