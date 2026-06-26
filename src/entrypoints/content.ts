@@ -225,6 +225,7 @@ export default defineContentScript({
       aiPanelState.onApply = null;
       aiPanelState.onCopy = null;
       aiPanelState.onDismiss = null;
+      aiPanelState.onPickSynonym = null;
       aiPanelState.hovered = false;
       aiPanelState.tone = '';
       aiPanelState.length = 'asis';
@@ -288,9 +289,16 @@ export default defineContentScript({
       if (res.ok) {
         aiPanelState.result = res.text;
         aiPanelState.phase = 'result';
-        aiPanelState.onApply = () => { applyRange(field, type, sel.start, sel.end, res.text); hideAIPanel(); };
         aiPanelState.onCopy = () => { void navigator.clipboard?.writeText(res.text); };
         aiPanelState.onDismiss = () => hideAIPanel();
+        aiPanelState.onApply =
+          (capability === 'rewrite' || capability === 'translate')
+            ? () => { applyRange(field, type, sel.start, sel.end, res.text); hideAIPanel(); }
+            : null;
+        aiPanelState.onPickSynonym =
+          capability === 'synonyms'
+            ? (w: string) => { applyRange(field, type, sel.start, sel.end, w); hideAIPanel(); }
+            : null;
         if (capability === 'rewrite') {
           aiPanelState.onSetTone = (t: string) => { aiPanelState.tone = t; void doAction('rewrite'); };
           aiPanelState.onSetLength = (l: string) => { aiPanelState.length = l; void doAction('rewrite'); };
