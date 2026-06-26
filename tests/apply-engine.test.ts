@@ -42,12 +42,22 @@ describe('applyReplacement (textarea/input)', () => {
     expect((inp as any)._valueTracker._v).toBe('the');
   });
 
-  it('returns false for unsupported field types (no throw)', () => {
-    // 'prosemirror' and other rich-editor types are not yet handled (deferred to M4).
+  it('applies framework rich-text types via the contenteditable path (M4b)', () => {
+    // 'prosemirror' (and slate/lexical/ckeditor/quill) now route through the
+    // native-editing path, same as plain contenteditable.
     const div = document.createElement('div');
     div.setAttribute('contenteditable', 'true');
     div.textContent = 'teh cat';
     const ok = applyReplacement(div, 'prosemirror', makeSuggestion({ offset: 0, length: 3 }), 'the');
+    expect(ok).toBe(true);
+    expect(div.textContent).toBe('the cat');
+  });
+
+  it('returns false for truly unsupported field types (no throw)', () => {
+    const div = document.createElement('div');
+    div.setAttribute('contenteditable', 'true');
+    div.textContent = 'teh cat';
+    const ok = applyReplacement(div, 'unknown', makeSuggestion({ offset: 0, length: 3 }), 'the');
     expect(ok).toBe(false);
   });
 });
