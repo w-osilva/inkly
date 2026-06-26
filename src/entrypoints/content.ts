@@ -223,6 +223,10 @@ export default defineContentScript({
       aiPanelState.onCopy = null;
       aiPanelState.onDismiss = null;
       aiPanelState.hovered = false;
+      aiPanelState.tone = '';
+      aiPanelState.length = 'asis';
+      aiPanelState.onSetTone = null;
+      aiPanelState.onSetLength = null;
       aiSelection = null;
     }
 
@@ -253,6 +257,8 @@ export default defineContentScript({
       const pos = computeCardPosition(selectionRect(), { width: 320, height: 160 }, { width: window.innerWidth, height: window.innerHeight });
       aiPanelState.left = pos.left;
       aiPanelState.top = pos.top;
+      aiPanelState.tone = '';
+      aiPanelState.length = 'asis';
       aiPanelState.phase = 'actions';
       aiPanelState.onRewrite = () => void doRewrite();
     }
@@ -263,7 +269,10 @@ export default defineContentScript({
       const type = activeType;
       if (!sel || !field) return;
       aiPanelState.phase = 'loading';
-      const res = await runAI({ capability: 'rewrite', text: sel.text });
+      const options: Record<string, string> = {};
+      if (aiPanelState.tone) options.tone = aiPanelState.tone;
+      if (aiPanelState.length && aiPanelState.length !== 'asis') options.length = aiPanelState.length;
+      const res = await runAI({ capability: 'rewrite', text: sel.text, options });
       // Guard: if the panel was dismissed/hidden meanwhile, drop the result.
       if (aiPanelState.phase !== 'loading') return;
       if (res.ok) {
@@ -272,6 +281,8 @@ export default defineContentScript({
         aiPanelState.onApply = () => { applyRange(field, type, sel.start, sel.end, res.text); hideAIPanel(); };
         aiPanelState.onCopy = () => { void navigator.clipboard?.writeText(res.text); };
         aiPanelState.onDismiss = () => hideAIPanel();
+        aiPanelState.onSetTone = (t: string) => { aiPanelState.tone = t; void doRewrite(); };
+        aiPanelState.onSetLength = (l: string) => { aiPanelState.length = l; void doRewrite(); };
       } else {
         aiPanelState.error = res.error;
         aiPanelState.phase = 'error';
