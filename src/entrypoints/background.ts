@@ -18,6 +18,8 @@ async function ensureOffscreen(): Promise<void> {
 }
 
 export default defineBackground(() => {
+  const streamTabs = new Map<string, number>();
+
   const AI_MENU = [
     { id: 'inkly-rewrite', title: 'Rewrite' },
     { id: 'inkly-translate', title: 'Translate' },
@@ -50,9 +52,17 @@ export default defineBackground(() => {
     });
   });
 
-  browser.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse: (r: unknown) => void): true | undefined => {
+  browser.runtime.onMessage.addListener((msg: unknown, sender, sendResponse: (r: unknown) => void): true | undefined => {
     const m = msg as Partial<LintRequest> & { target?: string; type?: string };
     if (m?.target === 'offscreen') return undefined;        // destined for the offscreen doc, not us
+    if ((m as { type?: string })?.type === 'inkly:ai:chunk') {
+      const { streamId, delta } = msg as { streamId: string; delta: string };
+      const tabId = streamTabs.get(streamId);
+      if (tabId != null) {
+        void browser.tabs.sendMessage(tabId, { type: 'inkly:ai:chunk', streamId, delta }).catch(() => {});
+      }
+      return undefined; // fire-and-forget, no response expected
+    }
     if (m?.type === 'inkly:harper:lint') {
       ensureOffscreen()
         .then(() => browser.runtime.sendMessage({ target: 'offscreen', type: 'harper:lint', text: (m as Partial<LintRequest>).text ?? '' }))
@@ -63,10 +73,14 @@ export default defineBackground(() => {
     if (m?.type === 'inkly:ai:run') {
       // Offscreen documents have no chrome.storage access, so the service worker reads
       // the AIConfig here and passes it into the offscreen with the request.
+      const streamId = (msg as { streamId?: string }).streamId ?? '';
+      const tabId = sender.tab?.id;
+      if (streamId && tabId != null) streamTabs.set(streamId, tabId);
       Promise.all([ensureOffscreen(), getAIConfig()])
-        .then(([, config]) => browser.runtime.sendMessage({ target: 'offscreen', type: 'ai:run', request: (m as { request: unknown }).request, config }))
+        .then(([, config]) => browser.runtime.sendMessage({ target: 'offscreen', type: 'ai:run', request: (m as { request: unknown }).request, config, streamId }))
         .then((res) => sendResponse((res ?? { ok: false, error: 'no offscreen response' })))
-        .catch((err) => sendResponse({ ok: false, error: String((err as Error)?.stack ?? err) }));
+        .catch((err) => sendResponse({ ok: false, error: String((err as Error)?.stack ?? err) }))
+        .finally(() => { if (streamId) streamTabs.delete(streamId); });
       return true;
     }
     return undefined;
