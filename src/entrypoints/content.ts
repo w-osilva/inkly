@@ -384,10 +384,18 @@ export default defineContentScript({
       if (related && overlayHost && (related === overlayHost || overlayHost.contains(related))) {
         return;
       }
+      // An in-flight AI panel (loading/result/error) must survive blur churn.
+      // Clicking a panel button focuses it, then a follow-up focusout fires with
+      // relatedTarget=null (focus settling), which would otherwise tear down the
+      // panel mid-rewrite and make doRewrite's loading-phase guard drop the result.
+      // The panel's own Apply/Copy/Dismiss handlers (or a fresh selection) clear it.
+      const aiInFlight = aiPanelState.phase === 'loading'
+        || aiPanelState.phase === 'result'
+        || aiPanelState.phase === 'error';
       runCheck.cancel();
       clearHoverTimers();
       hideCard();
-      hideAIPanel();
+      if (!aiInFlight) hideAIPanel();
       activeField = null;
       activeType = 'unknown';
       current = [];
