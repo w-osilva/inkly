@@ -7,6 +7,11 @@ import { computeUnderlineStyles, type Rect } from '../ui/underline-layout';
 import { applyReplacement } from '../core/apply-engine';
 import { debounce } from '../core/debounce';
 import type { FieldType, Suggestion } from '../core/types';
+import { mount } from 'svelte';
+import SuggestionCard from '../ui/SuggestionCard.svelte';
+import { cardState } from '../ui/card-state.svelte';
+import { findHitIndex, type HitRect } from '../ui/hit-test';
+import { computeCardPosition } from '../ui/card-position';
 
 const provider = new HarperProvider();
 
@@ -55,6 +60,10 @@ export default defineContentScript({
         layer.style.pointerEvents = 'none';
         layer.style.zIndex = '2147483646';
         uiContainer.appendChild(layer);
+        // Mount the suggestion card into the SAME shadow container as the
+        // underlines. The card sets its own pointer-events:auto, so the
+        // container's pointer-events:none fix does not block its clicks.
+        mount(SuggestionCard, { target: uiContainer });
         return new OverlayRenderer(layer);
       },
     });
@@ -65,6 +74,12 @@ export default defineContentScript({
     let activeType: FieldType = 'unknown';
     let current: Suggestion[] = [];
     let checkSeq = 0;
+    let hitRects: HitRect[] = [];
+
+    const dismissed = new Set<string>();
+    function suggestionKey(s: Suggestion): string {
+      return `${s.ruleId}:${s.offset}:${s.length}:${s.replacements.join('|')}`;
+    }
 
     const runCheck = debounce(async () => {
       const field = activeField;
@@ -75,27 +90,103 @@ export default defineContentScript({
       const raw = await provider.check(text, { fieldType: type, language: 'en' });
       if (seq !== checkSeq || activeField !== field) return; // stale: focus/newer check
       current = mergeSuggestions(raw);
+      current = current.filter((s) => !dismissed.has(suggestionKey(s)));
       drawUnderlines();
     }, 400);
 
     function drawUnderlines() {
-      if (!activeField) return renderer.clear();
+      if (!activeField) {
+        hitRects = [];
+        return renderer.clear();
+      }
       const containerRect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
-      const styles = current.flatMap((s) =>
-        computeUnderlineStyles(
-          getSpanRects(activeField!, activeType, s.offset, s.length),
-          containerRect,
-          s.severity,
-        ),
-      );
+      const nextHitRects: HitRect[] = [];
+      const styles = current.flatMap((s, index) => {
+        const rects = getSpanRects(activeField!, activeType, s.offset, s.length);
+        const first = rects[0];
+        if (first) {
+          nextHitRects.push({
+            index,
+            left: first.left,
+            top: first.top,
+            width: first.width,
+            height: first.height,
+          });
+        }
+        return computeUnderlineStyles(rects, containerRect, s.severity);
+      });
+      hitRects = nextHitRects;
       renderer.render(styles);
     }
 
     let rafId = 0;
     function scheduleRedraw() {
+      // M2b: hide the card on scroll/resize rather than repositioning it.
+      // Repositioning against moving anchors is M4; hiding is the accepted fallback.
+      if (cardState.visible) hideCard();
       if (rafId) return;
       rafId = requestAnimationFrame(() => { rafId = 0; drawUnderlines(); });
     }
+
+    const HOVER_DELAY = 150;
+    const HIDE_GRACE = 120;
+    let hoverTimer = 0, hideTimer = 0, shownIndex = -1;
+    let mouseMoveScheduled = false, lastX = 0, lastY = 0;
+
+    function showCardFor(index: number) {
+      const s = current[index];
+      const hit = hitRects.find((h) => h.index === index);
+      if (!s || !hit) return;
+      const CARD = { width: 300, height: 140 };
+      const pos = computeCardPosition(hit, CARD, { width: window.innerWidth, height: window.innerHeight });
+      cardState.suggestion = s;
+      cardState.severity = s.severity;
+      cardState.left = pos.left;
+      cardState.top = pos.top;
+      cardState.onApply = (replacement: string) => {
+        if (activeField) applyReplacement(activeField, activeType, s, replacement);
+        hideCard();
+        renderer.clear();
+      };
+      cardState.onDismiss = () => {
+        dismissed.add(suggestionKey(s));
+        hideCard();
+        drawUnderlines();
+      };
+      cardState.visible = true;
+      shownIndex = index;
+    }
+
+    function hideCard() {
+      cardState.visible = false;
+      cardState.suggestion = null;
+      cardState.onApply = null;
+      cardState.onDismiss = null;
+      cardState.hovered = false;
+      shownIndex = -1;
+    }
+
+    function onMouseMove(e: MouseEvent) {
+      lastX = e.clientX; lastY = e.clientY;
+      if (mouseMoveScheduled) return;
+      mouseMoveScheduled = true;
+      requestAnimationFrame(() => {
+        mouseMoveScheduled = false;
+        const idx = findHitIndex(lastX, lastY, hitRects);
+        if (idx !== -1) {
+          if (hideTimer) { clearTimeout(hideTimer); hideTimer = 0; }
+          if (idx !== shownIndex && !hoverTimer) {
+            hoverTimer = window.setTimeout(() => { hoverTimer = 0; showCardFor(idx); }, HOVER_DELAY);
+          }
+        } else {
+          if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = 0; }
+          if (cardState.visible && !hideTimer) {
+            hideTimer = window.setTimeout(() => { hideTimer = 0; if (!cardState.hovered) hideCard(); }, HIDE_GRACE);
+          }
+        }
+      });
+    }
+    ctx.addEventListener(document, 'mousemove', onMouseMove);
 
     ctx.addEventListener(document, 'focusin', (e) => {
       const t = e.target as Element;
@@ -108,12 +199,16 @@ export default defineContentScript({
     });
     ctx.addEventListener(document, 'input', (e) => {
       if (e.target === activeField) {
+        // Text changed → offsets stale: drop dismissals and any open card.
+        dismissed.clear();
+        hideCard();
         renderer.clear();
         runCheck();
       }
     });
     ctx.addEventListener(document, 'focusout', () => {
       runCheck.cancel();
+      hideCard();
       activeField = null;
       activeType = 'unknown';
       current = [];
