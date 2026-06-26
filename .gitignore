@@ -27,3 +27,6 @@ web-ext.config.ts
 *.sln
 *.sw?
 test-results
+
+# Harper WASM binary (18 MB) — regenerated from node_modules by scripts/copy-harper-wasm.mjs
+public/wasm/
