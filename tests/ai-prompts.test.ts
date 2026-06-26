@@ -38,4 +38,15 @@ describe('buildMessages', () => {
     const msgs = buildMessages({ capability: 'translate', text: 'hello' });
     expect(msgs[0].content.toLowerCase()).toContain('translate');
   });
+  it('synonyms: asks for a comma-separated list, only the list', () => {
+    const msgs = buildMessages({ capability: 'synonyms', text: 'happy' });
+    expect(msgs[0].content.toLowerCase()).toContain('synonym');
+    expect(msgs[0].content.toLowerCase()).toContain('comma');
+    expect(msgs[msgs.length - 1]).toEqual({ role: 'user', content: 'happy' });
+  });
+  it('analyze: asks for brief feedback', () => {
+    const msgs = buildMessages({ capability: 'analyze', text: 'some text' });
+    expect(msgs[0].content.toLowerCase()).toMatch(/analyz|feedback/);
+    expect(msgs[msgs.length - 1]).toEqual({ role: 'user', content: 'some text' });
+  });
 });

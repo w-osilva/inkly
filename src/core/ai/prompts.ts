@@ -34,6 +34,18 @@ export function buildMessages(req: AIRequest): ChatMessage[] {
       { role: 'user', content: req.text },
     ];
   }
+  if (req.capability === 'synonyms') {
+    const system =
+      "You are a thesaurus. Provide synonyms for the user's word or phrase." +
+      ' Return ONLY a comma-separated list of up to 6 alternatives, no numbering, no explanation.';
+    return [{ role: 'system', content: system }, { role: 'user', content: req.text }];
+  }
+  if (req.capability === 'analyze') {
+    const system =
+      "You are a writing coach. Analyze the user's text and give brief, concrete feedback" +
+      ' on clarity, tone, and any issues, in 1-3 short sentences. Do not rewrite it.';
+    return [{ role: 'system', content: system }, { role: 'user', content: req.text }];
+  }
   // Other capabilities are added in M3c. Fall back to a generic instruction.
   return [
     { role: 'system', content: 'You are a writing assistant. Return only the result text.' },
