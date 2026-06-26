@@ -1,10 +1,12 @@
 import { browser } from 'wxt/browser';
+import { type Lang, detectLang } from './i18n';
 
 export interface Settings {
   globalEnabled: boolean;
   siteOverrides: Record<string, boolean>; // host (incl. port) -> enabled
   disabledCategories: string[];
   dictionary: string[];
+  uiLanguage: 'auto' | 'en' | 'pt-br';
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -12,6 +14,7 @@ export const DEFAULT_SETTINGS: Settings = {
   siteOverrides: {},
   disabledCategories: [],
   dictionary: [],
+  uiLanguage: 'auto',
 };
 
 const KEY = 'inkly:settings';
@@ -28,6 +31,10 @@ function normalize(raw: unknown): Settings {
         : {},
     disabledCategories: strArray(o.disabledCategories),
     dictionary: strArray(o.dictionary),
+    uiLanguage:
+      o.uiLanguage === 'en' || o.uiLanguage === 'pt-br' || o.uiLanguage === 'auto'
+        ? o.uiLanguage
+        : 'auto',
   };
 }
 
@@ -87,4 +94,8 @@ export function addWord(s: Settings, word: string): Settings {
 export function removeWord(s: Settings, word: string): Settings {
   const w = word.trim().toLowerCase();
   return { ...s, dictionary: s.dictionary.filter((x) => x !== w) };
+}
+
+export function effectiveLang(s: Settings, locale: string): Lang {
+  return s.uiLanguage === 'auto' ? detectLang(locale) : s.uiLanguage;
 }

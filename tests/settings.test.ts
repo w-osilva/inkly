@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { fakeBrowser } from 'wxt/testing';
 import {
   DEFAULT_SETTINGS, getSettings, setSettings, hostOf, isEnabledForHost, type Settings,
-  isCategoryEnabled, toggleCategory, addWord, removeWord,
+  isCategoryEnabled, toggleCategory, addWord, removeWord, effectiveLang,
 } from '../src/core/settings';
 
 beforeEach(() => fakeBrowser.reset());
@@ -19,7 +19,7 @@ describe('hostOf', () => {
 });
 
 describe('isEnabledForHost', () => {
-  const base: Settings = { globalEnabled: true, siteOverrides: {}, disabledCategories: [], dictionary: [] };
+  const base: Settings = { globalEnabled: true, siteOverrides: {}, disabledCategories: [], dictionary: [], uiLanguage: 'auto' };
   it('falls back to globalEnabled when no override', () => {
     expect(isEnabledForHost(base, 'a.com')).toBe(true);
     expect(isEnabledForHost({ ...base, globalEnabled: false }, 'a.com')).toBe(false);
@@ -35,7 +35,7 @@ describe('getSettings/setSettings', () => {
     expect(await getSettings()).toEqual(DEFAULT_SETTINGS);
   });
   it('round-trips and merges over defaults', async () => {
-    await setSettings({ globalEnabled: false, siteOverrides: { 'x.com': true }, disabledCategories: [], dictionary: [] });
+    await setSettings({ globalEnabled: false, siteOverrides: { 'x.com': true }, disabledCategories: [], dictionary: [], uiLanguage: 'auto' });
     const s = await getSettings();
     expect(s.globalEnabled).toBe(false);
     expect(s.siteOverrides).toEqual({ 'x.com': true });
@@ -78,7 +78,7 @@ describe('settings: defaults include empty disabledCategories + dictionary', () 
 });
 
 describe('category transforms', () => {
-  const base = { globalEnabled: true, siteOverrides: {}, disabledCategories: [] as string[], dictionary: [] as string[] };
+  const base = { globalEnabled: true, siteOverrides: {}, disabledCategories: [] as string[], dictionary: [] as string[], uiLanguage: 'auto' as const };
   it('isCategoryEnabled is true unless disabled', () => {
     expect(isCategoryEnabled(base, 'Style')).toBe(true);
     expect(isCategoryEnabled({ ...base, disabledCategories: ['Style'] }, 'Style')).toBe(false);
@@ -96,7 +96,7 @@ describe('category transforms', () => {
 });
 
 describe('dictionary transforms', () => {
-  const base = { globalEnabled: true, siteOverrides: {}, disabledCategories: [] as string[], dictionary: [] as string[] };
+  const base = { globalEnabled: true, siteOverrides: {}, disabledCategories: [] as string[], dictionary: [] as string[], uiLanguage: 'auto' as const };
   it('addWord stores lowercased, trimmed, deduped', () => {
     let s = addWord(base, '  Inkly ');
     expect(s.dictionary).toEqual(['inkly']);
@@ -109,5 +109,30 @@ describe('dictionary transforms', () => {
   it('removeWord removes case-insensitively', () => {
     const s = removeWord({ ...base, dictionary: ['inkly', 'foo'] }, 'INKLY');
     expect(s.dictionary).toEqual(['foo']);
+  });
+});
+
+describe('uiLanguage', () => {
+  it('defaults to "auto" and normalizes invalid values to "auto"', async () => {
+    await fakeBrowser.storage.sync.set({ 'inkly:settings': { uiLanguage: 'klingon' } });
+    expect((await getSettings()).uiLanguage).toBe('auto');
+    await fakeBrowser.reset();
+    expect((await getSettings()).uiLanguage).toBe('auto');
+  });
+  it('round-trips a valid uiLanguage', async () => {
+    await fakeBrowser.storage.sync.set({ 'inkly:settings': { uiLanguage: 'pt-br' } });
+    expect((await getSettings()).uiLanguage).toBe('pt-br');
+  });
+});
+
+describe('effectiveLang', () => {
+  const base = { globalEnabled: true, siteOverrides: {}, disabledCategories: [], dictionary: [] };
+  it('uses the explicit language when not auto', () => {
+    expect(effectiveLang({ ...base, uiLanguage: 'pt-br' }, 'en-US')).toBe('pt-br');
+    expect(effectiveLang({ ...base, uiLanguage: 'en' }, 'pt-BR')).toBe('en');
+  });
+  it('detects from locale when auto', () => {
+    expect(effectiveLang({ ...base, uiLanguage: 'auto' }, 'pt-BR')).toBe('pt-br');
+    expect(effectiveLang({ ...base, uiLanguage: 'auto' }, 'en-US')).toBe('en');
   });
 });
