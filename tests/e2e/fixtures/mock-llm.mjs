@@ -7,11 +7,15 @@ const server = createServer((req, res) => {
     req.on('data', (c) => (body += c));
     req.on('end', () => {
       let userText = '';
+      let systemText = '';
       try {
         const parsed = JSON.parse(body);
         userText = parsed.messages?.find((m) => m.role === 'user')?.content ?? '';
+        systemText = parsed.messages?.find((m) => m.role === 'system')?.content ?? '';
       } catch { /* ignore */ }
-      const reply = { choices: [{ message: { role: 'assistant', content: `REWRITTEN: ${userText}` } }] };
+      const toneMatch = systemText.match(/use a (\w+) tone/i);
+      const tag = toneMatch ? `[${toneMatch[1].toLowerCase()}]` : '';
+      const reply = { choices: [{ message: { role: 'assistant', content: `REWRITTEN${tag}: ${userText}` } }] };
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(reply));
     });

@@ -412,8 +412,14 @@ export default defineContentScript({
       clearHoverTimers();
       hideCard();
       if (!keepAIPanel) hideAIPanel();
-      activeField = null;
-      activeType = 'unknown';
+      // When the AI panel survives a panel-button click (keepAIPanel), keep the
+      // active field/type bound too: result-phase tone/length chips re-run
+      // doRewrite(), which reads the live activeField. Nulling it here would make
+      // doRewrite bail and the regenerate silently no-op.
+      if (!keepAIPanel) {
+        activeField = null;
+        activeType = 'unknown';
+      }
       current = [];
       renderer.clear();
     });
