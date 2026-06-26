@@ -13,9 +13,11 @@
 </script>
 
 {#if cardState.visible && cardState.suggestion}
+  <!-- Non-modal hover popover; role="group" (non-interactive) satisfies a11y without focus-trapping. -->
   <div
     class="inkly-card"
-    role="dialog"
+    role="group"
+    aria-label="inkly suggestion"
     style="left:{cardState.left}px; top:{cardState.top}px; border-left-color:{COLORS[cardState.severity]};"
     onmouseenter={() => (cardState.hovered = true)}
     onmouseleave={() => (cardState.hovered = false)}
