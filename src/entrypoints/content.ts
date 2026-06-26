@@ -210,6 +210,7 @@ export default defineContentScript({
     });
 
     function onMouseMove(e: MouseEvent) {
+      if (!enabled) return;
       lastX = e.clientX; lastY = e.clientY;
       if (mouseMoveScheduled) return;
       mouseMoveScheduled = true;

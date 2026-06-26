@@ -9,9 +9,20 @@ export const DEFAULT_SETTINGS: Settings = { globalEnabled: true, siteOverrides: 
 
 const KEY = 'inkly:settings';
 
+function normalize(raw: unknown): Settings {
+  const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  return {
+    globalEnabled: typeof o.globalEnabled === 'boolean' ? o.globalEnabled : DEFAULT_SETTINGS.globalEnabled,
+    siteOverrides:
+      o.siteOverrides && typeof o.siteOverrides === 'object' && !Array.isArray(o.siteOverrides)
+        ? (o.siteOverrides as Record<string, boolean>)
+        : {},
+  };
+}
+
 export async function getSettings(): Promise<Settings> {
   const stored = await browser.storage.sync.get(KEY);
-  return { ...DEFAULT_SETTINGS, ...(stored[KEY] as Partial<Settings> | undefined) };
+  return normalize((stored as Record<string, unknown>)[KEY]);
 }
 
 export async function setSettings(next: Settings): Promise<void> {
@@ -25,7 +36,7 @@ export function onSettingsChanged(cb: (s: Settings) => void): () => void {
     area: string,
   ) => {
     if (area === 'sync' && changes[KEY]) {
-      cb({ ...DEFAULT_SETTINGS, ...(changes[KEY].newValue as Partial<Settings> | undefined) });
+      cb(normalize(changes[KEY].newValue));
     }
   };
   browser.storage.onChanged.addListener(listener);

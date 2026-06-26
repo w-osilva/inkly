@@ -17,17 +17,21 @@
   });
 
   async function toggleGlobal() {
-    settings = { ...settings, globalEnabled: !settings.globalEnabled };
-    await setSettings(settings);
+    const cur = await getSettings();
+    const next = { ...cur, globalEnabled: !cur.globalEnabled };
+    settings = next;
+    await setSettings(next);
   }
 
   async function toggleSite() {
     if (!host) return;
-    settings = {
-      ...settings,
-      siteOverrides: { ...settings.siteOverrides, [host]: !siteEnabled },
+    const cur = await getSettings();
+    const next = {
+      ...cur,
+      siteOverrides: { ...cur.siteOverrides, [host]: !isEnabledForHost(cur, host) },
     };
-    await setSettings(settings);
+    settings = next;
+    await setSettings(next);
   }
 </script>
 

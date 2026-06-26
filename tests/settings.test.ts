@@ -40,3 +40,23 @@ describe('getSettings/setSettings', () => {
     expect(s.siteOverrides).toEqual({ 'x.com': true });
   });
 });
+
+describe('getSettings (malformed storage is normalized)', () => {
+  it('fills missing siteOverrides with {}', async () => {
+    await fakeBrowser.storage.sync.set({ 'inkly:settings': { globalEnabled: false } });
+    const s = await getSettings();
+    expect(s.globalEnabled).toBe(false);
+    expect(s.siteOverrides).toEqual({});
+    expect(() => isEnabledForHost(s, 'a.com')).not.toThrow();
+  });
+  it('replaces a null siteOverrides with {}', async () => {
+    await fakeBrowser.storage.sync.set({ 'inkly:settings': { globalEnabled: true, siteOverrides: null } });
+    const s = await getSettings();
+    expect(s.siteOverrides).toEqual({});
+    expect(isEnabledForHost(s, 'a.com')).toBe(true);
+  });
+  it('falls back to defaults for a non-object stored value', async () => {
+    await fakeBrowser.storage.sync.set({ 'inkly:settings': 'garbage' });
+    expect(await getSettings()).toEqual(DEFAULT_SETTINGS);
+  });
+});
