@@ -7,7 +7,7 @@ export interface HttpRequest {
   body: string;
 }
 
-export function buildHttpRequest(config: AIConfig, messages: ChatMessage[]): HttpRequest {
+export function buildHttpRequest(config: AIConfig, messages: ChatMessage[], stream = false): HttpRequest {
   const base = config.endpoint.replace(/\/$/, '');
   return {
     url: `${base}/chat/completions`,
@@ -15,7 +15,7 @@ export function buildHttpRequest(config: AIConfig, messages: ChatMessage[]): Htt
       'Content-Type': 'application/json',
       Authorization: `Bearer ${config.apiKey}`,
     },
-    body: JSON.stringify({ model: config.model, messages, stream: false }),
+    body: JSON.stringify({ model: config.model, messages, stream }),
   };
 }
 

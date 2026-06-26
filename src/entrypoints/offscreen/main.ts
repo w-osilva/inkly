@@ -2,7 +2,8 @@ import { LocalLinter, Dialect, createBinaryModuleFromUrl, type Linter } from 'ha
 import type { PlainLint, OffscreenLintRequest, LintResponse } from '../../core/providers/harper-messages';
 import { hasKey } from '../../core/ai/ai-config';
 import { buildMessages } from '../../core/ai/prompts';
-import { buildHttpRequest, parseChatCompletion } from '../../core/ai/openai-provider';
+import { buildHttpRequest } from '../../core/ai/openai-provider';
+import { splitSSE, deltaFromEvent } from '../../core/ai/sse';
 import type { AIConfig, AIRequest, AIResponse } from '../../core/ai/ai-types';
 import { tryChromeAI } from '../../core/ai/chrome-ai';
 
@@ -52,19 +53,36 @@ async function lint(text: string): Promise<PlainLint[]> {
 
 // The offscreen document cannot read chrome.storage, so the service worker supplies the
 // resolved AIConfig with the request.
-async function runAI(request: AIRequest, config: AIConfig): Promise<AIResponse> {
+async function runAI(request: AIRequest, config: AIConfig, streamId: string): Promise<AIResponse> {
   // 1) Opportunistic free on-device tier (Chrome built-in Prompt API), if available.
   const builtin = await tryChromeAI(request);
   if (builtin !== null) return { ok: true, text: builtin };
-  // 2) Fall back to BYOK.
+  // 2) Fall back to BYOK — stream the OpenAI-compatible SSE response.
   if (!hasKey(config)) return { ok: false, error: 'no-api-key' };
   try {
     const messages = buildMessages(request);
-    const req = buildHttpRequest(config, messages);
+    const req = buildHttpRequest(config, messages, true); // stream
     const res = await fetch(req.url, { method: 'POST', headers: req.headers, body: req.body });
-    if (!res.ok) return { ok: false, error: `http ${res.status}` };
-    const text = parseChatCompletion(await res.json());
-    return { ok: true, text };
+    if (!res.ok || !res.body) return { ok: false, error: `http ${res.status}` };
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let full = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const { events, rest } = splitSSE(buffer);
+      buffer = rest;
+      for (const ev of events) {
+        const delta = deltaFromEvent(ev);
+        if (delta) {
+          full += delta;
+          browser.runtime.sendMessage({ type: 'inkly:ai:chunk', streamId, delta }).catch(() => {});
+        }
+      }
+    }
+    return { ok: true, text: full.trim() };
   } catch (err) {
     return { ok: false, error: String((err as Error)?.message ?? err) };
   }
@@ -80,8 +98,8 @@ browser.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse: (r: 
     return true;
   }
   if (m.type === 'ai:run') {
-    const { request, config } = m as unknown as { request: AIRequest; config: AIConfig };
-    runAI(request, config)
+    const { request, config, streamId } = m as unknown as { request: AIRequest; config: AIConfig; streamId?: string };
+    runAI(request, config, streamId ?? '')
       .then((r) => sendResponse(r))
       .catch((err) => sendResponse({ ok: false, error: String((err as Error)?.stack ?? err) }));
     return true;
