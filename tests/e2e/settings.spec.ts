@@ -1,5 +1,8 @@
 import { test, expect } from './_extension';
 
+// `chrome` exists in the service-worker context where sw.evaluate() runs.
+declare const chrome: { storage: { sync: { set(items: Record<string, unknown>): Promise<void> } } };
+
 // Write inkly settings by evaluating in the extension's service worker.
 async function writeSettings(context: import('@playwright/test').BrowserContext, value: unknown) {
   let [sw] = context.serviceWorkers();
