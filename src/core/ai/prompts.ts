@@ -7,10 +7,16 @@ export function buildMessages(req: AIRequest): ChatMessage[] {
   if (req.capability === 'rewrite') {
     const tone = req.options?.tone;
     const toneClause = tone ? ` Use a ${tone} tone.` : '';
+    const length = req.options?.length;
+    const lengthClause =
+      length === 'shorter' ? ' Make it shorter and more concise.'
+      : length === 'longer' ? ' Make it longer and more detailed.'
+      : '';
     const system =
       "You are a writing assistant. Rewrite the user's text to be clear and correct," +
       ' preserving its meaning and language.' +
       toneClause +
+      lengthClause +
       ' Return ONLY the rewritten text, with no quotes, preamble, or explanation.';
     return [
       { role: 'system', content: system },
