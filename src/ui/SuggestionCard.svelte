@@ -1,6 +1,7 @@
 <script lang="ts">
   import { cardState } from './card-state.svelte';
   import { t, categoryLabel } from '../core/i18n';
+  import { ruleExplanation } from '../core/rule-descriptions';
 
   const COLORS: Record<string, string> = {
     correctness: '#e23b3b',
@@ -21,8 +22,11 @@
   >
     <button class="inkly-card__dismiss" aria-label={t(cardState.lang, 'card.dismiss')} onclick={() => cardState.onDismiss?.()}>×</button>
     <p class="inkly-card__cat">{categoryLabel(cardState.lang, cardState.suggestion.category)}</p>
-    {#if cardState.suggestion.message}
-      <p class="inkly-card__msg">{cardState.suggestion.message}</p>
+    {#if cardState.suggestion}
+      {@const explanation = ruleExplanation(cardState.lang, cardState.suggestion.ruleId, cardState.suggestion.message)}
+      {#if explanation}
+        <p class="inkly-card__msg">{explanation}</p>
+      {/if}
     {/if}
     <div class="inkly-card__reps">
       {#each cardState.suggestion.replacements as rep}
