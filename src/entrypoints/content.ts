@@ -290,8 +290,13 @@ export default defineContentScript({
         aiPanelState.onApply = () => { applyRange(field, type, sel.start, sel.end, res.text); hideAIPanel(); };
         aiPanelState.onCopy = () => { void navigator.clipboard?.writeText(res.text); };
         aiPanelState.onDismiss = () => hideAIPanel();
-        aiPanelState.onSetTone = (t: string) => { aiPanelState.tone = t; void doAction('rewrite'); };
-        aiPanelState.onSetLength = (l: string) => { aiPanelState.length = l; void doAction('rewrite'); };
+        if (capability === 'rewrite') {
+          aiPanelState.onSetTone = (t: string) => { aiPanelState.tone = t; void doAction('rewrite'); };
+          aiPanelState.onSetLength = (l: string) => { aiPanelState.length = l; void doAction('rewrite'); };
+        } else {
+          aiPanelState.onSetTone = null;
+          aiPanelState.onSetLength = null;
+        }
       } else {
         aiPanelState.error = res.error;
         aiPanelState.phase = 'error';

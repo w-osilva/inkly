@@ -29,7 +29,7 @@
       <button class="inkly-ai__btn" onclick={() => aiPanelState.onAction?.('rewrite')}>✨ Rewrite</button>
       <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.('translate')}>🌐 Translate</button>
     {:else if aiPanelState.phase === 'loading'}
-      <span class="inkly-ai__loading">Rewriting…</span>
+      <span class="inkly-ai__loading">{aiPanelState.capability === 'translate' ? 'Translating…' : 'Rewriting…'}</span>
     {:else if aiPanelState.phase === 'result'}
       <p class="inkly-ai__result">{aiPanelState.result}</p>
       {#if aiPanelState.capability === 'rewrite'}
