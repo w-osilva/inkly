@@ -213,6 +213,7 @@ export default defineContentScript({
     }
 
     let aiSelection: SelectionInfo | null = null;
+    let rewriteSeq = 0;
 
     function hideAIPanel() {
       aiPanelState.phase = 'hidden';
@@ -268,13 +269,14 @@ export default defineContentScript({
       const field = activeField;
       const type = activeType;
       if (!sel || !field) return;
+      const gen = ++rewriteSeq;
       aiPanelState.phase = 'loading';
       const options: Record<string, string> = {};
       if (aiPanelState.tone) options.tone = aiPanelState.tone;
       if (aiPanelState.length && aiPanelState.length !== 'asis') options.length = aiPanelState.length;
       const res = await runAI({ capability: 'rewrite', text: sel.text, options });
-      // Guard: if the panel was dismissed/hidden meanwhile, drop the result.
-      if (aiPanelState.phase !== 'loading') return;
+      // Guard: if the panel was dismissed/hidden meanwhile, or a newer call started, drop the result.
+      if (gen !== rewriteSeq || aiPanelState.phase !== 'loading') return;
       if (res.ok) {
         aiPanelState.result = res.text;
         aiPanelState.phase = 'result';
