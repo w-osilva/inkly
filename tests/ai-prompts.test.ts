@@ -26,4 +26,16 @@ describe('buildMessages', () => {
     const none = buildMessages({ capability: 'rewrite', text: 'x' });
     expect(asis[0].content).toBe(none[0].content);
   });
+  it('translate: system instructs to translate to the target language, user carries the text', () => {
+    const msgs = buildMessages({ capability: 'translate', text: 'hello', options: { targetLang: 'Portuguese' } });
+    expect(msgs[0].role).toBe('system');
+    expect(msgs[0].content.toLowerCase()).toContain('translate');
+    expect(msgs[0].content).toContain('Portuguese');
+    expect(msgs[0].content.toLowerCase()).toContain('only');
+    expect(msgs[msgs.length - 1]).toEqual({ role: 'user', content: 'hello' });
+  });
+  it('translate without a target still produces a translate instruction (no crash)', () => {
+    const msgs = buildMessages({ capability: 'translate', text: 'hello' });
+    expect(msgs[0].content.toLowerCase()).toContain('translate');
+  });
 });

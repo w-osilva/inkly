@@ -23,6 +23,17 @@ export function buildMessages(req: AIRequest): ChatMessage[] {
       { role: 'user', content: req.text },
     ];
   }
+  if (req.capability === 'translate') {
+    const target = req.options?.targetLang || "the user's language";
+    const system =
+      `You are a translator. Translate the user's text into ${target}.` +
+      ' Preserve meaning, tone, and formatting.' +
+      ' Return ONLY the translation, with no quotes, preamble, or explanation.';
+    return [
+      { role: 'system', content: system },
+      { role: 'user', content: req.text },
+    ];
+  }
   // Other capabilities are added in M3c. Fall back to a generic instruction.
   return [
     { role: 'system', content: 'You are a writing assistant. Return only the result text.' },
