@@ -18,6 +18,38 @@ async function ensureOffscreen(): Promise<void> {
 }
 
 export default defineBackground(() => {
+  const AI_MENU = [
+    { id: 'inkly-rewrite', title: 'Rewrite' },
+    { id: 'inkly-translate', title: 'Translate' },
+    { id: 'inkly-synonyms', title: 'Synonyms' },
+    { id: 'inkly-analyze', title: 'Analyze' },
+  ];
+
+  function registerMenus() {
+    browser.contextMenus.removeAll().then(() => {
+      browser.contextMenus.create({ id: 'inkly', title: 'inkly', contexts: ['editable', 'selection'] });
+      for (const m of AI_MENU) {
+        browser.contextMenus.create({ id: m.id, parentId: 'inkly', title: m.title, contexts: ['editable', 'selection'] });
+      }
+    });
+  }
+  browser.runtime.onInstalled.addListener(registerMenus);
+  browser.runtime.onStartup.addListener(registerMenus);
+
+  browser.contextMenus.onClicked.addListener((info, tab) => {
+    const cap = String(info.menuItemId).replace('inkly-', '');
+    if (!tab?.id || !['rewrite', 'translate', 'synonyms', 'analyze'].includes(cap)) return;
+    void browser.tabs.sendMessage(tab.id, { type: 'inkly:trigger', capability: cap }).catch(() => {});
+  });
+
+  browser.commands.onCommand.addListener((command) => {
+    if (command !== 'inkly-open-ai') return;
+    void browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+      const id = tabs[0]?.id;
+      if (id) void browser.tabs.sendMessage(id, { type: 'inkly:trigger', capability: 'open' }).catch(() => {});
+    });
+  });
+
   browser.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse: (r: unknown) => void): true | undefined => {
     const m = msg as Partial<LintRequest> & { target?: string; type?: string };
     if (m?.target === 'offscreen') return undefined;        // destined for the offscreen doc, not us
