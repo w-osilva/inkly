@@ -7,6 +7,7 @@ export interface AIPanelState {
   left: number;
   top: number;
   result: string;
+  streamingText: string;
   error: string;
   onAction: ((capability: AICapability) => void) | null;
   onPickSynonym: ((word: string) => void) | null;
@@ -26,6 +27,7 @@ export const aiPanelState = $state<AIPanelState>({
   left: 0,
   top: 0,
   result: '',
+  streamingText: '',
   error: '',
   onAction: null,
   onPickSynonym: null,
