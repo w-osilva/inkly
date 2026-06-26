@@ -2,7 +2,7 @@
 
 **Open-source, privacy-first writing assistant for the browser** — local grammar & spelling that works offline and free, plus an optional AI layer for rewriting, translation, synonyms, and context analysis. A free alternative to Grammarly and LanguageTool.
 
-> Status: early (v0.1.0). The local engine, suggestion UI, settings, i18n (English + Brazilian Portuguese), and the BYOK AI suite work end-to-end. Streaming and richer per-editor support are in progress.
+> Status: early (v0.1.0). The local engine, suggestion UI, settings, i18n (English + Brazilian Portuguese), and the BYOK AI suite (with streaming responses) work end-to-end. Richer per-editor support is in progress.
 
 ## Why
 
@@ -18,7 +18,8 @@
 - ✅ UI **and** rule explanations in English + Brazilian Portuguese (auto-detected, switchable).
 - ✅ **AI (bring your own key):** select text → Rewrite / Translate / Synonyms / Analyze. Runtime tone & length controls; persistent default tone. Works with any OpenAI-compatible API (OpenAI, Groq, OpenRouter, Ollama, …). Opportunistically uses Chrome's built-in on-device AI when available.
 - ✅ Invoke AI via the selection toolbar, a keyboard shortcut (Alt+I), or the right-click menu.
-- 🚧 Streaming AI responses, precise textarea underline positioning, and framework-editor (Slate/Lexical/ProseMirror) apply adapters — planned.
+- ✅ **Streaming AI responses** — BYOK output appears incrementally as it generates.
+- 🚧 Precise textarea underline positioning and framework-editor (Slate/Lexical/ProseMirror) apply adapters — planned.
 
 ## Install (development)
 
