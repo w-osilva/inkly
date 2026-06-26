@@ -8,7 +8,10 @@ function ensureLinter(): Linter {
   if (!linter) {
     // Offscreen is an extension page → it can fetch its own resources without
     // web_accessible_resources. The wasm lives in public/wasm/ (see copy script).
-    const binary = createBinaryModuleFromUrl(browser.runtime.getURL('wasm/harper_wasm_bg.wasm'));
+    // `as never`: the wasm is copied into public/wasm/ at build time, so it's
+    // not in WXT's generated PublicPath union — the runtime path is verified by e2e.
+    const wasmUrl = browser.runtime.getURL('wasm/harper_wasm_bg.wasm' as never);
+    const binary = createBinaryModuleFromUrl(wasmUrl);
     linter = new LocalLinter({ binary, dialect: Dialect.American });
     setupPromise = linter.setup();
   }

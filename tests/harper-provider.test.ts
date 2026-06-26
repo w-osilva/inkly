@@ -20,10 +20,12 @@ import { HarperProvider } from '../src/core/providers/harper-provider';
 //   "unhandled" if not consumed in the same microtask frame — `async throw`
 //   creates the rejection lazily (when the function is called and awaited),
 //   so it is consumed immediately and no false-positive fires.
-let sendMessage: ReturnType<typeof vi.spyOn<typeof fakeBrowser.runtime, 'sendMessage'>>;
+// fakeBrowser.runtime's typed key union doesn't admit 'sendMessage' as a spy
+// target, so cast the target — the spy still controls the real method at runtime.
+let sendMessage: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
-  sendMessage = vi.spyOn(fakeBrowser.runtime, 'sendMessage');
+  sendMessage = vi.spyOn(fakeBrowser.runtime as never, 'sendMessage');
 });
 afterEach(() => {
   vi.restoreAllMocks();
