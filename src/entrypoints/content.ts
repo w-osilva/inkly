@@ -12,6 +12,7 @@ import SuggestionCard from '../ui/SuggestionCard.svelte';
 import { cardState } from '../ui/card-state.svelte';
 import { findHitIndex, type HitRect } from '../ui/hit-test';
 import { computeCardPosition } from '../ui/card-position';
+import { getSettings, onSettingsChanged, isEnabledForHost } from '../core/settings';
 
 const provider = new HarperProvider();
 
@@ -41,6 +42,8 @@ export default defineContentScript({
   matches: ['<all_urls>'],
   cssInjectionMode: 'ui',
   async main(ctx) {
+    let enabled = true;
+    const host = location.host;
     let overlayHost: HTMLElement | null = null;
     const ui = await createShadowRootUi(ctx, {
       name: 'inkly-overlay',
@@ -86,7 +89,7 @@ export default defineContentScript({
     const runCheck = debounce(async () => {
       const field = activeField;
       const type = activeType;
-      if (!field) return;
+      if (!enabled || !field) return;
       const seq = ++checkSeq;
       const text = getFieldText(field, type);
       const raw = await provider.check(text, { fieldType: type, language: 'en' });
@@ -177,6 +180,25 @@ export default defineContentScript({
       shownIndex = -1;
     }
 
+    getSettings().then((s) => {
+      enabled = isEnabledForHost(s, host);
+    });
+    onSettingsChanged((s) => {
+      const next = isEnabledForHost(s, host);
+      if (next === enabled) return;
+      enabled = next;
+      if (!enabled) {
+        runCheck.cancel();
+        clearHoverTimers();
+        hideCard();
+        current = [];
+        hitRects = [];
+        renderer.clear();
+      } else if (activeField) {
+        runCheck();
+      }
+    });
+
     function onMouseMove(e: MouseEvent) {
       lastX = e.clientX; lastY = e.clientY;
       if (mouseMoveScheduled) return;
@@ -207,7 +229,7 @@ export default defineContentScript({
 
     ctx.addEventListener(document, 'focusin', (e) => {
       const t = e.target as Element;
-      if (t instanceof HTMLElement && isEditableField(t)) {
+      if (enabled && t instanceof HTMLElement && isEditableField(t)) {
         runCheck.cancel();
         clearHoverTimers();
         hideCard();
