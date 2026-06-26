@@ -1,5 +1,6 @@
-// Copies Harper's WASM binary out of node_modules into public/wasm/ so WXT
-// emits it as a web-accessible resource (declared in wxt.config.ts).
+// Copies Harper's WASM binary out of node_modules into public/wasm/. Because it
+// lives in public/, WXT emits it into the build output, and the offscreen
+// extension page loads it same-origin (no web_accessible_resources needed).
 // Run automatically via `prebuild` and `postinstall`. The file is gitignored
 // (18 MB) and regenerated deterministically from the installed harper.js.
 import { mkdirSync, copyFileSync, existsSync, statSync } from 'node:fs';

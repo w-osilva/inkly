@@ -23,25 +23,37 @@ async function lint(text: string): Promise<PlainLint[]> {
   await setupPromise;
   // 'plaintext' — editable fields are plain text, not markdown (Harper's default).
   const lints = await l.lint(text, { language: 'plaintext' });
-  return lints.map((lint) => {
-    const span = lint.span();
-    return {
-      start: span.start,
-      end: span.end,
-      replacements: lint.suggestions().map((s) => s.get_replacement_text()),
-      message: lint.message(),
-      kind: lint.lint_kind(),
-    };
-  });
+  try {
+    return lints.map((lint) => {
+      const span = lint.span();
+      const suggestions = lint.suggestions();
+      const plain: PlainLint = {
+        start: span.start,
+        end: span.end,
+        replacements: suggestions.map((s) => s.get_replacement_text()),
+        message: lint.message(),
+        kind: lint.lint_kind(),
+      };
+      // Harper's Lint/Span/Suggestion are wasm-backed and caller-owned: free
+      // them so the always-on shared engine doesn't leak on every keystroke.
+      (span as { free?: () => void }).free?.();
+      suggestions.forEach((s) => (s as { free?: () => void }).free?.());
+      return plain;
+    });
+  } finally {
+    lints.forEach((lint) => (lint as { free?: () => void }).free?.());
+  }
 }
 
-browser.runtime.onMessage.addListener((msg: unknown): Promise<LintResponse> | undefined => {
+browser.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse: (r: LintResponse) => void): true | undefined => {
   const m = msg as Partial<OffscreenLintRequest>;
   if (m?.target !== 'offscreen' || m.type !== 'harper:lint') return undefined; // not ours
-  return lint(m.text ?? '')
-    .then((lints) => ({ ok: true, lints }) as LintResponse)
-    .catch((err) => ({ ok: false, error: String(err?.stack ?? err) }) as LintResponse);
+  lint(m.text ?? '')
+    .then((lints) => sendResponse({ ok: true, lints }))
+    .catch((err) => sendResponse({ ok: false, error: String((err as Error)?.stack ?? err) }));
+  return true; // async sendResponse
 });
 
 // Warm the engine as soon as the offscreen doc loads (amortize the 17 MB compile).
 ensureLinter();
+(setupPromise as Promise<void> | null)?.catch(() => { /* surfaced later on the first lint() */ });
