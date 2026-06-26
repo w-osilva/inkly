@@ -194,8 +194,18 @@ export default defineContentScript({
         current = [];
         hitRects = [];
         renderer.clear();
-      } else if (activeField) {
-        runCheck();
+      } else {
+        // Re-enabled. While disabled, focusin was gated, so a field that was
+        // already focused was never adopted. Adopt the live focused editable
+        // element (if any) so re-checking works without a blur/refocus.
+        if (!activeField) {
+          const focused = document.activeElement;
+          if (focused instanceof HTMLElement && isEditableField(focused)) {
+            activeField = focused;
+            activeType = classifyField(focused);
+          }
+        }
+        if (activeField) runCheck();
       }
     });
 
