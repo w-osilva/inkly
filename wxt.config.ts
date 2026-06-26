@@ -12,5 +12,11 @@ export default defineConfig({
     content_security_policy: {
       extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
     },
+    commands: {
+      'inkly-open-ai': {
+        suggested_key: { default: 'Alt+I' },
+        description: 'Open inkly AI on the current selection',
+      },
+    },
   },
 });
