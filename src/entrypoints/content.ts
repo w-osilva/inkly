@@ -246,15 +246,15 @@ export default defineContentScript({
         if ((aiPanelState.phase === 'actions') && !aiPanelState.hovered) hideAIPanel();
         return;
       }
+      // A settled loading/result/error panel is immutable until resolved: don't
+      // reposition, re-bind the selection, or reset the phase out from under it.
+      if (aiPanelState.phase !== 'hidden' && aiPanelState.phase !== 'actions') return;
       aiSelection = info;
       const pos = computeCardPosition(selectionRect(), { width: 320, height: 160 }, { width: window.innerWidth, height: window.innerHeight });
       aiPanelState.left = pos.left;
       aiPanelState.top = pos.top;
-      // Don't clobber an in-progress loading/result panel for the same selection.
-      if (aiPanelState.phase === 'hidden' || aiPanelState.phase === 'actions') {
-        aiPanelState.phase = 'actions';
-        aiPanelState.onRewrite = () => void doRewrite();
-      }
+      aiPanelState.phase = 'actions';
+      aiPanelState.onRewrite = () => void doRewrite();
     }
 
     async function doRewrite() {
@@ -381,25 +381,46 @@ export default defineContentScript({
       // editor sees as a focusout. Ignore it: tearing down here would unmount the
       // card mid-click, so the replacement/dismiss handler would never run.
       const related = (e as FocusEvent).relatedTarget as Node | null;
-      if (related && overlayHost && (related === overlayHost || overlayHost.contains(related))) {
+      const intoOverlay = related != null && overlayHost != null
+        && (related === overlayHost || overlayHost.contains(related));
+      if (intoOverlay) {
         return;
       }
-      // An in-flight AI panel (loading/result/error) must survive blur churn.
-      // Clicking a panel button focuses it, then a follow-up focusout fires with
-      // relatedTarget=null (focus settling), which would otherwise tear down the
-      // panel mid-rewrite and make doRewrite's loading-phase guard drop the result.
-      // The panel's own Apply/Copy/Dismiss handlers (or a fresh selection) clear it.
+      // An in-flight AI panel (loading/result/error) survives the blur churn of a
+      // panel-button click: that click focuses the button, then a follow-up focusout
+      // fires with relatedTarget=null (focus settling), which would otherwise tear
+      // down the panel mid-rewrite and make doRewrite's loading-phase guard drop the
+      // result. So keep it alive ONLY when related is null or moving into the overlay.
+      // A genuine focus-away (Tab to another field, focus to a real element outside
+      // the overlay) must tear the panel down so it does not orphan over the old field.
       const aiInFlight = aiPanelState.phase === 'loading'
         || aiPanelState.phase === 'result'
         || aiPanelState.phase === 'error';
+      const keepAIPanel = aiInFlight && (related === null || intoOverlay);
       runCheck.cancel();
       clearHoverTimers();
       hideCard();
-      if (!aiInFlight) hideAIPanel();
+      if (!keepAIPanel) hideAIPanel();
       activeField = null;
       activeType = 'unknown';
       current = [];
       renderer.clear();
+    });
+    // Deterministic outside-click dismissal for the AI panel. focusout can't tell a
+    // genuine click on empty page area (relatedTarget=null) from panel-button churn
+    // (also null), so a pointerdown anywhere outside the overlay tears the panel down.
+    // A click on a panel button is inside overlayHost → NOT dismissed, so the button's
+    // own click still fires. A new drag-selection's pointerdown hides any stale panel,
+    // then mouseup/selectionchange re-opens a fresh actions panel.
+    ctx.addEventListener(document, 'pointerdown', (e) => {
+      if (aiPanelState.phase === 'hidden') return;
+      // Use composedPath so a click landing inside the shadow root is detected even if
+      // the event's retargeted .target is the shadow host (or a descendant of it).
+      const path = e.composedPath();
+      if (overlayHost && path.includes(overlayHost)) return; // clicking the panel itself
+      const target = e.target as Node | null;
+      if (target && overlayHost && overlayHost.contains(target)) return;
+      hideAIPanel();
     });
     ctx.addEventListener(window, 'scroll', scheduleRedraw, { capture: true });
     ctx.addEventListener(window, 'resize', scheduleRedraw);

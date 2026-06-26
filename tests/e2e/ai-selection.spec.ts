@@ -58,3 +58,26 @@ test('rewrite without a key shows the error phase', async ({ context }) => {
   await rewriteBtn.click();
   await expect(page.locator('css=.inkly-ai__error')).toContainText('no-api-key', { timeout: 10_000 });
 });
+
+test('clicking away dismisses a result panel (no orphan)', async ({ context }) => {
+  await setAIConfig(context, {
+    provider: 'openai-compatible', endpoint: 'http://localhost:5199/v1', apiKey: 'k', model: 'm',
+  });
+  const page = await context.newPage();
+  await page.goto('/contenteditable.html');
+  const editor = page.locator('#editor');
+  await editor.click();
+  await editor.type('hello world');
+
+  await selectWorld(page);
+
+  const rewriteBtn = page.locator('css=.inkly-ai__btn').filter({ hasText: 'Rewrite' });
+  await expect(rewriteBtn).toBeVisible({ timeout: 5_000 });
+  await rewriteBtn.click();
+  await expect(page.locator('css=.inkly-ai__result')).toContainText('REWRITTEN: world', { timeout: 10_000 });
+
+  // Click on empty page area (top-left), away from the panel.
+  await page.mouse.click(5, 5);
+
+  await expect(page.locator('css=.inkly-ai')).toHaveCount(0);
+});
