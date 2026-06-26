@@ -1,4 +1,5 @@
 import type { LintRequest, LintResponse } from '../core/providers/harper-messages';
+import { getAIConfig } from '../core/ai/ai-config';
 
 const OFFSCREEN_URL = 'offscreen.html';
 
@@ -28,8 +29,10 @@ export default defineBackground(() => {
       return true;
     }
     if (m?.type === 'inkly:ai:run') {
-      ensureOffscreen()
-        .then(() => browser.runtime.sendMessage({ target: 'offscreen', type: 'ai:run', request: (m as { request: unknown }).request }))
+      // Offscreen documents have no chrome.storage access, so the service worker reads
+      // the AIConfig here and passes it into the offscreen with the request.
+      Promise.all([ensureOffscreen(), getAIConfig()])
+        .then(([, config]) => browser.runtime.sendMessage({ target: 'offscreen', type: 'ai:run', request: (m as { request: unknown }).request, config }))
         .then((res) => sendResponse((res ?? { ok: false, error: 'no offscreen response' })))
         .catch((err) => sendResponse({ ok: false, error: String((err as Error)?.stack ?? err) }));
       return true;

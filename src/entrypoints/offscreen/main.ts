@@ -1,9 +1,9 @@
 import { LocalLinter, Dialect, createBinaryModuleFromUrl, type Linter } from 'harper.js';
 import type { PlainLint, OffscreenLintRequest, LintResponse } from '../../core/providers/harper-messages';
-import { getAIConfig, hasKey } from '../../core/ai/ai-config';
+import { hasKey } from '../../core/ai/ai-config';
 import { buildMessages } from '../../core/ai/prompts';
 import { buildHttpRequest, parseChatCompletion } from '../../core/ai/openai-provider';
-import type { AIRequest, AIResponse } from '../../core/ai/ai-types';
+import type { AIConfig, AIRequest, AIResponse } from '../../core/ai/ai-types';
 
 let linter: Linter | null = null;
 let setupPromise: Promise<void> | null = null;
@@ -49,8 +49,9 @@ async function lint(text: string): Promise<PlainLint[]> {
   return out;
 }
 
-async function runAI(request: AIRequest): Promise<AIResponse> {
-  const config = await getAIConfig();
+// The offscreen document cannot read chrome.storage, so the service worker supplies the
+// resolved AIConfig with the request.
+async function runAI(request: AIRequest, config: AIConfig): Promise<AIResponse> {
   if (!hasKey(config)) return { ok: false, error: 'no-api-key' };
   try {
     const messages = buildMessages(request);
@@ -74,7 +75,8 @@ browser.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse: (r: 
     return true;
   }
   if (m.type === 'ai:run') {
-    runAI((m as { request: AIRequest }).request)
+    const { request, config } = m as unknown as { request: AIRequest; config: AIConfig };
+    runAI(request, config)
       .then((r) => sendResponse(r))
       .catch((err) => sendResponse({ ok: false, error: String((err as Error)?.stack ?? err) }));
     return true;

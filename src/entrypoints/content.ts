@@ -322,5 +322,21 @@ export default defineContentScript({
       const res = await runAI({ capability: 'rewrite', text });
       return res.ok ? res.text : `ERROR:${res.error}`;
     };
+
+    // e2e seam: the main-world test stub (loaded by the fixture page as a same-origin
+    // <script>, since page CSP blocks inline injection) round-trips a rewrite request
+    // here via window.postMessage. Content scripts run in an isolated world, so the
+    // window.__inklyAIRewrite above is not reachable from page.evaluate (main world);
+    // this listener bridges the gap by performing the real runAI call.
+    ctx.addEventListener(window, 'message', (e: MessageEvent) => {
+      const d = (e as MessageEvent).data;
+      if (e.source !== window || !d || d.__inkly !== 'ai-rewrite-req') return;
+      runAI({ capability: 'rewrite', text: d.text }).then((res) => {
+        window.postMessage(
+          { __inkly: 'ai-rewrite-res', id: d.id, result: res.ok ? res.text : `ERROR:${res.error}` },
+          '*',
+        );
+      });
+    });
   },
 });
