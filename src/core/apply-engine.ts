@@ -1,4 +1,5 @@
 import { FieldType, Suggestion } from './types';
+import { offsetToRange } from './dom-offset';
 
 /**
  * Set a value via the native prototype setter and update React's _valueTracker
@@ -36,20 +37,12 @@ export function applyRange(
     return true;
   }
   if (type === 'contenteditable') {
-    const node = el.firstChild;
-    // Handles only the common single-text-node case; multi-node / rich
-    // editors (ProseMirror, Slate, Lexical, Quill) are M4.
-    if (!node || node.nodeType !== Node.TEXT_NODE || el.childNodes.length !== 1) {
-      return false;
-    }
+    const range = offsetToRange(el, start, end);
+    if (!range) return false;
     const sel = window.getSelection();
-    const range = document.createRange();
-    range.setStart(node, start);
-    range.setEnd(node, end);
     sel?.removeAllRanges();
     sel?.addRange(range);
     el.focus();
-    // Primary: native input pipeline (undo-safe, fires input, framework-friendly).
     let ok = false;
     try {
       ok = document.execCommand('insertText', false, replacement);
@@ -57,12 +50,10 @@ export function applyRange(
       ok = false;
     }
     if (ok) return true;
-    // Fallback (plain contenteditable / environments without execCommand):
-    const text = node.textContent ?? '';
-    node.textContent = text.slice(0, start) + replacement + text.slice(end);
-    el.dispatchEvent(
-      new InputEvent('input', { bubbles: true, inputType: 'insertReplacementText', data: replacement }),
-    );
+    // Generic Range fallback (works across multiple text nodes):
+    range.deleteContents();
+    if (replacement) range.insertNode(document.createTextNode(replacement));
+    el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertReplacementText', data: replacement }));
     return true;
   }
   return false;

@@ -33,6 +33,28 @@ describe('applyRange (plain contenteditable)', () => {
     ce.setAttribute('contenteditable', 'true');
     ce.innerHTML = 'a <b>b</b>';
     document.body.appendChild(ce);
-    expect(applyRange(ce, 'contenteditable', 0, 1, 'x')).toBe(false);
+    // Multi-node is now supported via offsetToRange (M4a).
+    expect(applyRange(ce, 'contenteditable', 0, 1, 'x')).toBe(true);
+  });
+});
+
+describe('applyRange (multi-node contenteditable)', () => {
+  it('replaces a span that sits in a later text node', () => {
+    const ce = document.createElement('div');
+    ce.setAttribute('contenteditable', 'true');
+    ce.innerHTML = 'The <b>quick</b> teh fox'; // textContent "The quick teh fox", "teh" at 10..13
+    document.body.appendChild(ce);
+    const ok = applyRange(ce, 'contenteditable', 10, 13, 'the');
+    expect(ok).toBe(true);
+    expect(ce.textContent).toBe('The quick the fox');
+  });
+  it('replaces a span crossing an element boundary', () => {
+    const ce = document.createElement('div');
+    ce.setAttribute('contenteditable', 'true');
+    ce.innerHTML = 'ab<b>cd</b>ef'; // "abcdef"
+    document.body.appendChild(ce);
+    const ok = applyRange(ce, 'contenteditable', 1, 5, 'X'); // replace "bcde"
+    expect(ok).toBe(true);
+    expect(ce.textContent).toBe('aXf');
   });
 });

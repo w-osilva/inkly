@@ -29,12 +29,13 @@ describe('applyReplacement (plain contenteditable, single text node)', () => {
     expect(el.textContent).toBe('the cat');
   });
 
-  it('returns false for a multi-node contenteditable (deferred to M4)', () => {
+  it('works for a multi-node contenteditable (M4a: offsetToRange)', () => {
     const el = document.createElement('div');
     el.setAttribute('contenteditable', 'true');
     el.innerHTML = 'teh <b>cat</b>';
     document.body.appendChild(el);
     const ok = applyReplacement(el, 'contenteditable', makeSuggestion({ offset: 0, length: 3 }), 'the');
-    expect(ok).toBe(false);
+    expect(ok).toBe(true);
+    expect(el.textContent).toBe('the cat');
   });
 });
