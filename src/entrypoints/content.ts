@@ -1,3 +1,4 @@
+import { browser } from 'wxt/browser';
 import { classifyField, isEditableField } from '../core/field-detector';
 import { getFieldText } from '../core/text-model';
 import { mergeSuggestions } from '../core/orchestrator';
@@ -268,6 +269,29 @@ export default defineContentScript({
       aiPanelState.onAction = (cap) => void doAction(cap);
     }
 
+    function triggerAI(capability: AICapability | 'open') {
+      if (!enabled || !activeField) return;
+      const info = getSelectionInfo(activeField, activeType);
+      if (!info) return; // need a non-collapsed selection in the focused field
+      aiSelection = info;
+      const pos = computeCardPosition(
+        selectionRect(),
+        { width: 320, height: 160 },
+        { width: window.innerWidth, height: window.innerHeight },
+      );
+      aiPanelState.left = pos.left;
+      aiPanelState.top = pos.top;
+      if (capability === 'open') {
+        aiPanelState.capability = 'rewrite';
+        aiPanelState.tone = '';
+        aiPanelState.length = 'asis';
+        aiPanelState.phase = 'actions';
+        aiPanelState.onAction = (cap) => void doAction(cap);
+      } else {
+        void doAction(capability);
+      }
+    }
+
     async function doAction(capability: AICapability) {
       const sel = aiSelection;
       const field = activeField;
@@ -464,6 +488,14 @@ export default defineContentScript({
     });
     ctx.addEventListener(window, 'scroll', scheduleRedraw, { capture: true });
     ctx.addEventListener(window, 'resize', scheduleRedraw);
+
+    browser.runtime.onMessage.addListener((msg: unknown) => {
+      const m = msg as { type?: string; capability?: string };
+      if (m?.type === 'inkly:trigger') {
+        triggerAI((m.capability ?? 'open') as AICapability | 'open');
+      }
+      // return nothing (undefined) — this is a fire-and-forget trigger
+    });
 
     if (import.meta.env.VITE_INKLY_E2E) {
       // Test-only hooks (e2e bridge). NEVER present in production builds.
