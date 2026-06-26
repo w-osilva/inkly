@@ -7,6 +7,7 @@ export interface Settings {
   disabledCategories: string[];
   dictionary: string[];
   uiLanguage: 'auto' | 'en' | 'pt-br';
+  defaultTone: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -15,6 +16,7 @@ export const DEFAULT_SETTINGS: Settings = {
   disabledCategories: [],
   dictionary: [],
   uiLanguage: 'auto',
+  defaultTone: '',
 };
 
 const KEY = 'inkly:settings';
@@ -35,6 +37,7 @@ function normalize(raw: unknown): Settings {
       o.uiLanguage === 'en' || o.uiLanguage === 'pt-br' || o.uiLanguage === 'auto'
         ? o.uiLanguage
         : 'auto',
+    defaultTone: typeof o.defaultTone === 'string' ? o.defaultTone : '',
   };
 }
 
