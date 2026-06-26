@@ -15,7 +15,7 @@ export class StubProvider implements Provider {
       out.push(
         makeSuggestion({
           offset: m.index,
-          length: 3,
+          length: m[0].length,
           replacements: ['the'],
           message: 'Possible spelling mistake: "teh" → "the".',
           ruleId: 'STUB_TEH',

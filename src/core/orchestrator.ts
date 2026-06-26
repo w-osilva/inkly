@@ -18,14 +18,14 @@ export function mergeSuggestions(suggestions: Suggestion[]): Suggestion[] {
 
   const kept: Suggestion[] = [];
   for (const candidate of sorted) {
-    const conflict = kept.find((k) => overlaps(k, candidate));
-    if (!conflict) {
+    const conflicts = kept.filter((k) => overlaps(k, candidate));
+    if (conflicts.length === 0) {
       kept.push(candidate);
       continue;
     }
-    // Replace the kept one only if the candidate has strictly higher priority.
-    if (SOURCE_PRIORITY[candidate.source] > SOURCE_PRIORITY[conflict.source]) {
-      kept.splice(kept.indexOf(conflict), 1, candidate);
+    if (conflicts.every((c) => SOURCE_PRIORITY[candidate.source] > SOURCE_PRIORITY[c.source])) {
+      for (const c of conflicts) kept.splice(kept.indexOf(c), 1);
+      kept.push(candidate);
     }
   }
   return kept.sort((a, b) => a.offset - b.offset);

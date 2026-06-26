@@ -33,4 +33,16 @@ describe('mergeSuggestions', () => {
     expect(out).toHaveLength(1);
     expect(out[0].offset).toBe(2);
   });
+
+  it('a higher-priority suggestion overlapping multiple lower-priority ones wins, output stays non-overlapping', () => {
+    const lt1 = makeSuggestion({ offset: 0, length: 3, source: 'languagetool' });
+    const lt2 = makeSuggestion({ offset: 5, length: 3, source: 'languagetool' });
+    const harper = makeSuggestion({ offset: 2, length: 5, source: 'harper' }); // overlaps both
+    const out = mergeSuggestions([lt1, lt2, harper]);
+    // No two results overlap:
+    for (let i = 1; i < out.length; i++) {
+      expect(out[i].offset).toBeGreaterThanOrEqual(out[i - 1].offset + out[i - 1].length);
+    }
+    expect(out.some((s) => s.source === 'harper')).toBe(true);
+  });
 });

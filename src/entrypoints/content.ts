@@ -6,24 +6,28 @@ import { OverlayRenderer } from '../ui/overlay-renderer';
 import { computeUnderlineStyles, type Rect } from '../ui/underline-layout';
 import { applyReplacement } from '../core/apply-engine';
 import { debounce } from '../core/debounce';
-import type { Suggestion } from '../core/types';
+import type { FieldType, Suggestion } from '../core/types';
 
 const provider = new StubProvider();
 
+// Field types whose text lives in the DOM as nodes → precise rects via a Range.
+const CONTENTEDITABLE_FAMILY: ReadonlySet<FieldType> = new Set<FieldType>([
+  'contenteditable', 'prosemirror', 'slate', 'ckeditor', 'lexical', 'quill',
+]);
+
 /** Build client rects for a (offset,length) span: a Range for contenteditable, the field rect for textarea/input. */
-function getSpanRects(el: HTMLElement, type: string, offset: number, length: number): Rect[] {
-  if (type === 'contenteditable') {
-    const range = document.createRange();
+function getSpanRects(el: HTMLElement, type: FieldType, offset: number, length: number): Rect[] {
+  if (CONTENTEDITABLE_FAMILY.has(type)) {
     const textNode = el.firstChild;
     if (!textNode || textNode.nodeType !== Node.TEXT_NODE) return [];
+    const range = document.createRange();
     range.setStart(textNode, offset);
     range.setEnd(textNode, offset + length);
     return Array.from(range.getClientRects()).map((r) => ({
       left: r.left, top: r.top, width: r.width, height: r.height,
     }));
   }
-  // textarea/input: approximate with the field's own rect (full mirror-div
-  // precision is M4). For M1 we draw a single underline across the field bottom.
+  // textarea/input: coarse full-field underline for M1 (mirror-div precision is M4).
   const r = el.getBoundingClientRect();
   return [{ left: r.left + 2, top: r.top + 2, width: Math.max(0, r.width - 4), height: r.height - 4 }];
 }
@@ -58,13 +62,18 @@ export default defineContentScript({
     const renderer = ui.mounted as OverlayRenderer;
 
     let activeField: HTMLElement | null = null;
-    let activeType = 'unknown';
+    let activeType: FieldType = 'unknown';
     let current: Suggestion[] = [];
+    let checkSeq = 0;
 
     const runCheck = debounce(async () => {
-      if (!activeField) return;
-      const text = getFieldText(activeField, activeType as any);
-      const raw = await provider.check(text, { fieldType: activeType as any, language: 'en' });
+      const field = activeField;
+      const type = activeType;
+      if (!field) return;
+      const seq = ++checkSeq;
+      const text = getFieldText(field, type);
+      const raw = await provider.check(text, { fieldType: type, language: 'en' });
+      if (seq !== checkSeq || activeField !== field) return; // stale: focus/newer check
       current = mergeSuggestions(raw);
       drawUnderlines();
     }, 400);
@@ -82,32 +91,41 @@ export default defineContentScript({
       renderer.render(styles);
     }
 
-    document.addEventListener('focusin', (e) => {
+    let rafId = 0;
+    function scheduleRedraw() {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => { rafId = 0; drawUnderlines(); });
+    }
+
+    ctx.addEventListener(document, 'focusin', (e) => {
       const t = e.target as Element;
       if (t instanceof HTMLElement && isEditableField(t)) {
+        runCheck.cancel();
         activeField = t;
         activeType = classifyField(t);
         runCheck();
       }
     });
-    document.addEventListener('input', (e) => {
+    ctx.addEventListener(document, 'input', (e) => {
       if (e.target === activeField) {
-        renderer.clear();      // stale: clear until re-checked (offsets changed)
+        renderer.clear();
         runCheck();
       }
     });
-    document.addEventListener('focusout', () => {
+    ctx.addEventListener(document, 'focusout', () => {
+      runCheck.cancel();
       activeField = null;
+      activeType = 'unknown';
       current = [];
       renderer.clear();
     });
-    window.addEventListener('scroll', drawUnderlines, true);
-    window.addEventListener('resize', drawUnderlines);
+    ctx.addEventListener(window, 'scroll', scheduleRedraw, { capture: true });
+    ctx.addEventListener(window, 'resize', scheduleRedraw);
 
     // Expose apply for manual/e2e testing (removed in M3 UI work):
     (window as any).__inklyApplyFirst = () => {
       if (activeField && current[0]) {
-        applyReplacement(activeField, activeType as any, current[0], current[0].replacements[0]);
+        applyReplacement(activeField, activeType, current[0], current[0].replacements[0]);
       }
     };
   },
