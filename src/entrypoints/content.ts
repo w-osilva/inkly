@@ -16,6 +16,7 @@ import { getSettings, setSettings, addWord, onSettingsChanged, isEnabledForHost,
 import { isSuppressed, isDictionaryCategory } from '../core/suppression';
 import type { Lang } from '../core/i18n';
 import { runAI } from '../core/ai/ai-client';
+import type { AICapability } from '../core/ai/ai-types';
 import AISelectionPanel from '../ui/AISelectionPanel.svelte';
 import { aiPanelState } from '../ui/ai-panel-state.svelte';
 import { getSelectionInfo, type SelectionInfo } from '../core/selection';
@@ -266,7 +267,7 @@ export default defineContentScript({
       aiPanelState.onAction = (cap) => void doAction(cap);
     }
 
-    async function doAction(capability: 'rewrite' | 'translate') {
+    async function doAction(capability: AICapability) {
       const sel = aiSelection;
       const field = activeField;
       const type = activeType;

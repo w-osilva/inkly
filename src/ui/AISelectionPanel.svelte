@@ -28,35 +28,50 @@
     {#if aiPanelState.phase === 'actions'}
       <button class="inkly-ai__btn" onclick={() => aiPanelState.onAction?.('rewrite')}>✨ Rewrite</button>
       <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.('translate')}>🌐 Translate</button>
+      <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.('synonyms')}>🔁 Synonyms</button>
+      <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.('analyze')}>🔍 Analyze</button>
     {:else if aiPanelState.phase === 'loading'}
       <span class="inkly-ai__loading">{aiPanelState.capability === 'translate' ? 'Translating…' : 'Rewriting…'}</span>
     {:else if aiPanelState.phase === 'result'}
-      <p class="inkly-ai__result">{aiPanelState.result}</p>
-      {#if aiPanelState.capability === 'rewrite'}
-        <div class="inkly-ai__chips" role="group" aria-label="Tone">
-          {#each TONES as t}
-            <button
-              class="inkly-ai__chip"
-              class:inkly-ai__chip--active={aiPanelState.tone === t.id}
-              onclick={() => aiPanelState.onSetTone?.(t.id)}
-            >{t.label}</button>
+      {#if aiPanelState.capability === 'synonyms'}
+        <div class="inkly-ai__chips" role="group" aria-label="Synonyms">
+          {#each aiPanelState.result.split(',').map((s) => s.trim()).filter(Boolean) as syn}
+            <button class="inkly-ai__chip" onclick={() => aiPanelState.onPickSynonym?.(syn)}>{syn}</button>
           {/each}
         </div>
-        <div class="inkly-ai__chips" role="group" aria-label="Length">
-          {#each LENGTHS as l}
-            <button
-              class="inkly-ai__chip"
-              class:inkly-ai__chip--active={aiPanelState.length === l.id}
-              onclick={() => aiPanelState.onSetLength?.(l.id)}
-            >{l.label}</button>
-          {/each}
+        <div class="inkly-ai__row">
+          <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onDismiss?.()}>Dismiss</button>
+        </div>
+      {:else}
+        <p class="inkly-ai__result">{aiPanelState.result}</p>
+        {#if aiPanelState.capability === 'rewrite'}
+          <div class="inkly-ai__chips" role="group" aria-label="Tone">
+            {#each TONES as t}
+              <button
+                class="inkly-ai__chip"
+                class:inkly-ai__chip--active={aiPanelState.tone === t.id}
+                onclick={() => aiPanelState.onSetTone?.(t.id)}
+              >{t.label}</button>
+            {/each}
+          </div>
+          <div class="inkly-ai__chips" role="group" aria-label="Length">
+            {#each LENGTHS as l}
+              <button
+                class="inkly-ai__chip"
+                class:inkly-ai__chip--active={aiPanelState.length === l.id}
+                onclick={() => aiPanelState.onSetLength?.(l.id)}
+              >{l.label}</button>
+            {/each}
+          </div>
+        {/if}
+        <div class="inkly-ai__row">
+          {#if aiPanelState.capability === 'rewrite' || aiPanelState.capability === 'translate'}
+            <button class="inkly-ai__btn" onclick={() => aiPanelState.onApply?.()}>Apply</button>
+          {/if}
+          <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onCopy?.()}>Copy</button>
+          <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onDismiss?.()}>Dismiss</button>
         </div>
       {/if}
-      <div class="inkly-ai__row">
-        <button class="inkly-ai__btn" onclick={() => aiPanelState.onApply?.()}>Apply</button>
-        <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onCopy?.()}>Copy</button>
-        <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onDismiss?.()}>Dismiss</button>
-      </div>
     {:else if aiPanelState.phase === 'error'}
       <p class="inkly-ai__error">AI error: {aiPanelState.error}</p>
       <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onDismiss?.()}>Dismiss</button>

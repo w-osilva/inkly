@@ -8,7 +8,8 @@ export interface AIPanelState {
   top: number;
   result: string;
   error: string;
-  onAction: ((capability: 'rewrite' | 'translate') => void) | null;
+  onAction: ((capability: AICapability) => void) | null;
+  onPickSynonym: ((word: string) => void) | null;
   capability: AICapability;
   onApply: (() => void) | null;
   onCopy: (() => void) | null;
@@ -27,6 +28,7 @@ export const aiPanelState = $state<AIPanelState>({
   result: '',
   error: '',
   onAction: null,
+  onPickSynonym: null,
   capability: 'rewrite',
   onApply: null,
   onCopy: null,
