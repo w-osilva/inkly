@@ -271,6 +271,7 @@ export default defineContentScript({
 
     function triggerAI(capability: AICapability | 'open') {
       if (!enabled || !activeField) return;
+      if (capability !== 'open' && !['rewrite', 'translate', 'synonyms', 'analyze'].includes(capability)) return;
       const info = getSelectionInfo(activeField, activeType);
       if (!info) return; // need a non-collapsed selection in the focused field
       aiSelection = info;
@@ -281,10 +282,10 @@ export default defineContentScript({
       );
       aiPanelState.left = pos.left;
       aiPanelState.top = pos.top;
+      aiPanelState.tone = '';
+      aiPanelState.length = 'asis';
       if (capability === 'open') {
         aiPanelState.capability = 'rewrite';
-        aiPanelState.tone = '';
-        aiPanelState.length = 'asis';
         aiPanelState.phase = 'actions';
         aiPanelState.onAction = (cap) => void doAction(cap);
       } else {
