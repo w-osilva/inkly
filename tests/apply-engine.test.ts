@@ -43,10 +43,11 @@ describe('applyReplacement (textarea/input)', () => {
   });
 
   it('returns false for unsupported field types (no throw)', () => {
+    // 'prosemirror' and other rich-editor types are not yet handled (deferred to M4).
     const div = document.createElement('div');
     div.setAttribute('contenteditable', 'true');
     div.textContent = 'teh cat';
-    const ok = applyReplacement(div, 'contenteditable', makeSuggestion({ offset: 0, length: 3 }), 'the');
+    const ok = applyReplacement(div, 'prosemirror', makeSuggestion({ offset: 0, length: 3 }), 'the');
     expect(ok).toBe(false);
   });
 });
