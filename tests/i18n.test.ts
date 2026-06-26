@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { t, categoryLabel, detectLang } from '../src/core/i18n';
+import { t, categoryLabel, detectLang, MESSAGES } from '../src/core/i18n';
+import { LINT_CATEGORIES } from '../src/core/lint-categories';
 
 describe('t', () => {
   it('returns the message for the given language', () => {
@@ -32,5 +33,19 @@ describe('detectLang', () => {
     expect(detectLang('pt')).toBe('pt-br');
     expect(detectLang('en-US')).toBe('en');
     expect(detectLang('')).toBe('en');
+  });
+});
+
+describe('i18n dictionary parity', () => {
+  it('en and pt-br have identical key sets', () => {
+    const en = Object.keys(MESSAGES.en).sort();
+    const pt = Object.keys(MESSAGES['pt-br']).sort();
+    expect(pt).toEqual(en);
+  });
+  it('every LINT_CATEGORIES entry has a translation in both locales', () => {
+    for (const cat of LINT_CATEGORIES) {
+      expect(MESSAGES.en[`category.${cat}`], `en missing category.${cat}`).toBeTruthy();
+      expect(MESSAGES['pt-br'][`category.${cat}`], `pt-br missing category.${cat}`).toBeTruthy();
+    }
   });
 });

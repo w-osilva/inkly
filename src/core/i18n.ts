@@ -78,7 +78,7 @@ const ptBr: Dict = {
   'category.WordChoice': 'Escolha de palavra',
 };
 
-const MESSAGES: Record<Lang, Dict> = { en, 'pt-br': ptBr };
+export const MESSAGES: Record<Lang, Dict> = { en, 'pt-br': ptBr };
 
 /** Translate a key; falls back to English, then to the key itself. Interpolates {vars}. */
 export function t(lang: Lang, key: string, vars?: Record<string, string>): string {
