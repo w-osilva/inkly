@@ -219,7 +219,8 @@ export default defineContentScript({
       aiPanelState.phase = 'hidden';
       aiPanelState.result = '';
       aiPanelState.error = '';
-      aiPanelState.onRewrite = null;
+      aiPanelState.onAction = null;
+      aiPanelState.capability = 'rewrite';
       aiPanelState.onApply = null;
       aiPanelState.onCopy = null;
       aiPanelState.onDismiss = null;
@@ -260,21 +261,27 @@ export default defineContentScript({
       aiPanelState.top = pos.top;
       aiPanelState.tone = '';
       aiPanelState.length = 'asis';
+      aiPanelState.capability = 'rewrite';
       aiPanelState.phase = 'actions';
-      aiPanelState.onRewrite = () => void doRewrite();
+      aiPanelState.onAction = (cap) => void doAction(cap);
     }
 
-    async function doRewrite() {
+    async function doAction(capability: 'rewrite' | 'translate') {
       const sel = aiSelection;
       const field = activeField;
       const type = activeType;
       if (!sel || !field) return;
       const gen = ++rewriteSeq;
+      aiPanelState.capability = capability;
       aiPanelState.phase = 'loading';
       const options: Record<string, string> = {};
-      if (aiPanelState.tone) options.tone = aiPanelState.tone;
-      if (aiPanelState.length && aiPanelState.length !== 'asis') options.length = aiPanelState.length;
-      const res = await runAI({ capability: 'rewrite', text: sel.text, options });
+      if (capability === 'rewrite') {
+        if (aiPanelState.tone) options.tone = aiPanelState.tone;
+        if (aiPanelState.length && aiPanelState.length !== 'asis') options.length = aiPanelState.length;
+      } else if (capability === 'translate') {
+        options.targetLang = lang === 'pt-br' ? 'Portuguese' : 'English';
+      }
+      const res = await runAI({ capability, text: sel.text, options });
       // Guard: if the panel was dismissed/hidden meanwhile, or a newer call started, drop the result.
       if (gen !== rewriteSeq || aiPanelState.phase !== 'loading') return;
       if (res.ok) {
@@ -283,8 +290,8 @@ export default defineContentScript({
         aiPanelState.onApply = () => { applyRange(field, type, sel.start, sel.end, res.text); hideAIPanel(); };
         aiPanelState.onCopy = () => { void navigator.clipboard?.writeText(res.text); };
         aiPanelState.onDismiss = () => hideAIPanel();
-        aiPanelState.onSetTone = (t: string) => { aiPanelState.tone = t; void doRewrite(); };
-        aiPanelState.onSetLength = (l: string) => { aiPanelState.length = l; void doRewrite(); };
+        aiPanelState.onSetTone = (t: string) => { aiPanelState.tone = t; void doAction('rewrite'); };
+        aiPanelState.onSetLength = (l: string) => { aiPanelState.length = l; void doAction('rewrite'); };
       } else {
         aiPanelState.error = res.error;
         aiPanelState.phase = 'error';
@@ -402,7 +409,7 @@ export default defineContentScript({
       // An in-flight AI panel (loading/result/error) survives the blur churn of a
       // panel-button click: that click focuses the button, then a follow-up focusout
       // fires with relatedTarget=null (focus settling), which would otherwise tear
-      // down the panel mid-rewrite and make doRewrite's loading-phase guard drop the
+      // down the panel mid-action and make doAction's loading-phase guard drop the
       // result. So keep it alive ONLY when related is null or moving into the overlay.
       // A genuine focus-away (Tab to another field, focus to a real element outside
       // the overlay) must tear the panel down so it does not orphan over the old field.
@@ -416,8 +423,8 @@ export default defineContentScript({
       if (!keepAIPanel) hideAIPanel();
       // When the AI panel survives a panel-button click (keepAIPanel), keep the
       // active field/type bound too: result-phase tone/length chips re-run
-      // doRewrite(), which reads the live activeField. Nulling it here would make
-      // doRewrite bail and the regenerate silently no-op.
+      // doAction(), which reads the live activeField. Nulling it here would make
+      // doAction bail and the regenerate silently no-op.
       if (!keepAIPanel) {
         activeField = null;
         activeType = 'unknown';
