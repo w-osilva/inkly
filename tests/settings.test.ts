@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { fakeBrowser } from 'wxt/testing';
 import {
   DEFAULT_SETTINGS, getSettings, setSettings, hostOf, isEnabledForHost, type Settings,
+  isCategoryEnabled, toggleCategory, addWord, removeWord,
 } from '../src/core/settings';
 
 beforeEach(() => fakeBrowser.reset());
@@ -58,5 +59,55 @@ describe('getSettings (malformed storage is normalized)', () => {
   it('falls back to defaults for a non-object stored value', async () => {
     await fakeBrowser.storage.sync.set({ 'inkly:settings': 'garbage' });
     expect(await getSettings()).toEqual(DEFAULT_SETTINGS);
+  });
+});
+
+describe('settings: defaults include empty disabledCategories + dictionary', () => {
+  it('getSettings fills new arrays when absent', async () => {
+    await fakeBrowser.storage.sync.set({ 'inkly:settings': { globalEnabled: true } });
+    const s = await getSettings();
+    expect(s.disabledCategories).toEqual([]);
+    expect(s.dictionary).toEqual([]);
+  });
+  it('normalizes non-array disabledCategories/dictionary to []', async () => {
+    await fakeBrowser.storage.sync.set({ 'inkly:settings': { disabledCategories: 'x', dictionary: 5 } });
+    const s = await getSettings();
+    expect(s.disabledCategories).toEqual([]);
+    expect(s.dictionary).toEqual([]);
+  });
+});
+
+describe('category transforms', () => {
+  const base = { globalEnabled: true, siteOverrides: {}, disabledCategories: [] as string[], dictionary: [] as string[] };
+  it('isCategoryEnabled is true unless disabled', () => {
+    expect(isCategoryEnabled(base, 'Style')).toBe(true);
+    expect(isCategoryEnabled({ ...base, disabledCategories: ['Style'] }, 'Style')).toBe(false);
+  });
+  it('toggleCategory adds/removes from disabledCategories', () => {
+    const off = toggleCategory(base, 'Style', false);
+    expect(off.disabledCategories).toEqual(['Style']);
+    const on = toggleCategory(off, 'Style', true);
+    expect(on.disabledCategories).toEqual([]);
+  });
+  it('toggleCategory is idempotent', () => {
+    const off = toggleCategory(toggleCategory(base, 'Style', false), 'Style', false);
+    expect(off.disabledCategories).toEqual(['Style']);
+  });
+});
+
+describe('dictionary transforms', () => {
+  const base = { globalEnabled: true, siteOverrides: {}, disabledCategories: [] as string[], dictionary: [] as string[] };
+  it('addWord stores lowercased, trimmed, deduped', () => {
+    let s = addWord(base, '  Inkly ');
+    expect(s.dictionary).toEqual(['inkly']);
+    s = addWord(s, 'INKLY');
+    expect(s.dictionary).toEqual(['inkly']);
+  });
+  it('addWord ignores empty', () => {
+    expect(addWord(base, '   ').dictionary).toEqual([]);
+  });
+  it('removeWord removes case-insensitively', () => {
+    const s = removeWord({ ...base, dictionary: ['inkly', 'foo'] }, 'INKLY');
+    expect(s.dictionary).toEqual(['foo']);
   });
 });
