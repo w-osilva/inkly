@@ -15,7 +15,14 @@ const server = createServer((req, res) => {
       } catch { /* ignore */ }
       const toneMatch = systemText.match(/use a (\w+) tone/i);
       const tag = toneMatch ? `[${toneMatch[1].toLowerCase()}]` : '';
-      const reply = { choices: [{ message: { role: 'assistant', content: `REWRITTEN${tag}: ${userText}` } }] };
+      const translateMatch = systemText.match(/translate the user'?s text into (\w+)/i);
+      let content;
+      if (translateMatch) {
+        content = `TRANSLATED[${translateMatch[1].toLowerCase()}]: ${userText}`;
+      } else {
+        content = `REWRITTEN${tag}: ${userText}`;
+      }
+      const reply = { choices: [{ message: { role: 'assistant', content } }] };
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(reply));
     });
