@@ -1,5 +1,13 @@
 <script lang="ts">
   import { aiPanelState } from './ai-panel-state.svelte';
+  import { parseSynonyms } from '../core/ai/parse-synonyms';
+
+  const LOADING_LABELS: Record<string, string> = {
+    rewrite: 'Rewriting…',
+    translate: 'Translating…',
+    synonyms: 'Finding synonyms…',
+    analyze: 'Analyzing…',
+  };
 
   const TONES = [
     { id: '', label: 'Neutral' },
@@ -31,11 +39,11 @@
       <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.('synonyms')}>🔁 Synonyms</button>
       <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.('analyze')}>🔍 Analyze</button>
     {:else if aiPanelState.phase === 'loading'}
-      <span class="inkly-ai__loading">{aiPanelState.capability === 'translate' ? 'Translating…' : 'Rewriting…'}</span>
+      <span class="inkly-ai__loading">{LOADING_LABELS[aiPanelState.capability] ?? 'Working…'}</span>
     {:else if aiPanelState.phase === 'result'}
       {#if aiPanelState.capability === 'synonyms'}
         <div class="inkly-ai__chips" role="group" aria-label="Synonyms">
-          {#each aiPanelState.result.split(',').map((s) => s.trim()).filter(Boolean) as syn}
+          {#each parseSynonyms(aiPanelState.result) as syn}
             <button class="inkly-ai__chip" onclick={() => aiPanelState.onPickSynonym?.(syn)}>{syn}</button>
           {/each}
         </div>
