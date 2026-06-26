@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { browser } from 'wxt/browser';
-  import { getSettings, setSettings, hostOf, isEnabledForHost, type Settings } from '../../core/settings';
+  import { getSettings, setSettings, hostOf, isEnabledForHost, DEFAULT_SETTINGS, type Settings } from '../../core/settings';
 
-  let settings = $state<Settings>({ globalEnabled: true, siteOverrides: {} });
+  let settings = $state<Settings>({ ...DEFAULT_SETTINGS });
   let host = $state('');
   let loaded = $state(false);
 

@@ -19,14 +19,14 @@ describe('hostOf', () => {
 });
 
 describe('isEnabledForHost', () => {
-  const base: Settings = { globalEnabled: true, siteOverrides: {} };
+  const base: Settings = { globalEnabled: true, siteOverrides: {}, disabledCategories: [], dictionary: [] };
   it('falls back to globalEnabled when no override', () => {
     expect(isEnabledForHost(base, 'a.com')).toBe(true);
     expect(isEnabledForHost({ ...base, globalEnabled: false }, 'a.com')).toBe(false);
   });
   it('honors a per-site override over the global value', () => {
-    expect(isEnabledForHost({ globalEnabled: true, siteOverrides: { 'a.com': false } }, 'a.com')).toBe(false);
-    expect(isEnabledForHost({ globalEnabled: false, siteOverrides: { 'a.com': true } }, 'a.com')).toBe(true);
+    expect(isEnabledForHost({ ...base, siteOverrides: { 'a.com': false } }, 'a.com')).toBe(false);
+    expect(isEnabledForHost({ ...base, globalEnabled: false, siteOverrides: { 'a.com': true } }, 'a.com')).toBe(true);
   });
 });
 
@@ -35,7 +35,7 @@ describe('getSettings/setSettings', () => {
     expect(await getSettings()).toEqual(DEFAULT_SETTINGS);
   });
   it('round-trips and merges over defaults', async () => {
-    await setSettings({ globalEnabled: false, siteOverrides: { 'x.com': true } });
+    await setSettings({ globalEnabled: false, siteOverrides: { 'x.com': true }, disabledCategories: [], dictionary: [] });
     const s = await getSettings();
     expect(s.globalEnabled).toBe(false);
     expect(s.siteOverrides).toEqual({ 'x.com': true });
