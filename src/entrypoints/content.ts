@@ -15,6 +15,7 @@ import { computeCardPosition } from '../ui/card-position';
 import { getSettings, setSettings, addWord, onSettingsChanged, isEnabledForHost, effectiveLang } from '../core/settings';
 import { isSuppressed, isDictionaryCategory } from '../core/suppression';
 import type { Lang } from '../core/i18n';
+import { runAI } from '../core/ai/ai-client';
 
 const provider = new HarperProvider();
 
@@ -316,6 +317,10 @@ export default defineContentScript({
       if (activeField && current[0]) {
         applyReplacement(activeField, activeType, current[0], current[0].replacements[0]);
       }
+    };
+    (window as any).__inklyAIRewrite = async (text: string) => {
+      const res = await runAI({ capability: 'rewrite', text });
+      return res.ok ? res.text : `ERROR:${res.error}`;
     };
   },
 });

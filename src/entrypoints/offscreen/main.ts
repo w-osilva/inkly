@@ -1,5 +1,9 @@
 import { LocalLinter, Dialect, createBinaryModuleFromUrl, type Linter } from 'harper.js';
 import type { PlainLint, OffscreenLintRequest, LintResponse } from '../../core/providers/harper-messages';
+import { getAIConfig, hasKey } from '../../core/ai/ai-config';
+import { buildMessages } from '../../core/ai/prompts';
+import { buildHttpRequest, parseChatCompletion } from '../../core/ai/openai-provider';
+import type { AIRequest, AIResponse } from '../../core/ai/ai-types';
 
 let linter: Linter | null = null;
 let setupPromise: Promise<void> | null = null;
@@ -45,13 +49,37 @@ async function lint(text: string): Promise<PlainLint[]> {
   return out;
 }
 
-browser.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse: (r: LintResponse) => void): true | undefined => {
-  const m = msg as Partial<OffscreenLintRequest>;
-  if (m?.target !== 'offscreen' || m.type !== 'harper:lint') return undefined; // not ours
-  lint(m.text ?? '')
-    .then((lints) => sendResponse({ ok: true, lints }))
-    .catch((err) => sendResponse({ ok: false, error: String((err as Error)?.stack ?? err) }));
-  return true; // async sendResponse
+async function runAI(request: AIRequest): Promise<AIResponse> {
+  const config = await getAIConfig();
+  if (!hasKey(config)) return { ok: false, error: 'no-api-key' };
+  try {
+    const messages = buildMessages(request);
+    const req = buildHttpRequest(config, messages);
+    const res = await fetch(req.url, { method: 'POST', headers: req.headers, body: req.body });
+    if (!res.ok) return { ok: false, error: `http ${res.status}` };
+    const text = parseChatCompletion(await res.json());
+    return { ok: true, text };
+  } catch (err) {
+    return { ok: false, error: String((err as Error)?.message ?? err) };
+  }
+}
+
+browser.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse: (r: LintResponse | AIResponse) => void): true | undefined => {
+  const m = msg as Partial<OffscreenLintRequest> & { type?: string };
+  if (m?.target !== 'offscreen') return undefined; // not ours
+  if (m.type === 'harper:lint') {
+    lint((m as Partial<OffscreenLintRequest>).text ?? '')
+      .then((lints) => sendResponse({ ok: true, lints }))
+      .catch((err) => sendResponse({ ok: false, error: String((err as Error)?.stack ?? err) }));
+    return true;
+  }
+  if (m.type === 'ai:run') {
+    runAI((m as { request: AIRequest }).request)
+      .then((r) => sendResponse(r))
+      .catch((err) => sendResponse({ ok: false, error: String((err as Error)?.stack ?? err) }));
+    return true;
+  }
+  return undefined;
 });
 
 // Warm the engine as soon as the offscreen doc loads (amortize the 17 MB compile).
