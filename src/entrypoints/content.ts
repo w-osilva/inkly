@@ -12,8 +12,9 @@ import SuggestionCard from '../ui/SuggestionCard.svelte';
 import { cardState } from '../ui/card-state.svelte';
 import { findHitIndex, type HitRect } from '../ui/hit-test';
 import { computeCardPosition } from '../ui/card-position';
-import { getSettings, setSettings, addWord, onSettingsChanged, isEnabledForHost } from '../core/settings';
+import { getSettings, setSettings, addWord, onSettingsChanged, isEnabledForHost, effectiveLang } from '../core/settings';
 import { isSuppressed, isDictionaryCategory } from '../core/suppression';
+import type { Lang } from '../core/i18n';
 
 const provider = new HarperProvider();
 
@@ -83,6 +84,7 @@ export default defineContentScript({
     let current: Suggestion[] = [];
     let checkSeq = 0;
     let hitRects: HitRect[] = [];
+    let lang: Lang = 'en';
 
     const dismissed = new Set<string>();
     function suggestionKey(s: Suggestion): string {
@@ -181,6 +183,7 @@ export default defineContentScript({
               if (activeField) runCheck();
             }
           : null;
+      cardState.lang = lang;
       cardState.visible = true;
       shownIndex = index;
     }
@@ -208,12 +211,15 @@ export default defineContentScript({
       enabled = isEnabledForHost(s, host);
       disabledCategories = new Set(s.disabledCategories);
       dictionary = new Set(s.dictionary);
+      lang = effectiveLang(s, navigator.language);
     });
     onSettingsChanged((s) => {
       const next = isEnabledForHost(s, host);
       enabled = next;
       disabledCategories = new Set(s.disabledCategories);
       dictionary = new Set(s.dictionary);
+      lang = effectiveLang(s, navigator.language);
+      if (cardState.visible) cardState.lang = lang;
       if (!enabled) {
         runCheck.cancel();
         clearHoverTimers();

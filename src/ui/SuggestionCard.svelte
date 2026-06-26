@@ -1,15 +1,12 @@
 <script lang="ts">
   import { cardState } from './card-state.svelte';
+  import { t, categoryLabel } from '../core/i18n';
 
   const COLORS: Record<string, string> = {
     correctness: '#e23b3b',
     clarity: '#d99100',
     suggestion: '#7b53d6',
   };
-
-  function label(replacement: string): string {
-    return replacement === '' ? 'Remove' : replacement;
-  }
 </script>
 
 {#if cardState.visible && cardState.suggestion}
@@ -22,18 +19,19 @@
     onmouseenter={() => (cardState.hovered = true)}
     onmouseleave={() => (cardState.hovered = false)}
   >
-    <button class="inkly-card__dismiss" aria-label="Dismiss" onclick={() => cardState.onDismiss?.()}>×</button>
+    <button class="inkly-card__dismiss" aria-label={t(cardState.lang, 'card.dismiss')} onclick={() => cardState.onDismiss?.()}>×</button>
+    <p class="inkly-card__cat">{categoryLabel(cardState.lang, cardState.suggestion.category)}</p>
     {#if cardState.suggestion.message}
       <p class="inkly-card__msg">{cardState.suggestion.message}</p>
     {/if}
     <div class="inkly-card__reps">
       {#each cardState.suggestion.replacements as rep}
-        <button class="inkly-card__rep" onclick={() => cardState.onApply?.(rep)}>{label(rep)}</button>
+        <button class="inkly-card__rep" onclick={() => cardState.onApply?.(rep)}>{rep === '' ? t(cardState.lang, 'card.removeReplacement') : rep}</button>
       {/each}
     </div>
     {#if cardState.dictionaryWord}
       <button class="inkly-card__dict" onclick={() => cardState.onAddToDictionary?.()}>
-        Add "{cardState.dictionaryWord}" to dictionary
+        {t(cardState.lang, 'card.addToDictionary', { word: cardState.dictionaryWord })}
       </button>
     {/if}
   </div>
@@ -57,6 +55,10 @@
   .inkly-card__dismiss {
     position: absolute; top: 4px; right: 6px;
     border: 0; background: none; cursor: pointer; font-size: 16px; line-height: 1; color: #999;
+  }
+  .inkly-card__cat {
+    margin: 0 16px 4px 0; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.04em; color: #888;
   }
   .inkly-card__msg { margin: 0 16px 8px 0; }
   .inkly-card__reps { display: flex; flex-wrap: wrap; gap: 6px; }

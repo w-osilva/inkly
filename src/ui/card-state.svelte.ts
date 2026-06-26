@@ -1,4 +1,5 @@
 import type { Suggestion, Severity } from '../core/types';
+import type { Lang } from '../core/i18n';
 
 export interface CardState {
   visible: boolean;
@@ -12,6 +13,7 @@ export interface CardState {
   hovered: boolean;
   dictionaryWord: string | null;
   onAddToDictionary: (() => void) | null;
+  lang: Lang;
 }
 
 export const cardState = $state<CardState>({
@@ -25,4 +27,5 @@ export const cardState = $state<CardState>({
   hovered: false,
   dictionaryWord: null,
   onAddToDictionary: null,
+  lang: 'en',
 });
