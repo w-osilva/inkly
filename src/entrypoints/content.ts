@@ -93,6 +93,7 @@ export default defineContentScript({
       if (seq !== checkSeq || activeField !== field) return; // stale: focus/newer check
       current = mergeSuggestions(raw);
       current = current.filter((s) => !dismissed.has(suggestionKey(s)));
+      if (cardState.visible) hideCard();
       drawUnderlines();
     }, 400);
 
@@ -132,7 +133,7 @@ export default defineContentScript({
 
     const HOVER_DELAY = 150;
     const HIDE_GRACE = 120;
-    let hoverTimer = 0, hideTimer = 0, shownIndex = -1;
+    let hoverTimer = 0, hideTimer = 0, shownIndex = -1, pendingHoverIndex = -1;
     let mouseMoveScheduled = false, lastX = 0, lastY = 0;
 
     function showCardFor(index: number) {
@@ -159,7 +160,15 @@ export default defineContentScript({
       shownIndex = index;
     }
 
+    function clearHoverTimers() {
+      if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = 0; }
+      if (hideTimer) { clearTimeout(hideTimer); hideTimer = 0; }
+      mouseMoveScheduled = false;
+      pendingHoverIndex = -1;
+    }
+
     function hideCard() {
+      clearHoverTimers();
       cardState.visible = false;
       cardState.suggestion = null;
       cardState.onApply = null;
@@ -177,11 +186,17 @@ export default defineContentScript({
         const idx = findHitIndex(lastX, lastY, hitRects);
         if (idx !== -1) {
           if (hideTimer) { clearTimeout(hideTimer); hideTimer = 0; }
-          if (idx !== shownIndex && !hoverTimer) {
-            hoverTimer = window.setTimeout(() => { hoverTimer = 0; showCardFor(idx); }, HOVER_DELAY);
+          if (idx !== shownIndex && idx !== pendingHoverIndex) {
+            if (hoverTimer) clearTimeout(hoverTimer);
+            pendingHoverIndex = idx;
+            hoverTimer = window.setTimeout(() => {
+              hoverTimer = 0;
+              pendingHoverIndex = -1;
+              showCardFor(idx);
+            }, HOVER_DELAY);
           }
         } else {
-          if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = 0; }
+          if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = 0; pendingHoverIndex = -1; }
           if (cardState.visible && !hideTimer) {
             hideTimer = window.setTimeout(() => { hideTimer = 0; if (!cardState.hovered) hideCard(); }, HIDE_GRACE);
           }
@@ -194,6 +209,8 @@ export default defineContentScript({
       const t = e.target as Element;
       if (t instanceof HTMLElement && isEditableField(t)) {
         runCheck.cancel();
+        clearHoverTimers();
+        hideCard();
         activeField = t;
         activeType = classifyField(t);
         runCheck();
@@ -217,6 +234,7 @@ export default defineContentScript({
         return;
       }
       runCheck.cancel();
+      clearHoverTimers();
       hideCard();
       activeField = null;
       activeType = 'unknown';
