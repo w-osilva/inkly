@@ -1,21 +1,18 @@
 import { test, expect } from './_extension';
 
 /**
- * M4b Task 1 spike — real ProseMirror editor fixture.
+ * M4b Task 2 — applying a suggestion in a real ProseMirror editor.
  *
- * Demonstrates the current gap: detection + underlining work on a real PM
- * editor, but APPLYING a suggestion is a no-op for framework rich editors.
- * `apply-engine.ts applyRange` hits `return false` for FieldType 'prosemirror',
- * so neither the PM model (`__pmText`) nor the rendered DOM changes.
+ * Detection + underlining already worked on a real PM editor; Task 2 makes
+ * APPLY stick. FieldType 'prosemirror' now routes through the same
+ * native-editing (execCommand/beforeinput) path as plain contenteditable, so
+ * the edit reconciles into the PM model (`__pmText`).
  *
  * Apply is driven through the real UI (hover underline -> suggestion card ->
  * click replacement), which runs in the content-script (isolated) world and
  * actually reaches `applyReplacement`. NOTE: the `window.__inklyApplyFirst`
  * e2e hook lives in the isolated world and is NOT reachable from
  * `page.evaluate` (main world), so it cannot be used to exercise apply here.
- *
- * Marked expected-to-fail so the committed suite stays green; M4b Task 2
- * (framework apply) flips this by removing `test.fail()`.
  */
 async function hoverUntilCard(page: import('@playwright/test').Page) {
   const underline = page.locator('css=div.inkly-underline').first();
@@ -33,7 +30,6 @@ async function hoverUntilCard(page: import('@playwright/test').Page) {
 }
 
 test('applying a suggestion updates the ProseMirror model', async ({ context }) => {
-  test.fail(); // M4b Task 1 spike: apply is a no-op for framework editors until Task 2.
   const page = await context.newPage();
   await page.goto('/prosemirror.html');
   await page.locator('css=.ProseMirror').click();
@@ -48,8 +44,7 @@ test('applying a suggestion updates the ProseMirror model', async ({ context }) 
   await page.locator('css=.inkly-card .inkly-card__rep').first().click();
   await page.waitForTimeout(400);
 
-  // EXPECTED to fail today: the PM model is unchanged because applyRange
-  // returns false for FieldType 'prosemirror'.
+  // The PM model must reflect the applied replacement.
   const text = await page.evaluate(
     () => (window as unknown as { __pmText: () => string }).__pmText(),
   );

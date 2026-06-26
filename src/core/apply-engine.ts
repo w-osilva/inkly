@@ -2,6 +2,15 @@ import { FieldType, Suggestion } from './types';
 import { offsetToRange } from './dom-offset';
 
 /**
+ * Field types edited as native contenteditable DOM. Framework rich editors
+ * (ProseMirror, Slate, Lexical, CKEditor, Quill) all render into a
+ * contenteditable host and reconcile native editing events back into their
+ * model, so they take the same execCommand/beforeinput path as plain
+ * contenteditable.
+ */
+const RICH_TEXT: FieldType[] = ['contenteditable', 'prosemirror', 'slate', 'lexical', 'ckeditor', 'quill'];
+
+/**
  * Set a value via the native prototype setter and update React's _valueTracker
  * so a subsequent input event is not de-duplicated (facebook/react#11488).
  */
@@ -26,7 +35,9 @@ function setNativeValue(el: HTMLTextAreaElement | HTMLInputElement, value: strin
  *   Range-based insert otherwise.
  *
  * Returns false only when the offset range cannot be resolved (out of bounds)
- * or the field type is unsupported (rich-editor framework types are deferred).
+ * or the field type is unsupported. Framework contenteditable editors
+ * (ProseMirror, Slate, Lexical, CKEditor, Quill) are applied via the same
+ * native-editing path as plain contenteditable.
  */
 export function applyRange(
   el: HTMLElement,
@@ -42,7 +53,7 @@ export function applyRange(
     field.dispatchEvent(new Event('input', { bubbles: true }));
     return true;
   }
-  if (type === 'contenteditable') {
+  if (RICH_TEXT.includes(type)) {
     const range = offsetToRange(el, start, end);
     if (!range) return false;
     const sel = window.getSelection();

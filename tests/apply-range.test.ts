@@ -38,6 +38,22 @@ describe('applyRange (plain contenteditable)', () => {
   });
 });
 
+describe('applyRange (framework rich-text types)', () => {
+  it('applies an in-range replacement on a prosemirror contenteditable (returns true + mutates)', () => {
+    const ce = document.createElement('div');
+    ce.setAttribute('contenteditable', 'true');
+    ce.textContent = 'teh cat sat';
+    document.body.appendChild(ce);
+    const handler = vi.fn();
+    ce.addEventListener('input', handler);
+    // execCommand is unavailable in happy-dom, so this exercises the fallback path.
+    const ok = applyRange(ce, 'prosemirror', 0, 3, 'the');
+    expect(ok).toBe(true);
+    expect(ce.textContent).toBe('the cat sat');
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('applyRange (multi-node contenteditable)', () => {
   it('replaces a span that sits in a later text node', () => {
     const ce = document.createElement('div');
