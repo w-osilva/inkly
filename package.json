@@ -2,7 +2,7 @@
   "name": "inkly",
   "description": "Open-source, privacy-first writing assistant for Chrome/Edge/Brave — local grammar & spelling + optional AI.",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "copy-wasm": "node scripts/copy-harper-wasm.mjs",
