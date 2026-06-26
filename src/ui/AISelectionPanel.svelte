@@ -26,29 +26,32 @@
     onmouseleave={() => (aiPanelState.hovered = false)}
   >
     {#if aiPanelState.phase === 'actions'}
-      <button class="inkly-ai__btn" onclick={() => aiPanelState.onRewrite?.()}>✨ Rewrite</button>
+      <button class="inkly-ai__btn" onclick={() => aiPanelState.onAction?.('rewrite')}>✨ Rewrite</button>
+      <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.('translate')}>🌐 Translate</button>
     {:else if aiPanelState.phase === 'loading'}
       <span class="inkly-ai__loading">Rewriting…</span>
     {:else if aiPanelState.phase === 'result'}
       <p class="inkly-ai__result">{aiPanelState.result}</p>
-      <div class="inkly-ai__chips" role="group" aria-label="Tone">
-        {#each TONES as t}
-          <button
-            class="inkly-ai__chip"
-            class:inkly-ai__chip--active={aiPanelState.tone === t.id}
-            onclick={() => aiPanelState.onSetTone?.(t.id)}
-          >{t.label}</button>
-        {/each}
-      </div>
-      <div class="inkly-ai__chips" role="group" aria-label="Length">
-        {#each LENGTHS as l}
-          <button
-            class="inkly-ai__chip"
-            class:inkly-ai__chip--active={aiPanelState.length === l.id}
-            onclick={() => aiPanelState.onSetLength?.(l.id)}
-          >{l.label}</button>
-        {/each}
-      </div>
+      {#if aiPanelState.capability === 'rewrite'}
+        <div class="inkly-ai__chips" role="group" aria-label="Tone">
+          {#each TONES as t}
+            <button
+              class="inkly-ai__chip"
+              class:inkly-ai__chip--active={aiPanelState.tone === t.id}
+              onclick={() => aiPanelState.onSetTone?.(t.id)}
+            >{t.label}</button>
+          {/each}
+        </div>
+        <div class="inkly-ai__chips" role="group" aria-label="Length">
+          {#each LENGTHS as l}
+            <button
+              class="inkly-ai__chip"
+              class:inkly-ai__chip--active={aiPanelState.length === l.id}
+              onclick={() => aiPanelState.onSetLength?.(l.id)}
+            >{l.label}</button>
+          {/each}
+        </div>
+      {/if}
       <div class="inkly-ai__row">
         <button class="inkly-ai__btn" onclick={() => aiPanelState.onApply?.()}>Apply</button>
         <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onCopy?.()}>Copy</button>
