@@ -17,38 +17,35 @@ function setNativeValue(el: HTMLTextAreaElement | HTMLInputElement, value: strin
 }
 
 /**
- * Apply a replacement into a field. Returns true if applied.
- * M1 supports textarea/input. contenteditable + rich editors return false
- * (implemented in M4) — callers must handle false gracefully.
+ * Replace an arbitrary [start, end) span in a field with `replacement`.
+ * Returns true if applied, false if the field type is unsupported or
+ * (for contenteditable) the element contains more than one text node.
  */
-export function applyReplacement(
+export function applyRange(
   el: HTMLElement,
   type: FieldType,
-  suggestion: Suggestion,
+  start: number,
+  end: number,
   replacement: string,
 ): boolean {
   if (type === 'textarea' || type === 'input') {
     const field = el as HTMLTextAreaElement | HTMLInputElement;
-    const current = field.value;
-    const next =
-      current.slice(0, suggestion.offset) +
-      replacement +
-      current.slice(suggestion.offset + suggestion.length);
-    setNativeValue(field, next);
+    const cur = field.value;
+    setNativeValue(field, cur.slice(0, start) + replacement + cur.slice(end));
     field.dispatchEvent(new Event('input', { bubbles: true }));
     return true;
   }
   if (type === 'contenteditable') {
     const node = el.firstChild;
-    // M2b handles only the common single-text-node case; multi-node / rich
+    // Handles only the common single-text-node case; multi-node / rich
     // editors (ProseMirror, Slate, Lexical, Quill) are M4.
     if (!node || node.nodeType !== Node.TEXT_NODE || el.childNodes.length !== 1) {
       return false;
     }
     const sel = window.getSelection();
     const range = document.createRange();
-    range.setStart(node, suggestion.offset);
-    range.setEnd(node, suggestion.offset + suggestion.length);
+    range.setStart(node, start);
+    range.setEnd(node, end);
     sel?.removeAllRanges();
     sel?.addRange(range);
     el.focus();
@@ -62,12 +59,25 @@ export function applyReplacement(
     if (ok) return true;
     // Fallback (plain contenteditable / environments without execCommand):
     const text = node.textContent ?? '';
-    node.textContent =
-      text.slice(0, suggestion.offset) + replacement + text.slice(suggestion.offset + suggestion.length);
+    node.textContent = text.slice(0, start) + replacement + text.slice(end);
     el.dispatchEvent(
       new InputEvent('input', { bubbles: true, inputType: 'insertReplacementText', data: replacement }),
     );
     return true;
   }
   return false;
+}
+
+/**
+ * Apply a replacement into a field. Returns true if applied.
+ * M1 supports textarea/input. contenteditable + rich editors return false
+ * (implemented in M4) — callers must handle false gracefully.
+ */
+export function applyReplacement(
+  el: HTMLElement,
+  type: FieldType,
+  suggestion: Suggestion,
+  replacement: string,
+): boolean {
+  return applyRange(el, type, suggestion.offset, suggestion.offset + suggestion.length, replacement);
 }
