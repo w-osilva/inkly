@@ -10,6 +10,8 @@ export interface CardState {
   onDismiss: (() => void) | null;
   /** Set by the card on mouseenter/leave so the controller knows not to hide it. */
   hovered: boolean;
+  dictionaryWord: string | null;
+  onAddToDictionary: (() => void) | null;
 }
 
 export const cardState = $state<CardState>({
@@ -21,4 +23,6 @@ export const cardState = $state<CardState>({
   onApply: null,
   onDismiss: null,
   hovered: false,
+  dictionaryWord: null,
+  onAddToDictionary: null,
 });

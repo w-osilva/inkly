@@ -31,6 +31,11 @@
         <button class="inkly-card__rep" onclick={() => cardState.onApply?.(rep)}>{label(rep)}</button>
       {/each}
     </div>
+    {#if cardState.dictionaryWord}
+      <button class="inkly-card__dict" onclick={() => cardState.onAddToDictionary?.()}>
+        Add "{cardState.dictionaryWord}" to dictionary
+      </button>
+    {/if}
   </div>
 {/if}
 
@@ -60,4 +65,9 @@
     padding: 3px 10px; cursor: pointer; font: inherit; font-weight: 600;
   }
   .inkly-card__rep:hover { background: #ececec; }
+  .inkly-card__dict {
+    display: block; margin-top: 8px; border: 0; background: none; padding: 0;
+    color: #2d6cdf; cursor: pointer; font: inherit; font-size: 12px;
+  }
+  .inkly-card__dict:hover { text-decoration: underline; }
 </style>

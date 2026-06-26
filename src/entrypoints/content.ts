@@ -12,7 +12,7 @@ import SuggestionCard from '../ui/SuggestionCard.svelte';
 import { cardState } from '../ui/card-state.svelte';
 import { findHitIndex, type HitRect } from '../ui/hit-test';
 import { computeCardPosition } from '../ui/card-position';
-import { getSettings, onSettingsChanged, isEnabledForHost } from '../core/settings';
+import { getSettings, setSettings, addWord, onSettingsChanged, isEnabledForHost } from '../core/settings';
 import { isSuppressed } from '../core/suppression';
 
 const provider = new HarperProvider();
@@ -145,6 +145,8 @@ export default defineContentScript({
     let hoverTimer = 0, hideTimer = 0, shownIndex = -1, pendingHoverIndex = -1;
     let mouseMoveScheduled = false, lastX = 0, lastY = 0;
 
+    const DICT_CATS = new Set(['Spelling', 'Typo']);
+
     function showCardFor(index: number) {
       const s = current[index];
       const hit = hitRects.find((h) => h.index === index);
@@ -165,6 +167,19 @@ export default defineContentScript({
         hideCard();
         drawUnderlines();
       };
+      const word =
+        activeField ? getFieldText(activeField, activeType).slice(s.offset, s.offset + s.length).trim() : '';
+      cardState.dictionaryWord = DICT_CATS.has(s.category) && word ? word : null;
+      cardState.onAddToDictionary =
+        cardState.dictionaryWord
+          ? async () => {
+              const cur = await getSettings();
+              await setSettings(addWord(cur, word));
+              dictionary.add(word.toLowerCase()); // optimistic local update
+              hideCard();
+              if (activeField) runCheck();
+            }
+          : null;
       cardState.visible = true;
       shownIndex = index;
     }
@@ -183,6 +198,8 @@ export default defineContentScript({
       cardState.onApply = null;
       cardState.onDismiss = null;
       cardState.hovered = false;
+      cardState.dictionaryWord = null;
+      cardState.onAddToDictionary = null;
       shownIndex = -1;
     }
 
