@@ -8,10 +8,12 @@ const server = createServer((req, res) => {
     req.on('end', () => {
       let userText = '';
       let systemText = '';
+      let stream = false;
       try {
         const parsed = JSON.parse(body);
         userText = parsed.messages?.find((m) => m.role === 'user')?.content ?? '';
         systemText = parsed.messages?.find((m) => m.role === 'system')?.content ?? '';
+        stream = parsed.stream === true;
       } catch { /* ignore */ }
       const toneMatch = systemText.match(/use a (\w+) tone/i);
       const tag = toneMatch ? `[${toneMatch[1].toLowerCase()}]` : '';
@@ -27,6 +29,17 @@ const server = createServer((req, res) => {
         content = `ANALYSIS: ${userText} looks fine.`;
       } else {
         content = `REWRITTEN${tag}: ${userText}`;
+      }
+      if (stream) {
+        res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
+        const mid = Math.ceil(content.length / 2);
+        const parts = [content.slice(0, mid), content.slice(mid)].filter((p) => p.length > 0);
+        for (const p of parts) {
+          res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: p } }] })}\n\n`);
+        }
+        res.write('data: [DONE]\n\n');
+        res.end();
+        return;
       }
       const reply = { choices: [{ message: { role: 'assistant', content } }] };
       res.writeHead(200, { 'Content-Type': 'application/json' });
