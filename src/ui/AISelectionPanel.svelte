@@ -1,5 +1,19 @@
 <script lang="ts">
   import { aiPanelState } from './ai-panel-state.svelte';
+
+  const TONES = [
+    { id: '', label: 'Neutral' },
+    { id: 'formal', label: 'Formal' },
+    { id: 'casual', label: 'Casual' },
+    { id: 'confident', label: 'Confident' },
+    { id: 'friendly', label: 'Friendly' },
+    { id: 'concise', label: 'Concise' },
+  ];
+  const LENGTHS = [
+    { id: 'shorter', label: 'Shorter' },
+    { id: 'asis', label: 'As is' },
+    { id: 'longer', label: 'Longer' },
+  ];
 </script>
 
 {#if aiPanelState.phase !== 'hidden'}
@@ -17,6 +31,24 @@
       <span class="inkly-ai__loading">Rewriting…</span>
     {:else if aiPanelState.phase === 'result'}
       <p class="inkly-ai__result">{aiPanelState.result}</p>
+      <div class="inkly-ai__chips" role="group" aria-label="Tone">
+        {#each TONES as t}
+          <button
+            class="inkly-ai__chip"
+            class:inkly-ai__chip--active={aiPanelState.tone === t.id}
+            onclick={() => aiPanelState.onSetTone?.(t.id)}
+          >{t.label}</button>
+        {/each}
+      </div>
+      <div class="inkly-ai__chips" role="group" aria-label="Length">
+        {#each LENGTHS as l}
+          <button
+            class="inkly-ai__chip"
+            class:inkly-ai__chip--active={aiPanelState.length === l.id}
+            onclick={() => aiPanelState.onSetLength?.(l.id)}
+          >{l.label}</button>
+        {/each}
+      </div>
       <div class="inkly-ai__row">
         <button class="inkly-ai__btn" onclick={() => aiPanelState.onApply?.()}>Apply</button>
         <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onCopy?.()}>Copy</button>
@@ -46,4 +78,10 @@
   }
   .inkly-ai__btn--ghost { background: #f6f6f6; color: #333; border-color: #cdcdcd; }
   .inkly-ai__btn:hover { filter: brightness(0.96); }
+  .inkly-ai__chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+  .inkly-ai__chip {
+    border: 1px solid #cdcdcd; background: #f6f6f6; color: #333; border-radius: 12px;
+    padding: 2px 10px; cursor: pointer; font: inherit; font-size: 12px;
+  }
+  .inkly-ai__chip--active { background: #7b53d6; color: #fff; border-color: #7b53d6; }
 </style>

@@ -11,6 +11,10 @@ export interface AIPanelState {
   onCopy: (() => void) | null;
   onDismiss: (() => void) | null;
   hovered: boolean;
+  tone: string;
+  length: string;
+  onSetTone: ((tone: string) => void) | null;
+  onSetLength: ((length: string) => void) | null;
 }
 
 export const aiPanelState = $state<AIPanelState>({
@@ -24,4 +28,8 @@ export const aiPanelState = $state<AIPanelState>({
   onCopy: null,
   onDismiss: null,
   hovered: false,
+  tone: '',
+  length: 'asis',
+  onSetTone: null,
+  onSetLength: null,
 });
