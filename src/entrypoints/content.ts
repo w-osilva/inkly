@@ -4,7 +4,7 @@ import { mergeSuggestions } from '../core/orchestrator';
 import { HarperProvider } from '../core/providers/harper-provider';
 import { OverlayRenderer } from '../ui/overlay-renderer';
 import { computeUnderlineStyles, type Rect } from '../ui/underline-layout';
-import { applyReplacement } from '../core/apply-engine';
+import { applyReplacement, applyRange } from '../core/apply-engine';
 import { debounce } from '../core/debounce';
 import type { FieldType, Suggestion } from '../core/types';
 import { mount } from 'svelte';
@@ -16,6 +16,9 @@ import { getSettings, setSettings, addWord, onSettingsChanged, isEnabledForHost,
 import { isSuppressed, isDictionaryCategory } from '../core/suppression';
 import type { Lang } from '../core/i18n';
 import { runAI } from '../core/ai/ai-client';
+import AISelectionPanel from '../ui/AISelectionPanel.svelte';
+import { aiPanelState } from '../ui/ai-panel-state.svelte';
+import { getSelectionInfo, type SelectionInfo } from '../core/selection';
 
 const provider = new HarperProvider();
 
@@ -74,6 +77,7 @@ export default defineContentScript({
         // underlines. The card sets its own pointer-events:auto, so the
         // container's pointer-events:none fix does not block its clicks.
         mount(SuggestionCard, { target: uiContainer });
+        mount(AISelectionPanel, { target: uiContainer });
         return new OverlayRenderer(layer);
       },
     });
@@ -208,6 +212,73 @@ export default defineContentScript({
       shownIndex = -1;
     }
 
+    let aiSelection: SelectionInfo | null = null;
+
+    function hideAIPanel() {
+      aiPanelState.phase = 'hidden';
+      aiPanelState.result = '';
+      aiPanelState.error = '';
+      aiPanelState.onRewrite = null;
+      aiPanelState.onApply = null;
+      aiPanelState.onCopy = null;
+      aiPanelState.onDismiss = null;
+      aiPanelState.hovered = false;
+      aiSelection = null;
+    }
+
+    function selectionRect(): { left: number; top: number; width: number; height: number } {
+      if (activeType === 'contenteditable') {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+          const r = sel.getRangeAt(0).getBoundingClientRect();
+          if (r.width || r.height) return { left: r.left, top: r.top, width: r.width, height: r.height };
+        }
+      }
+      const r = activeField!.getBoundingClientRect();
+      return { left: r.left, top: r.top, width: r.width, height: r.height };
+    }
+
+    function showAIActions() {
+      if (!activeField) return;
+      const info = getSelectionInfo(activeField, activeType);
+      if (!info) {
+        // hide only if idle (not loading/result) and not hovering the panel
+        if ((aiPanelState.phase === 'actions') && !aiPanelState.hovered) hideAIPanel();
+        return;
+      }
+      aiSelection = info;
+      const pos = computeCardPosition(selectionRect(), { width: 320, height: 160 }, { width: window.innerWidth, height: window.innerHeight });
+      aiPanelState.left = pos.left;
+      aiPanelState.top = pos.top;
+      // Don't clobber an in-progress loading/result panel for the same selection.
+      if (aiPanelState.phase === 'hidden' || aiPanelState.phase === 'actions') {
+        aiPanelState.phase = 'actions';
+        aiPanelState.onRewrite = () => void doRewrite();
+      }
+    }
+
+    async function doRewrite() {
+      const sel = aiSelection;
+      const field = activeField;
+      const type = activeType;
+      if (!sel || !field) return;
+      aiPanelState.phase = 'loading';
+      const res = await runAI({ capability: 'rewrite', text: sel.text });
+      // Guard: if the panel was dismissed/hidden meanwhile, drop the result.
+      if (aiPanelState.phase !== 'loading') return;
+      if (res.ok) {
+        aiPanelState.result = res.text;
+        aiPanelState.phase = 'result';
+        aiPanelState.onApply = () => { applyRange(field, type, sel.start, sel.end, res.text); hideAIPanel(); };
+        aiPanelState.onCopy = () => { void navigator.clipboard?.writeText(res.text); };
+        aiPanelState.onDismiss = () => hideAIPanel();
+      } else {
+        aiPanelState.error = res.error;
+        aiPanelState.phase = 'error';
+        aiPanelState.onDismiss = () => hideAIPanel();
+      }
+    }
+
     getSettings().then((s) => {
       enabled = isEnabledForHost(s, host);
       disabledCategories = new Set(s.disabledCategories);
@@ -225,6 +296,7 @@ export default defineContentScript({
         runCheck.cancel();
         clearHoverTimers();
         hideCard();
+        hideAIPanel();
         current = [];
         hitRects = [];
         renderer.clear();
@@ -273,6 +345,16 @@ export default defineContentScript({
     }
     ctx.addEventListener(document, 'mousemove', onMouseMove);
 
+    let selScheduled = false;
+    function onSelectionMaybe() {
+      if (!enabled) return;
+      if (selScheduled) return;
+      selScheduled = true;
+      requestAnimationFrame(() => { selScheduled = false; showAIActions(); });
+    }
+    ctx.addEventListener(document, 'selectionchange', onSelectionMaybe);
+    ctx.addEventListener(document, 'mouseup', onSelectionMaybe);
+
     ctx.addEventListener(document, 'focusin', (e) => {
       const t = e.target as Element;
       if (enabled && t instanceof HTMLElement && isEditableField(t)) {
@@ -289,6 +371,7 @@ export default defineContentScript({
         // Text changed → offsets stale: drop dismissals and any open card.
         dismissed.clear();
         hideCard();
+        hideAIPanel();
         renderer.clear();
         runCheck();
       }
@@ -304,6 +387,7 @@ export default defineContentScript({
       runCheck.cancel();
       clearHoverTimers();
       hideCard();
+      hideAIPanel();
       activeField = null;
       activeType = 'unknown';
       current = [];
