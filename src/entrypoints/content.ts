@@ -13,7 +13,7 @@ import { cardState } from '../ui/card-state.svelte';
 import { findHitIndex, type HitRect } from '../ui/hit-test';
 import { computeCardPosition } from '../ui/card-position';
 import { getSettings, setSettings, addWord, onSettingsChanged, isEnabledForHost } from '../core/settings';
-import { isSuppressed } from '../core/suppression';
+import { isSuppressed, isDictionaryCategory } from '../core/suppression';
 
 const provider = new HarperProvider();
 
@@ -145,8 +145,6 @@ export default defineContentScript({
     let hoverTimer = 0, hideTimer = 0, shownIndex = -1, pendingHoverIndex = -1;
     let mouseMoveScheduled = false, lastX = 0, lastY = 0;
 
-    const DICT_CATS = new Set(['Spelling', 'Typo']);
-
     function showCardFor(index: number) {
       const s = current[index];
       const hit = hitRects.find((h) => h.index === index);
@@ -167,9 +165,12 @@ export default defineContentScript({
         hideCard();
         drawUnderlines();
       };
+      // Safe to re-read field text here: a card is only ever shown for the last
+      // completed check, and the `input` handler hides the card on every keystroke,
+      // so the field text still matches the suggestion's offsets.
       const word =
         activeField ? getFieldText(activeField, activeType).slice(s.offset, s.offset + s.length).trim() : '';
-      cardState.dictionaryWord = DICT_CATS.has(s.category) && word ? word : null;
+      cardState.dictionaryWord = isDictionaryCategory(s.category) && word ? word : null;
       cardState.onAddToDictionary =
         cardState.dictionaryWord
           ? async () => {

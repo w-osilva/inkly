@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isSuppressed } from '../src/core/suppression';
+import { isSuppressed, isDictionaryCategory } from '../src/core/suppression';
 import { makeSuggestion } from '../src/core/types';
 
 const noCats = new Set<string>();
@@ -32,5 +32,13 @@ describe('isSuppressed', () => {
   it('returns false when nothing matches', () => {
     const s = makeSuggestion({ offset: 0, length: 3, category: 'Spelling', source: 'harper' });
     expect(isSuppressed(s, 'cat', noCats, noDict)).toBe(false);
+  });
+});
+
+describe('isDictionaryCategory', () => {
+  it('returns true for Spelling and Typo, false for everything else', () => {
+    expect(isDictionaryCategory('Spelling')).toBe(true);
+    expect(isDictionaryCategory('Typo')).toBe(true);
+    expect(isDictionaryCategory('Grammar')).toBe(false);
   });
 });
