@@ -215,10 +215,12 @@ export default defineContentScript({
 
     let aiSelection: SelectionInfo | null = null;
     let rewriteSeq = 0;
+    let activeStreamId: string | null = null;
 
     function hideAIPanel() {
       aiPanelState.phase = 'hidden';
       aiPanelState.result = '';
+      aiPanelState.streamingText = '';
       aiPanelState.error = '';
       aiPanelState.onAction = null;
       aiPanelState.capability = 'rewrite';
@@ -232,6 +234,7 @@ export default defineContentScript({
       aiPanelState.onSetTone = null;
       aiPanelState.onSetLength = null;
       aiSelection = null;
+      activeStreamId = null;
     }
 
     function selectionRect(): { left: number; top: number; width: number; height: number } {
@@ -300,6 +303,9 @@ export default defineContentScript({
       const gen = ++rewriteSeq;
       aiPanelState.capability = capability;
       aiPanelState.phase = 'loading';
+      const streamId = crypto.randomUUID();
+      activeStreamId = streamId;
+      aiPanelState.streamingText = '';
       const options: Record<string, string> = {};
       if (capability === 'rewrite') {
         if (aiPanelState.tone) options.tone = aiPanelState.tone;
@@ -307,9 +313,10 @@ export default defineContentScript({
       } else if (capability === 'translate') {
         options.targetLang = lang === 'pt-br' ? 'Portuguese' : 'English';
       }
-      const res = await runAI({ capability, text: sel.text, options });
+      const res = await runAI({ capability, text: sel.text, options }, streamId);
       // Guard: if the panel was dismissed/hidden meanwhile, or a newer call started, drop the result.
       if (gen !== rewriteSeq || aiPanelState.phase !== 'loading') return;
+      activeStreamId = null;
       if (res.ok) {
         aiPanelState.result = res.text;
         aiPanelState.phase = 'result';
@@ -493,6 +500,13 @@ export default defineContentScript({
 
     browser.runtime.onMessage.addListener((msg: unknown) => {
       const m = msg as { type?: string; capability?: string };
+      if (m?.type === 'inkly:ai:chunk') {
+        const c = m as { streamId?: string; delta?: string };
+        if (c.streamId && c.streamId === activeStreamId && aiPanelState.phase === 'loading') {
+          aiPanelState.streamingText += c.delta ?? '';
+        }
+        return;
+      }
       if (m?.type === 'inkly:trigger') {
         triggerAI((m.capability ?? 'open') as AICapability | 'open');
       }
@@ -508,7 +522,7 @@ export default defineContentScript({
         }
       };
       (window as any).__inklyAIRewrite = async (text: string) => {
-        const res = await runAI({ capability: 'rewrite', text });
+        const res = await runAI({ capability: 'rewrite', text }, crypto.randomUUID());
         return res.ok ? res.text : `ERROR:${res.error}`;
       };
 
@@ -520,7 +534,7 @@ export default defineContentScript({
       ctx.addEventListener(window, 'message', (e: MessageEvent) => {
         const d = (e as MessageEvent).data;
         if (e.source !== window || !d || d.__inkly !== 'ai-rewrite-req') return;
-        runAI({ capability: 'rewrite', text: d.text }).then((res) => {
+        runAI({ capability: 'rewrite', text: d.text }, crypto.randomUUID()).then((res) => {
           window.postMessage(
             { __inkly: 'ai-rewrite-res', id: d.id, result: res.ok ? res.text : `ERROR:${res.error}` },
             '*',

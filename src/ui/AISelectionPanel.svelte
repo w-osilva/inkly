@@ -39,7 +39,11 @@
       <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.('synonyms')}>🔁 Synonyms</button>
       <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.('analyze')}>🔍 Analyze</button>
     {:else if aiPanelState.phase === 'loading'}
-      <span class="inkly-ai__loading">{LOADING_LABELS[aiPanelState.capability] ?? 'Working…'}</span>
+      {#if aiPanelState.streamingText}
+        <p class="inkly-ai__result">{aiPanelState.streamingText}</p>
+      {:else}
+        <span class="inkly-ai__loading">{LOADING_LABELS[aiPanelState.capability] ?? 'Working…'}</span>
+      {/if}
     {:else if aiPanelState.phase === 'result'}
       {#if aiPanelState.capability === 'synonyms'}
         <div class="inkly-ai__chips" role="group" aria-label="Synonyms">

@@ -15,6 +15,10 @@ describe('buildHttpRequest', () => {
     expect(body.messages).toEqual(messages);
     expect(body.stream).toBe(false);
   });
+  it('sets stream:true when the stream arg is true, and stream:false by default', () => {
+    expect(JSON.parse(buildHttpRequest(config, messages, true).body).stream).toBe(true);
+    expect(JSON.parse(buildHttpRequest(config, messages).body).stream).toBe(false);
+  });
   it('handles an endpoint with a trailing slash without doubling it', () => {
     const r = buildHttpRequest({ ...config, endpoint: 'https://api.x.com/v1/' }, messages);
     expect(r.url).toBe('https://api.x.com/v1/chat/completions');
