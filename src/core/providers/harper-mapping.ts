@@ -13,7 +13,7 @@ export function plainLintToSuggestion(lint: PlainLint): Suggestion {
     length: Math.max(0, lint.end - lint.start),
     replacements: lint.replacements,
     message: lint.message,
-    ruleId: lint.kind,
+    ruleId: lint.ruleName,
     category: lint.kind,
     source: 'harper',
   });

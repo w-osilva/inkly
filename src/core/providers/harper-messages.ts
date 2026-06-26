@@ -5,6 +5,7 @@ export interface PlainLint {
   replacements: string[]; // suggestion replacement texts ('' == Harper Remove)
   message: string;
   kind: string;           // lint.lint_kind(), e.g. "Spelling", "Agreement"
+  ruleName: string;       // organizedLints key — per-rule PascalCase name (SpellCheck, ToTwoToo, …)
 }
 
 /** Content script → service worker. */
