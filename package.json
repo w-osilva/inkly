@@ -17,7 +17,8 @@
     "postinstall": "wxt prepare && npm run copy-wasm",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "VITE_INKLY_E2E=true wxt build && playwright test"
+    "build:e2e-fixtures": "node scripts/build-e2e-fixtures.mjs",
+    "test:e2e": "npm run build:e2e-fixtures && VITE_INKLY_E2E=true wxt build && playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
@@ -25,6 +26,12 @@
     "@vitest/ui": "^4.1.9",
     "@wxt-dev/module-svelte": "^2.0.4",
     "happy-dom": "^20.10.6",
+    "prosemirror-commands": "^1.7.1",
+    "prosemirror-keymap": "^1.2.3",
+    "prosemirror-model": "^1.25.9",
+    "prosemirror-schema-basic": "^1.2.4",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-view": "^1.41.9",
     "svelte": "^5.53.7",
     "svelte-check": "^4.4.4",
     "tslib": "^2.8.1",
