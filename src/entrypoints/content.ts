@@ -41,6 +41,7 @@ export default defineContentScript({
   matches: ['<all_urls>'],
   cssInjectionMode: 'ui',
   async main(ctx) {
+    let overlayHost: HTMLElement | null = null;
     const ui = await createShadowRootUi(ctx, {
       name: 'inkly-overlay',
       // 'modal' positions the shadow host as a fixed full-viewport element
@@ -48,6 +49,7 @@ export default defineContentScript({
       position: 'modal',
       zIndex: 2147483646,
       onMount: (uiContainer, shadow, shadowHost) => {
+        overlayHost = shadowHost as HTMLElement;
         // WXT's 'modal' strategy gives the inner <html> element a fixed full-viewport
         // layout but does NOT set pointer-events:none on it or the shadow host, so the
         // overlay would intercept all pointer events on the page. Patch both here.
@@ -206,7 +208,14 @@ export default defineContentScript({
         runCheck();
       }
     });
-    ctx.addEventListener(document, 'focusout', () => {
+    ctx.addEventListener(document, 'focusout', (e) => {
+      // Clicking a card button moves focus into our shadow-DOM overlay, which the
+      // editor sees as a focusout. Ignore it: tearing down here would unmount the
+      // card mid-click, so the replacement/dismiss handler would never run.
+      const related = (e as FocusEvent).relatedTarget as Node | null;
+      if (related && overlayHost && (related === overlayHost || overlayHost.contains(related))) {
+        return;
+      }
       runCheck.cancel();
       hideCard();
       activeField = null;
