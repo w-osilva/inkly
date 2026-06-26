@@ -22,6 +22,7 @@ import type { AICapability } from '../core/ai/ai-types';
 import AISelectionPanel from '../ui/AISelectionPanel.svelte';
 import { aiPanelState } from '../ui/ai-panel-state.svelte';
 import { getSelectionInfo, type SelectionInfo } from '../core/selection';
+import { textareaSpanRects } from '../ui/textarea-rects';
 
 const provider = new HarperProvider();
 
@@ -30,7 +31,7 @@ const CONTENTEDITABLE_FAMILY: ReadonlySet<FieldType> = new Set<FieldType>([
   'contenteditable', 'prosemirror', 'slate', 'ckeditor', 'lexical', 'quill',
 ]);
 
-/** Build client rects for a (offset,length) span: a Range for contenteditable, the field rect for textarea/input. */
+/** Build client rects for a (offset,length) span: a Range for contenteditable, a hidden mirror clone for textarea/input. */
 function getSpanRects(el: HTMLElement, type: FieldType, offset: number, length: number): Rect[] {
   if (CONTENTEDITABLE_FAMILY.has(type)) {
     const range = offsetToRange(el, offset, offset + length);
@@ -39,7 +40,11 @@ function getSpanRects(el: HTMLElement, type: FieldType, offset: number, length: 
       left: r.left, top: r.top, width: r.width, height: r.height,
     }));
   }
-  // textarea/input: coarse full-field underline for M1 (mirror-div precision is M4).
+  // textarea/input: precise per-span rects via a hidden mirror clone (M4a).
+  if (type === 'textarea' || type === 'input') {
+    return textareaSpanRects(el as HTMLTextAreaElement | HTMLInputElement, offset, length);
+  }
+  // unknown field: coarse full-field underline fallback.
   const r = el.getBoundingClientRect();
   return [{ left: r.left + 2, top: r.top + 2, width: Math.max(0, r.width - 4), height: r.height - 4 }];
 }
