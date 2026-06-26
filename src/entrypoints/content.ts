@@ -92,6 +92,7 @@ export default defineContentScript({
     let checkSeq = 0;
     let hitRects: HitRect[] = [];
     let lang: Lang = 'en';
+    let defaultTone = '';
 
     const dismissed = new Set<string>();
     function suggestionKey(s: Suggestion): string {
@@ -262,7 +263,7 @@ export default defineContentScript({
       const pos = computeCardPosition(selectionRect(), { width: 320, height: 160 }, { width: window.innerWidth, height: window.innerHeight });
       aiPanelState.left = pos.left;
       aiPanelState.top = pos.top;
-      aiPanelState.tone = '';
+      aiPanelState.tone = defaultTone;
       aiPanelState.length = 'asis';
       aiPanelState.capability = 'rewrite';
       aiPanelState.phase = 'actions';
@@ -282,7 +283,7 @@ export default defineContentScript({
       );
       aiPanelState.left = pos.left;
       aiPanelState.top = pos.top;
-      aiPanelState.tone = '';
+      aiPanelState.tone = defaultTone;
       aiPanelState.length = 'asis';
       if (capability === 'open') {
         aiPanelState.capability = 'rewrite';
@@ -343,6 +344,7 @@ export default defineContentScript({
       disabledCategories = new Set(s.disabledCategories);
       dictionary = new Set(s.dictionary);
       lang = effectiveLang(s, navigator.language);
+      defaultTone = s.defaultTone;
     });
     onSettingsChanged((s) => {
       const next = isEnabledForHost(s, host);
@@ -350,6 +352,7 @@ export default defineContentScript({
       disabledCategories = new Set(s.disabledCategories);
       dictionary = new Set(s.dictionary);
       lang = effectiveLang(s, navigator.language);
+      defaultTone = s.defaultTone;
       if (cardState.visible) cardState.lang = lang;
       if (!enabled) {
         runCheck.cancel();
