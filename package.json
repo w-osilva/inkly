@@ -14,9 +14,11 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "postinstall": "wxt prepare",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tsconfig/svelte": "^5.0.8",
     "@vitest/ui": "^4.1.9",
     "@wxt-dev/module-svelte": "^2.0.4",

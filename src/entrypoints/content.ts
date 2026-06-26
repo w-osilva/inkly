@@ -38,7 +38,13 @@ export default defineContentScript({
       // anchored to body — ideal for an overlay that tracks all editable fields.
       position: 'modal',
       zIndex: 2147483646,
-      onMount: (uiContainer) => {
+      onMount: (uiContainer, shadow, shadowHost) => {
+        // WXT's 'modal' strategy gives the inner <html> element a fixed full-viewport
+        // layout but does NOT set pointer-events:none on it or the shadow host, so the
+        // overlay would intercept all pointer events on the page. Patch both here.
+        (uiContainer.parentElement as HTMLElement | null)?.style.setProperty('pointer-events', 'none');
+        (shadowHost as HTMLElement).style.setProperty('pointer-events', 'none');
+
         const layer = document.createElement('div');
         layer.style.position = 'fixed';
         layer.style.inset = '0';
