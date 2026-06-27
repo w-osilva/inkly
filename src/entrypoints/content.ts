@@ -25,6 +25,8 @@ import { runAI } from '../core/ai/ai-client';
 import type { AICapability } from '../core/ai/ai-types';
 import AISelectionPanel from '../ui/AISelectionPanel.svelte';
 import { aiPanelState } from '../ui/ai-panel-state.svelte';
+import FieldButton from '../ui/FieldButton.svelte';
+import { fieldButtonState } from '../ui/field-button-state.svelte';
 import { getSelectionInfo, type SelectionInfo } from '../core/selection';
 import { textareaSpanRects } from '../ui/textarea-rects';
 
@@ -87,6 +89,7 @@ export default defineContentScript({
         // container's pointer-events:none fix does not block its clicks.
         mount(SuggestionCard, { target: uiContainer });
         mount(AISelectionPanel, { target: uiContainer });
+        mount(FieldButton, { target: uiContainer });
         return new OverlayRenderer(layer);
       },
     });
@@ -146,6 +149,36 @@ export default defineContentScript({
       });
       hitRects = nextHitRects;
       renderer.render(styles);
+      updateFieldButton();
+    }
+
+    // Severity priority for the field-button badge color (most severe wins).
+    const SEVERITY_RANK: Record<Suggestion['severity'], number> = { correctness: 3, clarity: 2, suggestion: 1 };
+
+    function updateFieldButton() {
+      if (!enabled || !activeField || current.length === 0) {
+        fieldButtonState.visible = false;
+        fieldButtonState.onOpen = null;
+        return;
+      }
+      const r = activeField.getBoundingClientRect();
+      // Off-screen / detached field → hide rather than park the button at 0,0.
+      if (r.width === 0 && r.height === 0) {
+        fieldButtonState.visible = false;
+        return;
+      }
+      const SIZE = 28, INSET = 6;
+      // Bottom-right for tall fields; vertically centered for short ones (inputs).
+      const top = r.height < SIZE + INSET * 2 ? r.top + (r.height - SIZE) / 2 : r.bottom - SIZE - INSET;
+      fieldButtonState.left = r.right - SIZE - INSET;
+      fieldButtonState.top = top;
+      fieldButtonState.count = current.length;
+      fieldButtonState.severity = current.reduce(
+        (acc, s) => (SEVERITY_RANK[s.severity] > SEVERITY_RANK[acc] ? s.severity : acc),
+        'suggestion' as Suggestion['severity'],
+      );
+      fieldButtonState.onOpen = () => { if (current[0]) showCardFor(0); };
+      fieldButtonState.visible = true;
     }
 
     let rafId = 0;
@@ -178,7 +211,13 @@ export default defineContentScript({
         renderer.clear();
       };
       cardState.onDismiss = () => {
-        dismissed.add(suggestionKey(s));
+        const key = suggestionKey(s);
+        dismissed.add(key);
+        // Actually drop the dismissed suggestion so its underline disappears and the
+        // field-button count decrements. (Previously dismiss only hid the card; the
+        // underline used to vanish only as a side effect of the field-blur clearing
+        // everything — which no longer happens now that results persist on blur.)
+        current = current.filter((c) => suggestionKey(c) !== key);
         hideCard();
         drawUnderlines();
       };
@@ -376,6 +415,7 @@ export default defineContentScript({
         current = [];
         hitRects = [];
         renderer.clear();
+        fieldButtonState.visible = false;
       } else {
         // Re-enabled or settings changed (categories/dictionary).
         // While disabled, focusin was gated, so a field that was
@@ -437,6 +477,15 @@ export default defineContentScript({
         runCheck.cancel();
         clearHoverTimers();
         hideCard();
+        // Switching to a different field: drop the previous field's persisted
+        // underlines/button immediately so they don't linger at stale positions
+        // until the new check completes.
+        if (t !== activeField) {
+          current = [];
+          hitRects = [];
+          renderer.clear();
+          fieldButtonState.visible = false;
+        }
         activeField = t;
         activeType = classifyField(t);
         runCheck();
@@ -477,16 +526,11 @@ export default defineContentScript({
       clearHoverTimers();
       hideCard();
       if (!keepAIPanel) hideAIPanel();
-      // When the AI panel survives a panel-button click (keepAIPanel), keep the
-      // active field/type bound too: result-phase tone/length chips re-run
-      // doAction(), which reads the live activeField. Nulling it here would make
-      // doAction bail and the regenerate silently no-op.
-      if (!keepAIPanel) {
-        activeField = null;
-        activeType = 'unknown';
-      }
-      current = [];
-      renderer.clear();
+      // Persist the underlines and the field button after blur — Grammarly/LanguageTool
+      // behavior. We KEEP activeField/activeType tracked and the results drawn; they are
+      // replaced only when another editable field is focused (focusin) or inkly is
+      // disabled. (Keeping activeField also lets result-phase tone/length chips re-run
+      // doAction() against the live field.)
     });
     // Deterministic outside-click dismissal for the AI panel. focusout can't tell a
     // genuine click on empty page area (relatedTarget=null) from panel-button churn
