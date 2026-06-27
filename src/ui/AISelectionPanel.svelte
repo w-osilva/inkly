@@ -83,6 +83,11 @@
             <button class="inkly-ai__chip" onclick={() => aiPanelState.onPickSynonym?.(syn)}>{syn}</button>
           {/each}
         </div>
+        <div class="inkly-ai__subactions">
+          <button class="inkly-ai__mini" onclick={() => aiPanelState.onAction?.('translate')}>🌐 Translate</button>
+          <button class="inkly-ai__mini" onclick={() => aiPanelState.onAction?.('analyze')}>🔍 Analyze</button>
+          <button class="inkly-ai__mini" onclick={() => aiPanelState.onAction?.('rewrite')}>✨ Rewrite sentence</button>
+        </div>
         <div class="inkly-ai__row">
           <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onDismiss?.()}>Dismiss</button>
         </div>
@@ -192,4 +197,11 @@
     background: var(--inkly-accent); color: var(--inkly-accent-contrast);
     border-color: var(--inkly-accent);
   }
+  .inkly-ai__subactions { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+  .inkly-ai__mini {
+    border: 1px solid var(--inkly-ghost-border); background: var(--inkly-ghost-bg);
+    color: var(--inkly-ghost-text); border-radius: var(--inkly-radius-sm);
+    padding: 5px 9px; cursor: pointer; font: 600 12px var(--inkly-font); white-space: nowrap;
+  }
+  .inkly-ai__mini:hover { border-color: var(--inkly-accent); color: var(--inkly-accent); }
 </style>
