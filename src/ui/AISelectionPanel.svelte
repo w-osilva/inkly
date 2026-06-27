@@ -171,46 +171,40 @@
   .inkly-ai__tab--primary { color: var(--inkly-accent); }
   .inkly-ai__tab--primary:hover { color: var(--inkly-accent); }
 
+  /* Footer actions — light + consistent with the tabs. Apply = accent; rest = text. */
+  .inkly-ai__row { display: flex; align-items: center; gap: 4px; }
   .inkly-ai__btn {
-    display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
-    justify-content: center;
+    display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; justify-content: center;
     border: 1px solid var(--inkly-accent); background: var(--inkly-accent);
     color: var(--inkly-accent-contrast); border-radius: 8px;
-    padding: 7px 8px; cursor: pointer; font: inherit; font-weight: 600;
-    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+    padding: 6px 14px; cursor: pointer; font: 600 12px var(--inkly-font);
+    transition: background 0.12s ease, color 0.12s ease;
   }
   .inkly-ai__btn:hover { background: var(--inkly-accent-press); border-color: var(--inkly-accent-press); }
   .inkly-ai__btn--ghost {
-    background: var(--inkly-ghost-bg); color: var(--inkly-ghost-text);
-    border: 1px solid var(--inkly-ghost-border);
+    background: none; border: 0; color: var(--inkly-muted); padding: 6px 10px; border-radius: 7px;
   }
-  .inkly-ai__btn--ghost:hover {
-    background: var(--inkly-ghost-bg);
-    border-color: var(--inkly-accent); color: var(--inkly-accent);
-  }
-  /* In the result footer the buttons sit in a flex row, not the grid. */
-  .inkly-ai__row .inkly-ai__btn { flex: 1; }
+  .inkly-ai__btn--ghost:hover { background: var(--inkly-ghost-bg); color: var(--inkly-text); }
 
-  /* Chips: horizontal scroller so tone/length never wrap raggedly. */
-  .inkly-ai__chips {
-    display: flex; gap: 5px; overflow-x: auto; padding-bottom: 2px; margin: 2px 0 8px;
-  }
+  /* Chips: wrap onto multiple rows — never a horizontal scrollbar. */
+  .inkly-ai__chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 9px; }
   .inkly-ai__chip {
-    flex: none; white-space: nowrap;
+    white-space: nowrap;
     border: 1px solid var(--inkly-ghost-border); background: var(--inkly-ghost-bg);
     color: var(--inkly-ghost-text); border-radius: 999px;
-    padding: 3px 10px; cursor: pointer; font: inherit; font-size: 11.5px;
+    padding: 3px 11px; cursor: pointer; font: 600 11.5px var(--inkly-font);
   }
   .inkly-ai__chip:hover { border-color: var(--inkly-accent); color: var(--inkly-accent); }
   .inkly-ai__chip--active {
     background: var(--inkly-accent); color: var(--inkly-accent-contrast);
     border-color: var(--inkly-accent);
   }
-  .inkly-ai__subactions { display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 8px; }
+  /* Secondary actions (in the synonyms result): light text buttons, same family. */
+  .inkly-ai__subactions { display: flex; flex-wrap: wrap; gap: 2px; margin: 2px 0 9px; }
   .inkly-ai__mini {
-    border: 1px solid var(--inkly-ghost-border); background: var(--inkly-ghost-bg);
-    color: var(--inkly-ghost-text); border-radius: 7px;
-    padding: 4px 8px; cursor: pointer; font: 600 11.5px var(--inkly-font); white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 5px; border: 0; background: none;
+    color: var(--inkly-muted); border-radius: 7px; padding: 5px 8px; cursor: pointer;
+    font: 600 11.5px var(--inkly-font); white-space: nowrap;
   }
-  .inkly-ai__mini:hover { border-color: var(--inkly-accent); color: var(--inkly-accent); }
+  .inkly-ai__mini:hover { background: var(--inkly-ghost-bg); color: var(--inkly-text); }
 </style>
