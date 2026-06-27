@@ -16,9 +16,13 @@ export interface ReviewState {
   oldText: string;
   replacement: string;
   after: string;
+  /** All candidate replacements (Harper often returns several, e.g. would/wood). */
+  replacements: string[];
   /** No replacement available → Accept is disabled (e.g. analysis-only flags). */
   canAccept: boolean;
   onAccept: (() => void) | null;
+  /** Apply a specific candidate (when more than one is offered). */
+  onPick: ((replacement: string) => void) | null;
   onDismiss: (() => void) | null;
   onPrev: (() => void) | null;
   onNext: (() => void) | null;
@@ -37,8 +41,10 @@ export const reviewState = $state<ReviewState>({
   oldText: '',
   replacement: '',
   after: '',
+  replacements: [],
   canAccept: false,
   onAccept: null,
+  onPick: null,
   onDismiss: null,
   onPrev: null,
   onNext: null,

@@ -229,6 +229,7 @@ export default defineContentScript({
       reviewState.after = full.slice(s.offset + s.length, s.offset + s.length + CTX);
       reviewState.category = categoryLabel(lang, s.category);
       reviewState.title = ruleExplanation(lang, s.ruleId, s.message) ?? '';
+      reviewState.replacements = s.replacements;
       reviewState.canAccept = s.replacements.length > 0;
       reviewState.index = reviewIndex + 1;
       reviewState.total = current.length;
@@ -241,7 +242,8 @@ export default defineContentScript({
       reviewIndex = 0;
       hideCard();
       hideAIPanel();
-      reviewState.onAccept = () => void reviewAccept();
+      reviewState.onAccept = () => { const s = current[reviewIndex]; if (s) void reviewApply(s.replacements[0] ?? ''); };
+      reviewState.onPick = (rep) => void reviewApply(rep);
       reviewState.onDismiss = reviewDismiss;
       reviewState.onPrev = () => { reviewIndex = (reviewIndex - 1 + current.length) % current.length; renderReviewItem(); };
       reviewState.onNext = () => { reviewIndex = (reviewIndex + 1) % current.length; renderReviewItem(); };
@@ -253,6 +255,7 @@ export default defineContentScript({
     function hideReview() {
       reviewState.visible = false;
       reviewState.onAccept = null;
+      reviewState.onPick = null;
       reviewState.onDismiss = null;
       reviewState.onPrev = null;
       reviewState.onNext = null;
@@ -260,10 +263,10 @@ export default defineContentScript({
       renderer.clearHighlight();
     }
 
-    async function reviewAccept() {
+    async function reviewApply(rep: string) {
       const s = current[reviewIndex];
-      if (!s || !activeField || s.replacements.length === 0) return;
-      applyReplacement(activeField, activeType, s, s.replacements[0]);
+      if (!s || !activeField) return;
+      applyReplacement(activeField, activeType, s, rep);
       // Text changed → re-check for valid offsets; runCheckNow re-renders the panel.
       await runCheckNow();
       if (current.length === 0) hideReview();

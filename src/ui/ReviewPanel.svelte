@@ -18,8 +18,16 @@
       <span class="inkly-rv__ctx">{reviewState.before}</span>{#if reviewState.oldText}<del>{reviewState.oldText}</del>{/if}{#if reviewState.replacement}<strong>{reviewState.replacement}</strong>{/if}<span class="inkly-rv__ctx">{reviewState.after}</span>
     </p>
 
+    {#if reviewState.replacements.length > 1}
+      <div class="inkly-rv__choices" role="group" aria-label="Replacement options">
+        {#each reviewState.replacements as rep}
+          <button class="inkly-rv__choice" onclick={() => reviewState.onPick?.(rep)}>{rep === '' ? '(remove)' : rep}</button>
+        {/each}
+      </div>
+    {/if}
+
     <div class="inkly-rv__foot">
-      {#if reviewState.canAccept}
+      {#if reviewState.canAccept && reviewState.replacements.length <= 1}
         <button class="inkly-rv__accept" onclick={() => reviewState.onAccept?.()}>Accept</button>
       {/if}
       <button class="inkly-rv__dismiss" onclick={() => reviewState.onDismiss?.()}>Dismiss</button>
@@ -69,6 +77,13 @@
   .inkly-rv__ctx { color: var(--inkly-muted, #6a6c84); }
   .inkly-rv__preview del { color: var(--inkly-sev-correct, #e5484d); text-decoration: line-through; }
   .inkly-rv__preview strong { color: var(--inkly-text, #15172b); font-weight: 700; }
+  .inkly-rv__choices { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+  .inkly-rv__choice {
+    border: 1px solid transparent; border-radius: 7px;
+    background: var(--inkly-accent-tint); color: var(--inkly-accent);
+    padding: 5px 12px; cursor: pointer; font: 600 13px var(--inkly-font, system-ui, sans-serif);
+  }
+  .inkly-rv__choice:hover { background: var(--inkly-accent); color: var(--inkly-accent-contrast); }
   .inkly-rv__foot { display: flex; align-items: center; gap: 8px; }
   .inkly-rv__accept {
     border: 1px solid var(--inkly-accent, #6366f1); background: var(--inkly-accent, #6366f1);
