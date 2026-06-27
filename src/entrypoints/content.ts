@@ -27,6 +27,10 @@ import AISelectionPanel from '../ui/AISelectionPanel.svelte';
 import { aiPanelState } from '../ui/ai-panel-state.svelte';
 import FieldButton from '../ui/FieldButton.svelte';
 import { fieldButtonState } from '../ui/field-button-state.svelte';
+import ReviewPanel from '../ui/ReviewPanel.svelte';
+import { reviewState } from '../ui/review-state.svelte';
+import { categoryLabel } from '../core/i18n';
+import { ruleExplanation } from '../core/rule-descriptions';
 import { getSelectionInfo, type SelectionInfo } from '../core/selection';
 import { expandToSentence, isSingleWord } from '../core/sentence';
 import { textareaSpanRects } from '../ui/textarea-rects';
@@ -91,6 +95,7 @@ export default defineContentScript({
         mount(SuggestionCard, { target: uiContainer });
         mount(AISelectionPanel, { target: uiContainer });
         mount(FieldButton, { target: uiContainer });
+        mount(ReviewPanel, { target: uiContainer });
         return new OverlayRenderer(layer);
       },
     });
@@ -110,7 +115,7 @@ export default defineContentScript({
       return `${s.ruleId}:${s.offset}:${s.length}:${s.replacements.join('|')}`;
     }
 
-    const runCheck = debounce(async () => {
+    async function runCheckNow() {
       const field = activeField;
       const type = activeType;
       if (!enabled || !field) return;
@@ -125,7 +130,9 @@ export default defineContentScript({
       );
       if (cardState.visible) hideCard();
       drawUnderlines();
-    }, 400);
+      if (reviewState.visible) renderReviewItem();
+    }
+    const runCheck = debounce(runCheckNow, 400);
 
     function drawUnderlines() {
       if (!activeField) {
@@ -184,8 +191,82 @@ export default defineContentScript({
         (acc, s) => (SEVERITY_RANK[s.severity] > SEVERITY_RANK[acc] ? s.severity : acc),
         'suggestion' as Suggestion['severity'],
       );
-      fieldButtonState.onOpen = () => { if (current[0]) showCardFor(0); };
+      fieldButtonState.onOpen = openReview;
       fieldButtonState.visible = true;
+    }
+
+    // ---- Review panel: step through the field's issues with Accept/Dismiss + prev/next ----
+    let reviewIndex = 0;
+
+    function positionReview() {
+      const W = 320, H_EST = 170, GAP = 8;
+      let left = fieldButtonState.left + 28 - W; // right edge aligns with the button
+      let top = fieldButtonState.top - H_EST - GAP; // above the button…
+      if (top < 8) top = fieldButtonState.top + 28 + GAP; // …or below if no room
+      if (left < 8) left = 8;
+      reviewState.left = left;
+      reviewState.top = top;
+    }
+
+    function renderReviewItem() {
+      if (!activeField || current.length === 0) { hideReview(); return; }
+      reviewIndex = Math.max(0, Math.min(reviewIndex, current.length - 1));
+      const s = current[reviewIndex];
+      const full = getFieldText(activeField, activeType);
+      const CTX = 28;
+      reviewState.before = full.slice(Math.max(0, s.offset - CTX), s.offset);
+      reviewState.oldText = full.slice(s.offset, s.offset + s.length);
+      reviewState.replacement = s.replacements[0] ?? '';
+      reviewState.after = full.slice(s.offset + s.length, s.offset + s.length + CTX);
+      reviewState.category = categoryLabel(lang, s.category);
+      reviewState.title = ruleExplanation(lang, s.ruleId, s.message) ?? '';
+      reviewState.canAccept = s.replacements.length > 0;
+      reviewState.index = reviewIndex + 1;
+      reviewState.total = current.length;
+      positionReview();
+    }
+
+    function openReview() {
+      if (!activeField || current.length === 0) return;
+      reviewIndex = 0;
+      hideCard();
+      hideAIPanel();
+      reviewState.onAccept = () => void reviewAccept();
+      reviewState.onDismiss = reviewDismiss;
+      reviewState.onPrev = () => { reviewIndex = (reviewIndex - 1 + current.length) % current.length; renderReviewItem(); };
+      reviewState.onNext = () => { reviewIndex = (reviewIndex + 1) % current.length; renderReviewItem(); };
+      reviewState.onClose = hideReview;
+      renderReviewItem();
+      reviewState.visible = true;
+    }
+
+    function hideReview() {
+      reviewState.visible = false;
+      reviewState.onAccept = null;
+      reviewState.onDismiss = null;
+      reviewState.onPrev = null;
+      reviewState.onNext = null;
+      reviewState.onClose = null;
+    }
+
+    async function reviewAccept() {
+      const s = current[reviewIndex];
+      if (!s || !activeField || s.replacements.length === 0) return;
+      applyReplacement(activeField, activeType, s, s.replacements[0]);
+      // Text changed → re-check for valid offsets; runCheckNow re-renders the panel.
+      await runCheckNow();
+      if (current.length === 0) hideReview();
+      else renderReviewItem();
+    }
+
+    function reviewDismiss() {
+      const s = current[reviewIndex];
+      if (!s) return;
+      dismissed.add(suggestionKey(s));
+      current = current.filter((c) => suggestionKey(c) !== suggestionKey(s));
+      drawUnderlines();
+      if (current.length === 0) hideReview();
+      else renderReviewItem();
     }
 
     let rafId = 0;
@@ -193,6 +274,7 @@ export default defineContentScript({
       // M2b: hide the card on scroll/resize rather than repositioning it.
       // Repositioning against moving anchors is M4; hiding is the accepted fallback.
       if (cardState.visible) hideCard();
+      if (reviewState.visible) positionReview();
       if (rafId) return;
       rafId = requestAnimationFrame(() => { rafId = 0; drawUnderlines(); });
     }
@@ -444,6 +526,7 @@ export default defineContentScript({
         hitRects = [];
         renderer.clear();
         fieldButtonState.visible = false;
+        hideReview();
       } else {
         // Re-enabled or settings changed (categories/dictionary).
         // While disabled, focusin was gated, so a field that was
@@ -514,6 +597,7 @@ export default defineContentScript({
           hitRects = [];
           renderer.clear();
           fieldButtonState.visible = false;
+          hideReview();
         }
         activeField = t;
         activeType = classifyField(t);
