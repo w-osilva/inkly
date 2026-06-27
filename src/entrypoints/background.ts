@@ -24,7 +24,7 @@ export default defineBackground(() => {
     { id: 'inkly-rewrite', title: 'Rewrite' },
     { id: 'inkly-translate', title: 'Translate' },
     { id: 'inkly-synonyms', title: 'Synonyms' },
-    { id: 'inkly-analyze', title: 'Analyze' },
+    { id: 'inkly-improve', title: 'Improve' },
   ];
 
   function registerMenus() {
@@ -40,7 +40,7 @@ export default defineBackground(() => {
 
   browser.contextMenus.onClicked.addListener((info, tab) => {
     const cap = String(info.menuItemId).replace('inkly-', '');
-    if (!tab?.id || !['rewrite', 'translate', 'synonyms', 'analyze'].includes(cap)) return;
+    if (!tab?.id || !['rewrite', 'translate', 'synonyms', 'improve'].includes(cap)) return;
     void browser.tabs.sendMessage(tab.id, { type: 'inkly:trigger', capability: cap }).catch(() => {});
   });
 

@@ -19,12 +19,16 @@ const server = createServer((req, res) => {
       const tag = toneMatch ? `[${toneMatch[1].toLowerCase()}]` : '';
       const translateMatch = systemText.match(/translate the user'?s text into (\w+)/i);
       const isSynonyms = /thesaurus|synonyms/i.test(systemText);
-      const isAnalyze = /writing coach|analyze/i.test(systemText);
+      const isImprove = /careful writing assistant|JSON array of objects/i.test(systemText);
+      const isAnalyze = /writing coach/i.test(systemText);
       let content;
       if (translateMatch) {
         content = `TRANSLATED[${translateMatch[1].toLowerCase()}]: ${userText}`;
       } else if (isSynonyms) {
         content = 'alpha, beta, gamma';
+      } else if (isImprove) {
+        // Return one applicable edit whose "original" is an exact substring of the input.
+        content = JSON.stringify([{ original: userText, improved: `IMPROVED: ${userText}`, reason: 'clarity' }]);
       } else if (isAnalyze) {
         content = `ANALYSIS: ${userText} looks fine.`;
       } else {

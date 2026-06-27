@@ -33,6 +33,7 @@ import { categoryLabel } from '../core/i18n';
 import { ruleExplanation } from '../core/rule-descriptions';
 import { getSelectionInfo, type SelectionInfo } from '../core/selection';
 import { expandToSentence, isSingleWord } from '../core/sentence';
+import { parseImprovements } from '../core/ai/parse-improvements';
 import { textareaSpanRects } from '../ui/textarea-rects';
 
 const provider = new HarperProvider();
@@ -397,6 +398,8 @@ export default defineContentScript({
       aiPanelState.onSetTone = null;
       aiPanelState.onSetLength = null;
       aiPanelState.onClose = null;
+      aiPanelState.improvements = [];
+      aiPanelState.onApplyImprovement = null;
       aiSelection = null;
       activeStreamId = null;
     }
@@ -452,7 +455,7 @@ export default defineContentScript({
 
     function triggerAI(capability: AICapability | 'open') {
       if (!enabled || !activeField) return;
-      if (capability !== 'open' && !['rewrite', 'translate', 'synonyms', 'analyze'].includes(capability)) return;
+      if (capability !== 'open' && !['rewrite', 'translate', 'synonyms', 'improve'].includes(capability)) return;
       const info = getSelectionInfo(activeField, activeType);
       if (!info) return; // need a non-collapsed selection in the focused field
       aiSelection = info;
@@ -490,7 +493,7 @@ export default defineContentScript({
       // single selected word still gets a meaningful rewrite/analysis). Translate &
       // Synonyms act on the literal selection.
       let aStart = sel.start, aEnd = sel.end, aText = sel.text;
-      if (capability === 'rewrite' || capability === 'analyze') {
+      if (capability === 'rewrite' || capability === 'improve') {
         const full = getFieldText(field, type);
         const span = expandToSentence(full, sel.start, sel.end);
         aStart = span.start; aEnd = span.end; aText = full.slice(aStart, aEnd);
@@ -499,6 +502,8 @@ export default defineContentScript({
       if (capability === 'rewrite') {
         if (aiPanelState.tone) options.tone = aiPanelState.tone;
         if (aiPanelState.length && aiPanelState.length !== 'asis') options.length = aiPanelState.length;
+      } else if (capability === 'improve') {
+        if (aiPanelState.tone) options.tone = aiPanelState.tone;
       } else if (capability === 'translate') {
         options.targetLang = lang === 'pt-br' ? 'Portuguese' : 'English';
       }
@@ -507,6 +512,28 @@ export default defineContentScript({
       if (gen !== rewriteSeq || aiPanelState.phase !== 'loading') return;
       activeStreamId = null;
       if (res.ok) {
+        if (capability === 'improve') {
+          // Parse the model's edit list into applicable items; each Apply finds its
+          // `original` in the live text (offsets may have shifted) and replaces it.
+          const imps = parseImprovements(res.text);
+          const toState = () => imps.map((x) => ({ from: x.original, to: x.improved, reason: x.reason }));
+          aiPanelState.improvements = toState();
+          aiPanelState.onApplyImprovement = (i: number) => {
+            const im = imps[i];
+            if (im && activeField) {
+              const full = getFieldText(activeField, activeType);
+              const off = full.indexOf(im.original);
+              if (off !== -1) applyRange(activeField, activeType, off, off + im.original.length, im.improved);
+            }
+            imps.splice(i, 1);
+            aiPanelState.improvements = toState();
+            if (activeField) runCheck();
+            if (imps.length === 0) hideAIPanel();
+          };
+          aiPanelState.onDismiss = () => hideAIPanel();
+          aiPanelState.phase = 'result';
+          return;
+        }
         aiPanelState.result = res.text;
         aiPanelState.phase = 'result';
         aiPanelState.onCopy = () => { void navigator.clipboard?.writeText(res.text); };

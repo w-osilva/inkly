@@ -11,6 +11,9 @@ export interface AIPanelState {
   error: string;
   onAction: ((capability: AICapability) => void) | null;
   onPickSynonym: ((word: string) => void) | null;
+  /** 'improve' result: applicable edits (old → new + reason), each applied by index. */
+  improvements: Array<{ from: string; to: string; reason: string }>;
+  onApplyImprovement: ((index: number) => void) | null;
   capability: AICapability;
   /** 'word' = a single token selected (Synonyms-first); 'phrase' = multi-word (Rewrite-first). */
   selectionKind: 'word' | 'phrase';
@@ -35,6 +38,8 @@ export const aiPanelState = $state<AIPanelState>({
   error: '',
   onAction: null,
   onPickSynonym: null,
+  improvements: [],
+  onApplyImprovement: null,
   capability: 'rewrite',
   selectionKind: 'phrase',
   onApply: null,

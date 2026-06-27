@@ -42,12 +42,14 @@ export function buildMessages(req: AIRequest): ChatMessage[] {
   }
   if (req.capability === 'improve') {
     const tone = req.options?.tone;
-    const toneClause = tone ? ` so it sounds more ${tone}` : ' so it reads more clearly and confidently';
+    const toneClause = tone ? ` Prefer phrasing that sounds ${tone}.` : '';
     const system =
-      `You are a writing improvement assistant. Find spans of the user's text that could be rewritten${toneClause}.` +
+      "You are a careful writing assistant. Read the user's text in context and find spans to fix or improve:" +
+      ' grammar, subject/verb and article agreement, wrong word choice, awkward or unclear phrasing.' +
+      toneClause +
       ' Return ONLY a JSON array of objects {"original","improved","reason"}, where "original" is an EXACT' +
-      ' substring of the input and "improved" is the suggested replacement; "reason" is a short phrase.' +
-      ' Suggest at most 5, prefer the most impactful. If nothing should change, return [].';
+      ' substring of the input and "improved" is the corrected replacement; "reason" is a short phrase' +
+      ' (e.g. "article agreement"). Suggest at most 6, most important first. If nothing should change, return [].';
     return [{ role: 'system', content: system }, { role: 'user', content: req.text }];
   }
   if (req.capability === 'analyze') {

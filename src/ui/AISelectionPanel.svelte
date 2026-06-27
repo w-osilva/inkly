@@ -6,36 +6,20 @@
     rewrite: 'Rewriting…',
     translate: 'Translating…',
     synonyms: 'Finding synonyms…',
-    analyze: 'Analyzing…',
+    improve: 'Checking…',
   };
-
-  const TONES = [
-    { id: '', label: 'Neutral' },
-    { id: 'formal', label: 'Formal' },
-    { id: 'casual', label: 'Casual' },
-    { id: 'confident', label: 'Confident' },
-    { id: 'friendly', label: 'Friendly' },
-    { id: 'professional', label: 'Professional' },
-    { id: 'technical', label: 'Technical' },
-    { id: 'concise', label: 'Concise' },
-  ];
-  const LENGTHS = [
-    { id: 'shorter', label: 'Shorter' },
-    { id: 'asis', label: 'As is' },
-    { id: 'longer', label: 'Longer' },
-  ];
 
   // Actions reorder by selection kind: a single word leads with Synonyms; a phrase/
   // sentence leads with Rewrite. The primary (first) button is the accent-filled one.
-  type Act = { cap: 'rewrite' | 'translate' | 'synonyms' | 'analyze'; icon: string; label: string };
+  type Act = { cap: 'rewrite' | 'translate' | 'synonyms' | 'improve'; icon: string; label: string };
   const TRANSLATE: Act = { cap: 'translate', icon: '🌐', label: 'Translate' };
   const SYNONYMS: Act = { cap: 'synonyms', icon: '⇄', label: 'Synonyms' };
-  const ANALYZE: Act = { cap: 'analyze', icon: '🔍', label: 'Analyze' };
+  const IMPROVE: Act = { cap: 'improve', icon: '✨', label: 'Improve' };
   const REWRITE: Act = { cap: 'rewrite', icon: '✦', label: 'Rewrite' };
   // Tab order leads with the most relevant action for the selection kind.
   const ACTIONS: Record<'word' | 'phrase', Act[]> = {
-    word: [SYNONYMS, TRANSLATE, ANALYZE, REWRITE],
-    phrase: [REWRITE, TRANSLATE, SYNONYMS, ANALYZE],
+    word: [SYNONYMS, TRANSLATE, IMPROVE, REWRITE],
+    phrase: [REWRITE, IMPROVE, TRANSLATE, SYNONYMS],
   };
 </script>
 
@@ -82,35 +66,30 @@
           {/each}
         </div>
         <div class="inkly-ai__subactions">
+          <button class="inkly-ai__mini" onclick={() => aiPanelState.onAction?.('improve')}>✨ Improve</button>
           <button class="inkly-ai__mini" onclick={() => aiPanelState.onAction?.('translate')}>🌐 Translate</button>
-          <button class="inkly-ai__mini" onclick={() => aiPanelState.onAction?.('analyze')}>🔍 Analyze</button>
-          <button class="inkly-ai__mini" onclick={() => aiPanelState.onAction?.('rewrite')}>✨ Rewrite sentence</button>
+          <button class="inkly-ai__mini" onclick={() => aiPanelState.onAction?.('rewrite')}>✦ Rewrite</button>
         </div>
+        <div class="inkly-ai__row">
+          <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onDismiss?.()}>Dismiss</button>
+        </div>
+      {:else if aiPanelState.capability === 'improve'}
+        {#if aiPanelState.improvements.length === 0}
+          <p class="inkly-ai__result">Looks good — no changes to suggest.</p>
+        {:else}
+          {#each aiPanelState.improvements as imp, i}
+            <div class="inkly-ai__imp">
+              <p class="inkly-ai__imp-text"><del>{imp.from}</del> <strong>{imp.to}</strong></p>
+              {#if imp.reason}<p class="inkly-ai__imp-reason">{imp.reason}</p>{/if}
+              <button class="inkly-ai__chip" onclick={() => aiPanelState.onApplyImprovement?.(i)}>Apply</button>
+            </div>
+          {/each}
+        {/if}
         <div class="inkly-ai__row">
           <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onDismiss?.()}>Dismiss</button>
         </div>
       {:else}
         <p class="inkly-ai__result">{aiPanelState.result}</p>
-        {#if aiPanelState.capability === 'rewrite'}
-          <div class="inkly-ai__chips" role="group" aria-label="Tone">
-            {#each TONES as t}
-              <button
-                class="inkly-ai__chip"
-                class:inkly-ai__chip--active={aiPanelState.tone === t.id}
-                onclick={() => aiPanelState.onSetTone?.(t.id)}
-              >{t.label}</button>
-            {/each}
-          </div>
-          <div class="inkly-ai__chips" role="group" aria-label="Length">
-            {#each LENGTHS as l}
-              <button
-                class="inkly-ai__chip"
-                class:inkly-ai__chip--active={aiPanelState.length === l.id}
-                onclick={() => aiPanelState.onSetLength?.(l.id)}
-              >{l.label}</button>
-            {/each}
-          </div>
-        {/if}
         <div class="inkly-ai__row">
           {#if aiPanelState.capability === 'rewrite' || aiPanelState.capability === 'translate'}
             <button class="inkly-ai__btn" onclick={() => aiPanelState.onApply?.()}>Apply</button>
@@ -154,6 +133,12 @@
   .inkly-ai__x:hover { color: var(--inkly-text); }
 
   .inkly-ai__result { margin: 2px; white-space: pre-wrap; color: var(--inkly-text); }
+  .inkly-ai__imp { padding: 7px 2px; border-bottom: 1px solid var(--inkly-border); }
+  .inkly-ai__imp:last-of-type { border-bottom: 0; margin-bottom: 4px; }
+  .inkly-ai__imp-text { margin: 0 0 3px; line-height: 1.45; }
+  .inkly-ai__imp-text del { color: var(--inkly-sev-correct); text-decoration: line-through; }
+  .inkly-ai__imp-text strong { color: var(--inkly-accent); font-weight: 700; }
+  .inkly-ai__imp-reason { margin: 0 0 7px; font-size: 11px; color: var(--inkly-muted); }
   .inkly-ai__row { display: flex; gap: 6px; }
   .inkly-ai__loading, .inkly-ai__error { display: block; padding: 2px; }
   .inkly-ai__loading { color: var(--inkly-muted); }
@@ -197,10 +182,6 @@
     padding: 3px 11px; cursor: pointer; font: 600 11.5px var(--inkly-font);
   }
   .inkly-ai__chip:hover { border-color: var(--inkly-accent); color: var(--inkly-accent); }
-  .inkly-ai__chip--active {
-    background: var(--inkly-accent); color: var(--inkly-accent-contrast);
-    border-color: var(--inkly-accent);
-  }
   /* Secondary actions (in the synonyms result): light text buttons, same family. */
   .inkly-ai__subactions { display: flex; flex-wrap: wrap; gap: 2px; margin: 2px 0 9px; }
   .inkly-ai__mini {
