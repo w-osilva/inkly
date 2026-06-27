@@ -25,7 +25,10 @@ const server = createServer((req, res) => {
       if (translateMatch) {
         content = `TRANSLATED[${translateMatch[1].toLowerCase()}]: ${userText}`;
       } else if (isSynonyms) {
-        content = 'alpha, beta, gamma';
+        content = JSON.stringify([
+          { sense: 'first sense', synonyms: ['alpha', 'beta'] },
+          { sense: 'second sense', synonyms: ['gamma'] },
+        ]);
       } else if (isImprove) {
         // Return one applicable edit whose "original" is an exact substring of the input.
         content = JSON.stringify([{ original: userText, improved: `IMPROVED: ${userText}`, reason: 'clarity' }]);
