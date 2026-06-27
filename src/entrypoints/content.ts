@@ -412,7 +412,7 @@ export default defineContentScript({
       return { left: r.left, top: r.top, width: r.width, height: r.height };
     }
 
-    function showAIActions(autoRun = false) {
+    function showAIActions() {
       if (!activeField) return;
       const info = getSelectionInfo(activeField, activeType);
       if (!info) {
@@ -433,11 +433,8 @@ export default defineContentScript({
       const kind = isSingleWord(info.text) ? 'word' : 'phrase';
       aiPanelState.selectionKind = kind;
       aiPanelState.capability = kind === 'word' ? 'synonyms' : 'rewrite';
+      aiPanelState.phase = 'actions';
       aiPanelState.onAction = (cap) => void doAction(cap);
-      // On a deliberate mouse selection of a single word, jump straight to synonyms
-      // (no extra click); other cases show the action buttons.
-      if (kind === 'word' && autoRun) void doAction('synonyms');
-      else aiPanelState.phase = 'actions';
     }
 
     function triggerAI(capability: AICapability | 'open') {
@@ -594,16 +591,14 @@ export default defineContentScript({
     ctx.addEventListener(document, 'mousemove', onMouseMove);
 
     let selScheduled = false;
-    function onSelectionMaybe(autoRun: boolean) {
+    function onSelectionMaybe() {
       if (!enabled) return;
       if (selScheduled) return;
       selScheduled = true;
-      requestAnimationFrame(() => { selScheduled = false; showAIActions(autoRun); });
+      requestAnimationFrame(() => { selScheduled = false; showAIActions(); });
     }
-    // selectionchange just shows the action buttons; a mouseup (deliberate end of a
-    // selection) auto-runs synonyms for a single word.
-    ctx.addEventListener(document, 'selectionchange', () => onSelectionMaybe(false));
-    ctx.addEventListener(document, 'mouseup', () => onSelectionMaybe(true));
+    ctx.addEventListener(document, 'selectionchange', onSelectionMaybe);
+    ctx.addEventListener(document, 'mouseup', onSelectionMaybe);
 
     ctx.addEventListener(document, 'focusin', (e) => {
       const t = e.target as Element;

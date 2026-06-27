@@ -27,6 +27,10 @@ export interface ReviewState {
   onPrev: (() => void) | null;
   onNext: (() => void) | null;
   onClose: (() => void) | null;
+  /** On-demand AI tone improvements. */
+  improving: boolean;
+  note: string;
+  onImprove: (() => void) | null;
 }
 
 export const reviewState = $state<ReviewState>({
@@ -49,4 +53,7 @@ export const reviewState = $state<ReviewState>({
   onPrev: null,
   onNext: null,
   onClose: null,
+  improving: false,
+  note: '',
+  onImprove: null,
 });

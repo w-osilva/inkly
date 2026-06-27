@@ -71,6 +71,8 @@
     { id: 'casual', key: 'tone.casual' },
     { id: 'confident', key: 'tone.confident' },
     { id: 'friendly', key: 'tone.friendly' },
+    { id: 'professional', key: 'tone.professional' },
+    { id: 'technical', key: 'tone.technical' },
     { id: 'concise', key: 'tone.concise' },
   ];
 </script>

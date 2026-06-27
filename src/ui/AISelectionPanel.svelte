@@ -15,6 +15,8 @@
     { id: 'casual', label: 'Casual' },
     { id: 'confident', label: 'Confident' },
     { id: 'friendly', label: 'Friendly' },
+    { id: 'professional', label: 'Professional' },
+    { id: 'technical', label: 'Technical' },
     { id: 'concise', label: 'Concise' },
   ];
   const LENGTHS = [
@@ -32,7 +34,7 @@
       rest: [
         { cap: 'translate', label: '🌐 Translate' },
         { cap: 'analyze', label: '🔍 Analyze' },
-        { cap: 'rewrite', label: '✨ Rewrite sentence' },
+        { cap: 'rewrite', label: '✨ Rewrite' },
       ],
     },
     phrase: {
@@ -130,49 +132,48 @@
 
 <style>
   .inkly-ai {
-    position: fixed; z-index: 2147483647; max-width: 320px;
+    position: fixed; z-index: 2147483647; width: 240px; max-width: calc(100vw - 24px);
     background: var(--inkly-bg); color: var(--inkly-text);
-    border: 1px solid var(--inkly-border); border-radius: var(--inkly-radius);
-    box-shadow: var(--inkly-shadow); padding: 12px 14px;
-    font: 13px/1.45 var(--inkly-font); pointer-events: auto;
+    border: 1px solid var(--inkly-border); border-radius: 10px;
+    box-shadow: var(--inkly-shadow); padding: 8px;
+    font: 12.5px/1.4 var(--inkly-font); pointer-events: auto;
   }
 
-  /* Header row: placeholder mark + brand label + hotkey hint. */
+  /* Header row: mark + brand label + hotkey hint. */
   .inkly-ai__head {
-    display: flex; align-items: center; gap: 7px; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px; margin: 1px 2px 7px;
   }
   .inkly-ai__mark {
-    flex: none; width: 16px; height: 16px; border-radius: 5px;
+    flex: none; width: 13px; height: 13px; border-radius: 4px;
     background: var(--inkly-accent);
   }
   .inkly-ai__brand {
-    font-weight: 700; font-size: 13px; color: var(--inkly-text); letter-spacing: 0.01em;
+    font-weight: 700; font-size: 11.5px; color: var(--inkly-muted); letter-spacing: 0.02em;
   }
   .inkly-ai__kbd {
-    margin-left: auto; font-size: 11px; color: var(--inkly-muted);
-    border: 1px solid var(--inkly-border); border-radius: 5px; padding: 1px 5px;
+    margin-left: auto; font-size: 10px; color: var(--inkly-muted);
+    border: 1px solid var(--inkly-border); border-radius: 4px; padding: 0 4px;
   }
 
-  .inkly-ai__result { margin: 0 0 10px; white-space: pre-wrap; color: var(--inkly-text); }
-  .inkly-ai__row { display: flex; gap: 8px; }
-  .inkly-ai__loading, .inkly-ai__error { display: block; }
+  .inkly-ai__result { margin: 2px; white-space: pre-wrap; color: var(--inkly-text); }
+  .inkly-ai__row { display: flex; gap: 6px; }
+  .inkly-ai__loading, .inkly-ai__error { display: block; padding: 2px; }
   .inkly-ai__loading { color: var(--inkly-muted); }
   .inkly-ai__error { color: var(--inkly-sev-correct); margin: 0 0 8px; }
 
-  /* Actions: fixed 2×2 grid, no wrapping. Rewrite spans the full top row. */
+  /* Actions: tidy 2×2 grid of equal, compact buttons. */
   .inkly-ai__actions {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
   }
   .inkly-ai__btn {
     display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
-    justify-content: flex-start;
+    justify-content: center;
     border: 1px solid var(--inkly-accent); background: var(--inkly-accent);
-    color: var(--inkly-accent-contrast); border-radius: var(--inkly-radius-sm);
-    padding: 9px 11px; cursor: pointer; font: inherit; font-weight: 600;
+    color: var(--inkly-accent-contrast); border-radius: 8px;
+    padding: 7px 8px; cursor: pointer; font: inherit; font-weight: 600;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
   }
   .inkly-ai__btn:hover { background: var(--inkly-accent-press); border-color: var(--inkly-accent-press); }
-  .inkly-ai__actions .inkly-ai__btn { grid-column: 1 / -1; justify-content: center; }
-  .inkly-ai__actions .inkly-ai__btn--ghost { grid-column: auto; }
   .inkly-ai__btn--ghost {
     background: var(--inkly-ghost-bg); color: var(--inkly-ghost-text);
     border: 1px solid var(--inkly-ghost-border);
@@ -181,27 +182,29 @@
     background: var(--inkly-ghost-bg);
     border-color: var(--inkly-accent); color: var(--inkly-accent);
   }
+  /* In the result footer the buttons sit in a flex row, not the grid. */
+  .inkly-ai__row .inkly-ai__btn { flex: 1; }
 
   /* Chips: horizontal scroller so tone/length never wrap raggedly. */
   .inkly-ai__chips {
-    display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 8px;
+    display: flex; gap: 5px; overflow-x: auto; padding-bottom: 2px; margin: 2px 0 8px;
   }
   .inkly-ai__chip {
     flex: none; white-space: nowrap;
     border: 1px solid var(--inkly-ghost-border); background: var(--inkly-ghost-bg);
     color: var(--inkly-ghost-text); border-radius: 999px;
-    padding: 3px 11px; cursor: pointer; font: inherit; font-size: 12px;
+    padding: 3px 10px; cursor: pointer; font: inherit; font-size: 11.5px;
   }
   .inkly-ai__chip:hover { border-color: var(--inkly-accent); color: var(--inkly-accent); }
   .inkly-ai__chip--active {
     background: var(--inkly-accent); color: var(--inkly-accent-contrast);
     border-color: var(--inkly-accent);
   }
-  .inkly-ai__subactions { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+  .inkly-ai__subactions { display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 8px; }
   .inkly-ai__mini {
     border: 1px solid var(--inkly-ghost-border); background: var(--inkly-ghost-bg);
-    color: var(--inkly-ghost-text); border-radius: var(--inkly-radius-sm);
-    padding: 5px 9px; cursor: pointer; font: 600 12px var(--inkly-font); white-space: nowrap;
+    color: var(--inkly-ghost-text); border-radius: 7px;
+    padding: 4px 8px; cursor: pointer; font: 600 11.5px var(--inkly-font); white-space: nowrap;
   }
   .inkly-ai__mini:hover { border-color: var(--inkly-accent); color: var(--inkly-accent); }
 </style>
