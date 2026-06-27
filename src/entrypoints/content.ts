@@ -152,6 +152,12 @@ export default defineContentScript({
       updateFieldButton();
     }
 
+    // Turn off the browser's native spellcheck on a field we track, so its red
+    // squiggle doesn't double up with inkly's own underlines (Grammarly does this).
+    function suppressNativeSpellcheck(el: HTMLElement) {
+      try { el.setAttribute('spellcheck', 'false'); } catch { /* ignore */ }
+    }
+
     // Severity priority for the field-button badge color (most severe wins).
     const SEVERITY_RANK: Record<Suggestion['severity'], number> = { correctness: 3, clarity: 2, suggestion: 1 };
 
@@ -191,7 +197,10 @@ export default defineContentScript({
     }
 
     const HOVER_DELAY = 150;
-    const HIDE_GRACE = 120;
+    // Generous grace so moving the mouse from the underline across the gap to the
+    // card doesn't dismiss it (Grammarly waits ~1s). The card's own mouseenter sets
+    // cardState.hovered, which cancels the hide entirely once reached.
+    const HIDE_GRACE = 700;
     let hoverTimer = 0, hideTimer = 0, shownIndex = -1, pendingHoverIndex = -1;
     let mouseMoveScheduled = false, lastX = 0, lastY = 0;
 
@@ -426,6 +435,7 @@ export default defineContentScript({
           if (focused instanceof HTMLElement && isEditableField(focused)) {
             activeField = focused;
             activeType = classifyField(focused);
+            suppressNativeSpellcheck(focused);
           }
         }
         if (activeField) runCheck();
@@ -488,6 +498,7 @@ export default defineContentScript({
         }
         activeField = t;
         activeType = classifyField(t);
+        suppressNativeSpellcheck(t);
         runCheck();
       }
     });

@@ -1,11 +1,11 @@
 import { Severity } from '../core/types';
 import { UnderlineStyle } from './underline-layout';
 
-/** Visual treatment per severity (color + dash) — the Grammarly-style distinction. */
-const SEVERITY_BACKGROUND: Record<Severity, string> = {
-  correctness: 'repeating-linear-gradient(90deg,#e23b3b 0 4px,#e23b3b 4px 4px)',
-  clarity: 'repeating-linear-gradient(90deg,#d99100 0 2px,transparent 2px 4px)',
-  suggestion: 'repeating-linear-gradient(90deg,#7b53d6 0 2px,transparent 2px 4px)',
+/** Solid underline color per severity (Inkly palette) — consistent style, distinct hue. */
+const SEVERITY_COLOR: Record<Severity, string> = {
+  correctness: '#E5484D',
+  clarity: '#E0A30C',
+  suggestion: '#6366F1',
 };
 
 /**
@@ -29,7 +29,7 @@ export class OverlayRenderer {
       node.style.width = `${s.width}px`;
       node.style.height = '2px';
       node.style.borderRadius = '1px';
-      node.style.background = SEVERITY_BACKGROUND[s.severity];
+      node.style.background = SEVERITY_COLOR[s.severity];
       node.style.pointerEvents = 'none';
       this.layer.appendChild(node);
     }
