@@ -34,7 +34,7 @@ test('a configured defaultTone is applied to the first rewrite (no chip click)',
   await editor.click(); await editor.type('hello world');
   await selectWorld(page);
   await page.locator('css=.inkly-ai__btn').filter({ hasText: 'Rewrite' }).click();
-  await expect(page.locator('css=.inkly-ai__result')).toHaveText('REWRITTEN[formal]: world', { timeout: 10_000 });
+  await expect(page.locator('css=.inkly-ai__result')).toHaveText('REWRITTEN[formal]: hello world', { timeout: 10_000 });
   // The Formal chip should be active (reflecting the default).
   await expect(page.locator('css=.inkly-ai__chip--active').filter({ hasText: 'Formal' })).toBeVisible();
 });
@@ -47,5 +47,5 @@ test('no defaultTone → neutral rewrite (no tone tag)', async ({ context }) => 
   await editor.click(); await editor.type('hello world');
   await selectWorld(page);
   await page.locator('css=.inkly-ai__btn').filter({ hasText: 'Rewrite' }).click();
-  await expect(page.locator('css=.inkly-ai__result')).toHaveText('REWRITTEN: world', { timeout: 10_000 });
+  await expect(page.locator('css=.inkly-ai__result')).toHaveText('REWRITTEN: hello world', { timeout: 10_000 });
 });

@@ -12,6 +12,8 @@ export interface AIPanelState {
   onAction: ((capability: AICapability) => void) | null;
   onPickSynonym: ((word: string) => void) | null;
   capability: AICapability;
+  /** 'word' = a single token selected (Synonyms-first); 'phrase' = multi-word (Rewrite-first). */
+  selectionKind: 'word' | 'phrase';
   onApply: (() => void) | null;
   onCopy: (() => void) | null;
   onDismiss: (() => void) | null;
@@ -32,6 +34,7 @@ export const aiPanelState = $state<AIPanelState>({
   onAction: null,
   onPickSynonym: null,
   capability: 'rewrite',
+  selectionKind: 'phrase',
   onApply: null,
   onCopy: null,
   onDismiss: null,

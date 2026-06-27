@@ -35,5 +35,5 @@ test('streaming rewrite accumulates SSE chunks into the final result', async ({ 
   await expect(result).toHaveText(/REWRITTEN/, { timeout: 10_000 });
   // The mock splits "REWRITTEN: world" into SSE chunks; accumulating them must
   // reproduce the exact text the non-streaming ai-rewrite/ai-tone specs assert.
-  await expect(result).toHaveText('REWRITTEN: world', { timeout: 10_000 });
+  await expect(result).toHaveText('REWRITTEN: hello world', { timeout: 10_000 });
 });

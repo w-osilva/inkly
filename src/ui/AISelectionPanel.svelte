@@ -22,6 +22,28 @@
     { id: 'asis', label: 'As is' },
     { id: 'longer', label: 'Longer' },
   ];
+
+  // Actions reorder by selection kind: a single word leads with Synonyms; a phrase/
+  // sentence leads with Rewrite. The primary (first) button is the accent-filled one.
+  type Act = { cap: 'rewrite' | 'translate' | 'synonyms' | 'analyze'; label: string };
+  const ACTIONS: Record<'word' | 'phrase', { primary: Act; rest: Act[] }> = {
+    word: {
+      primary: { cap: 'synonyms', label: '⇄ Synonyms' },
+      rest: [
+        { cap: 'translate', label: '🌐 Translate' },
+        { cap: 'analyze', label: '🔍 Analyze' },
+        { cap: 'rewrite', label: '✨ Rewrite sentence' },
+      ],
+    },
+    phrase: {
+      primary: { cap: 'rewrite', label: '✨ Rewrite' },
+      rest: [
+        { cap: 'translate', label: '🌐 Translate' },
+        { cap: 'synonyms', label: '⇄ Synonyms' },
+        { cap: 'analyze', label: '🔍 Analyze' },
+      ],
+    },
+  };
 </script>
 
 {#if aiPanelState.phase !== 'hidden'}
@@ -41,11 +63,12 @@
       </div>
     {/if}
     {#if aiPanelState.phase === 'actions'}
+      {@const acts = ACTIONS[aiPanelState.selectionKind]}
       <div class="inkly-ai__actions">
-        <button class="inkly-ai__btn" onclick={() => aiPanelState.onAction?.('rewrite')}>✨ Rewrite</button>
-        <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.('translate')}>🌐 Translate</button>
-        <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.('synonyms')}>🔁 Synonyms</button>
-        <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.('analyze')}>🔍 Analyze</button>
+        <button class="inkly-ai__btn" onclick={() => aiPanelState.onAction?.(acts.primary.cap)}>{acts.primary.label}</button>
+        {#each acts.rest as a}
+          <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.(a.cap)}>{a.label}</button>
+        {/each}
       </div>
     {:else if aiPanelState.phase === 'loading'}
       {#if aiPanelState.streamingText}

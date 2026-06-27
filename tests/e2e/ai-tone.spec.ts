@@ -30,8 +30,8 @@ test('changing the tone regenerates the rewrite with the tone option', async ({ 
   await selectWorld(page);
 
   await page.locator('css=.inkly-ai__btn').filter({ hasText: 'Rewrite' }).click();
-  await expect(page.locator('css=.inkly-ai__result')).toHaveText('REWRITTEN: world', { timeout: 10_000 });
+  await expect(page.locator('css=.inkly-ai__result')).toHaveText('REWRITTEN: hello world', { timeout: 10_000 });
 
   await page.locator('css=.inkly-ai__chip').filter({ hasText: 'Formal' }).click();
-  await expect(page.locator('css=.inkly-ai__result')).toHaveText('REWRITTEN[formal]: world', { timeout: 10_000 });
+  await expect(page.locator('css=.inkly-ai__result')).toHaveText('REWRITTEN[formal]: hello world', { timeout: 10_000 });
 });

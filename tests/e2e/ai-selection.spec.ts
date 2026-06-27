@@ -40,9 +40,9 @@ test('select → Rewrite → result → Apply replaces the selection', async ({ 
   await expect(rewriteBtn).toBeVisible({ timeout: 5_000 });
   await rewriteBtn.click();
 
-  await expect(page.locator('css=.inkly-ai__result')).toContainText('REWRITTEN: world', { timeout: 10_000 });
+  await expect(page.locator('css=.inkly-ai__result')).toContainText('REWRITTEN: hello world', { timeout: 10_000 });
   await page.locator('css=.inkly-ai__btn').filter({ hasText: 'Apply' }).click();
-  await expect(editor).toContainText('hello REWRITTEN: world');
+  await expect(editor).toContainText('REWRITTEN: hello world');
 });
 
 test('rewrite without a key shows the error phase', async ({ context }) => {
@@ -74,7 +74,7 @@ test('clicking away dismisses a result panel (no orphan)', async ({ context }) =
   const rewriteBtn = page.locator('css=.inkly-ai__btn').filter({ hasText: 'Rewrite' });
   await expect(rewriteBtn).toBeVisible({ timeout: 5_000 });
   await rewriteBtn.click();
-  await expect(page.locator('css=.inkly-ai__result')).toContainText('REWRITTEN: world', { timeout: 10_000 });
+  await expect(page.locator('css=.inkly-ai__result')).toContainText('REWRITTEN: hello world', { timeout: 10_000 });
 
   // Click on empty page area (top-left), away from the panel.
   await page.mouse.click(5, 5);

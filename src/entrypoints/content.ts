@@ -28,6 +28,7 @@ import { aiPanelState } from '../ui/ai-panel-state.svelte';
 import FieldButton from '../ui/FieldButton.svelte';
 import { fieldButtonState } from '../ui/field-button-state.svelte';
 import { getSelectionInfo, type SelectionInfo } from '../core/selection';
+import { expandToSentence, isSingleWord } from '../core/sentence';
 import { textareaSpanRects } from '../ui/textarea-rects';
 
 const provider = new HarperProvider();
@@ -215,9 +216,15 @@ export default defineContentScript({
       cardState.left = pos.left;
       cardState.top = pos.top;
       cardState.onApply = (replacement: string) => {
+        const key = suggestionKey(s);
         if (activeField) applyReplacement(activeField, activeType, s, replacement);
+        // Drop the applied suggestion immediately so its underline disappears and the
+        // field-button count drops now — don't wait for a re-focus. The text changed,
+        // so re-check for the authoritative set (other offsets have shifted).
+        current = current.filter((c) => suggestionKey(c) !== key);
         hideCard();
-        renderer.clear();
+        drawUnderlines();
+        if (activeField) runCheck();
       };
       cardState.onDismiss = () => {
         const key = suggestionKey(s);
@@ -323,7 +330,10 @@ export default defineContentScript({
       aiPanelState.top = pos.top;
       aiPanelState.tone = defaultTone;
       aiPanelState.length = 'asis';
-      aiPanelState.capability = 'rewrite';
+      // Word selection → Synonyms-first; phrase/sentence → Rewrite-first.
+      const kind = isSingleWord(info.text) ? 'word' : 'phrase';
+      aiPanelState.selectionKind = kind;
+      aiPanelState.capability = kind === 'word' ? 'synonyms' : 'rewrite';
       aiPanelState.phase = 'actions';
       aiPanelState.onAction = (cap) => void doAction(cap);
     }
@@ -363,6 +373,15 @@ export default defineContentScript({
       const streamId = crypto.randomUUID();
       activeStreamId = streamId;
       aiPanelState.streamingText = '';
+      // Rewrite & Analyze operate on the whole sentence the selection belongs to (so a
+      // single selected word still gets a meaningful rewrite/analysis). Translate &
+      // Synonyms act on the literal selection.
+      let aStart = sel.start, aEnd = sel.end, aText = sel.text;
+      if (capability === 'rewrite' || capability === 'analyze') {
+        const full = getFieldText(field, type);
+        const span = expandToSentence(full, sel.start, sel.end);
+        aStart = span.start; aEnd = span.end; aText = full.slice(aStart, aEnd);
+      }
       const options: Record<string, string> = {};
       if (capability === 'rewrite') {
         if (aiPanelState.tone) options.tone = aiPanelState.tone;
@@ -370,7 +389,7 @@ export default defineContentScript({
       } else if (capability === 'translate') {
         options.targetLang = lang === 'pt-br' ? 'Portuguese' : 'English';
       }
-      const res = await runAI({ capability, text: sel.text, options }, streamId);
+      const res = await runAI({ capability, text: aText, options }, streamId);
       // Guard: if the panel was dismissed/hidden meanwhile, or a newer call started, drop the result.
       if (gen !== rewriteSeq || aiPanelState.phase !== 'loading') return;
       activeStreamId = null;
@@ -381,7 +400,7 @@ export default defineContentScript({
         aiPanelState.onDismiss = () => hideAIPanel();
         aiPanelState.onApply =
           (capability === 'rewrite' || capability === 'translate')
-            ? () => { applyRange(field, type, sel.start, sel.end, res.text); hideAIPanel(); }
+            ? () => { applyRange(field, type, aStart, aEnd, res.text); hideAIPanel(); }
             : null;
         aiPanelState.onPickSynonym =
           capability === 'synonyms'
