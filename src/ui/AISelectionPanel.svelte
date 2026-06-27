@@ -1,6 +1,7 @@
 <script lang="ts">
   import { aiPanelState } from './ai-panel-state.svelte';
-  import { parseSynonyms } from '../core/ai/parse-synonyms';
+  import { parseSynonymGroups } from '../core/ai/parse-synonyms';
+  import InklyMark from './InklyMark.svelte';
 
   const LOADING_LABELS: Record<string, string> = {
     rewrite: 'Rewriting…',
@@ -34,7 +35,7 @@
   >
     {#if aiPanelState.phase !== 'error'}
       <div class="inkly-ai__head">
-        <span class="inkly-ai__mark" aria-hidden="true"></span>
+        <span class="inkly-ai__mark" aria-hidden="true"><InklyMark size={15} /></span>
         <span class="inkly-ai__brand">Inkly</span>
         <button class="inkly-ai__x inkly-ai__x--head" aria-label="Close" onclick={() => aiPanelState.onClose?.()}>×</button>
       </div>
@@ -60,11 +61,16 @@
       {/if}
     {:else if aiPanelState.phase === 'result'}
       {#if aiPanelState.capability === 'synonyms'}
-        <div class="inkly-ai__chips" role="group" aria-label="Synonyms">
-          {#each parseSynonyms(aiPanelState.result) as syn}
-            <button class="inkly-ai__chip" onclick={() => aiPanelState.onPickSynonym?.(syn)}>{syn}</button>
-          {/each}
-        </div>
+        {#each parseSynonymGroups(aiPanelState.result) as group}
+          <div class="inkly-ai__syn-group">
+            {#if group.sense}<p class="inkly-ai__syn-sense">{group.sense}</p>{/if}
+            <div class="inkly-ai__chips" role="group" aria-label="Synonyms">
+              {#each group.words as syn}
+                <button class="inkly-ai__chip" onclick={() => aiPanelState.onPickSynonym?.(syn)}>{syn}</button>
+              {/each}
+            </div>
+          </div>
+        {/each}
         <div class="inkly-ai__subactions">
           <button class="inkly-ai__mini" onclick={() => aiPanelState.onAction?.('improve')}>✨ Improve</button>
           <button class="inkly-ai__mini" onclick={() => aiPanelState.onAction?.('translate')}>🌐 Translate</button>
@@ -118,10 +124,7 @@
   .inkly-ai__head {
     display: flex; align-items: center; gap: 6px; margin: 1px 2px 7px;
   }
-  .inkly-ai__mark {
-    flex: none; width: 13px; height: 13px; border-radius: 4px;
-    background: var(--inkly-accent);
-  }
+  .inkly-ai__mark { flex: none; display: inline-flex; color: var(--inkly-accent); }
   .inkly-ai__brand {
     font-weight: 700; font-size: 11.5px; color: var(--inkly-muted); letter-spacing: 0.02em;
   }
@@ -172,6 +175,14 @@
     background: none; border: 0; color: var(--inkly-muted); padding: 6px 10px; border-radius: 7px;
   }
   .inkly-ai__btn--ghost:hover { background: var(--inkly-ghost-bg); color: var(--inkly-text); }
+
+  /* Synonyms grouped by sense. */
+  .inkly-ai__syn-group { margin-bottom: 7px; }
+  .inkly-ai__syn-group:last-of-type { margin-bottom: 2px; }
+  .inkly-ai__syn-sense {
+    margin: 0 0 4px; font-size: 10.5px; font-weight: 600; color: var(--inkly-muted);
+  }
+  .inkly-ai__syn-group .inkly-ai__chips { margin: 0; }
 
   /* Chips: wrap onto multiple rows — never a horizontal scrollbar. */
   .inkly-ai__chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 9px; }

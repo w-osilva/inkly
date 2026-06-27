@@ -38,10 +38,10 @@ describe('buildMessages', () => {
     const msgs = buildMessages({ capability: 'translate', text: 'hello' });
     expect(msgs[0].content.toLowerCase()).toContain('translate');
   });
-  it('synonyms: asks for a comma-separated list, only the list', () => {
+  it('synonyms: asks for sense-grouped JSON', () => {
     const msgs = buildMessages({ capability: 'synonyms', text: 'happy' });
     expect(msgs[0].content.toLowerCase()).toContain('synonym');
-    expect(msgs[0].content.toLowerCase()).toContain('comma');
+    expect(msgs[0].content.toLowerCase()).toMatch(/json|sense/);
     expect(msgs[msgs.length - 1]).toEqual({ role: 'user', content: 'happy' });
   });
   it('analyze: asks for brief feedback', () => {

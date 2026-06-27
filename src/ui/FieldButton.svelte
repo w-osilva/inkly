@@ -1,5 +1,6 @@
 <script lang="ts">
   import { fieldButtonState } from './field-button-state.svelte';
+  import InklyMark from './InklyMark.svelte';
 </script>
 
 {#if fieldButtonState.visible}
@@ -9,9 +10,7 @@
     aria-label="inkly: {fieldButtonState.count} suggestion{fieldButtonState.count === 1 ? '' : 's'}"
     onclick={() => fieldButtonState.onOpen?.()}
   >
-    <svg class="inkly-fb__mark" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 2.5C12 2.5 5 11 5 15.2a7 7 0 1 0 14 0C19 11 12 2.5 12 2.5Z" />
-    </svg>
+    <span class="inkly-fb__mark" aria-hidden="true"><InklyMark size={15} /></span>
     {#if fieldButtonState.count > 0}
       <span class="inkly-fb__badge" data-sev={fieldButtonState.severity}>{fieldButtonState.count}</span>
     {/if}
@@ -40,10 +39,8 @@
     transform: translateY(-1px);
   }
   .inkly-fb__mark {
-    width: 16px;
-    height: 16px;
+    display: inline-flex;
     color: var(--inkly-accent, #6366f1);
-    fill: currentColor;
   }
   .inkly-fb__badge {
     position: absolute;

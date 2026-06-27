@@ -36,8 +36,10 @@ export function buildMessages(req: AIRequest): ChatMessage[] {
   }
   if (req.capability === 'synonyms') {
     const system =
-      "You are a thesaurus. Provide synonyms for the user's word or phrase." +
-      ' Return ONLY a comma-separated list of up to 6 alternatives, no numbering, no explanation.';
+      "You are a thesaurus. For the user's word or phrase, group alternatives by sense/meaning." +
+      ' Return ONLY a JSON array of objects {"sense","synonyms"}, where "sense" is a 2-4 word' +
+      ' definition of that meaning and "synonyms" is an array of up to 4 alternatives.' +
+      ' At most 4 groups, most common first. No prose, no code fences.';
     return [{ role: 'system', content: system }, { role: 'user', content: req.text }];
   }
   if (req.capability === 'improve') {
