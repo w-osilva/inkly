@@ -7,6 +7,13 @@ export default defineConfig({
     name: 'inkly',
     description:
       'Open-source, privacy-first writing assistant for Chrome/Edge/Brave — local grammar & spelling + optional AI.',
+    icons: {
+      16: '/icon/16.png',
+      32: '/icon/32.png',
+      48: '/icon/48.png',
+      96: '/icon/96.png',
+      128: '/icon/128.png',
+    },
     permissions: ['storage', 'contextMenus', 'offscreen'],
     host_permissions: ['<all_urls>'],
     content_security_policy: {

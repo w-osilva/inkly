@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "copy-wasm": "node scripts/copy-harper-wasm.mjs",
+    "build:brand": "node scripts/build-brand.mjs",
     "dev": "npm run copy-wasm && wxt",
     "dev:firefox": "npm run copy-wasm && wxt -b firefox",
     "prebuild": "npm run copy-wasm",
@@ -26,6 +27,7 @@
     "@vitest/ui": "^4.1.9",
     "@wxt-dev/module-svelte": "^2.0.4",
     "happy-dom": "^20.10.6",
+    "potrace": "^2.1.8",
     "prosemirror-commands": "^1.7.1",
     "prosemirror-keymap": "^1.2.3",
     "prosemirror-model": "^1.25.9",

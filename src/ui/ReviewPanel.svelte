@@ -1,12 +1,13 @@
 <script lang="ts">
   import { reviewState } from './review-state.svelte';
+  import InklyMark from './InklyMark.svelte';
 </script>
 
 {#if reviewState.visible}
   <div class="inkly-rv" role="group" aria-label="inkly review suggestions"
     style="left:{reviewState.left}px; top:{reviewState.top}px;">
     <div class="inkly-rv__head">
-      <span class="inkly-rv__mark" aria-hidden="true"></span>
+      <span class="inkly-rv__mark" aria-hidden="true"><InklyMark size={17} /></span>
       <b>Review suggestions</b>
       <span class="inkly-rv__count">{reviewState.total}</span>
       <button class="inkly-rv__x" aria-label="Close" onclick={() => reviewState.onClose?.()}>×</button>
@@ -57,7 +58,7 @@
   }
   .inkly-rv__head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
   .inkly-rv__head b { font-size: 14px; letter-spacing: -0.01em; }
-  .inkly-rv__mark { width: 16px; height: 16px; border-radius: 5px; background: var(--inkly-accent, #6366f1); flex: none; }
+  .inkly-rv__mark { display: inline-flex; flex: none; color: var(--inkly-accent, #6366f1); }
   .inkly-rv__count {
     min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
     background: var(--inkly-ghost-bg, #f3f4fb); color: var(--inkly-muted, #6a6c84);

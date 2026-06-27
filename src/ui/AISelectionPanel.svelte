@@ -1,6 +1,7 @@
 <script lang="ts">
   import { aiPanelState } from './ai-panel-state.svelte';
   import { parseSynonyms } from '../core/ai/parse-synonyms';
+  import InklyMark from './InklyMark.svelte';
 
   const LOADING_LABELS: Record<string, string> = {
     rewrite: 'Rewriting…',
@@ -34,7 +35,7 @@
   >
     {#if aiPanelState.phase !== 'error'}
       <div class="inkly-ai__head">
-        <span class="inkly-ai__mark" aria-hidden="true"></span>
+        <span class="inkly-ai__mark" aria-hidden="true"><InklyMark size={15} /></span>
         <span class="inkly-ai__brand">Inkly</span>
         <button class="inkly-ai__x inkly-ai__x--head" aria-label="Close" onclick={() => aiPanelState.onClose?.()}>×</button>
       </div>
@@ -118,10 +119,7 @@
   .inkly-ai__head {
     display: flex; align-items: center; gap: 6px; margin: 1px 2px 7px;
   }
-  .inkly-ai__mark {
-    flex: none; width: 13px; height: 13px; border-radius: 4px;
-    background: var(--inkly-accent);
-  }
+  .inkly-ai__mark { flex: none; display: inline-flex; color: var(--inkly-accent); }
   .inkly-ai__brand {
     font-weight: 700; font-size: 11.5px; color: var(--inkly-muted); letter-spacing: 0.02em;
   }
