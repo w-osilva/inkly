@@ -6,6 +6,7 @@ import { buildHttpRequest } from '../../core/ai/openai-provider';
 import { splitSSE, deltaFromEvent } from '../../core/ai/sse';
 import type { AIConfig, AIRequest, AIResponse } from '../../core/ai/ai-types';
 import { tryChromeAI } from '../../core/ai/chrome-ai';
+import { tryChromeTranslate } from '../../core/ai/chrome-translator';
 
 let linter: Linter | null = null;
 let setupPromise: Promise<void> | null = null;
@@ -54,6 +55,11 @@ async function lint(text: string): Promise<PlainLint[]> {
 // The offscreen document cannot read chrome.storage, so the service worker supplies the
 // resolved AIConfig with the request.
 async function runAI(request: AIRequest, config: AIConfig, streamId: string): Promise<AIResponse> {
+  // 0) Translation prefers Chrome's purpose-built on-device Translator API (free, local).
+  if (request.capability === 'translate') {
+    const translated = await tryChromeTranslate(request);
+    if (translated !== null) return { ok: true, text: translated };
+  }
   // 1) Opportunistic free on-device tier (Chrome built-in Prompt API), if available.
   const builtin = await tryChromeAI(request);
   if (builtin !== null) return { ok: true, text: builtin };
