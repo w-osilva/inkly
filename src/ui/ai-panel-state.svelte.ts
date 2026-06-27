@@ -17,6 +17,8 @@ export interface AIPanelState {
   onApply: (() => void) | null;
   onCopy: (() => void) | null;
   onDismiss: (() => void) | null;
+  /** Header × — dismiss the panel and suppress reopening for the same selection. */
+  onClose: (() => void) | null;
   hovered: boolean;
   tone: string;
   length: string;
@@ -38,6 +40,7 @@ export const aiPanelState = $state<AIPanelState>({
   onApply: null,
   onCopy: null,
   onDismiss: null,
+  onClose: null,
   hovered: false,
   tone: '',
   length: 'asis',

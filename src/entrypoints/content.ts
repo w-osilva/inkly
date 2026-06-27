@@ -396,8 +396,17 @@ export default defineContentScript({
       aiPanelState.length = 'asis';
       aiPanelState.onSetTone = null;
       aiPanelState.onSetLength = null;
+      aiPanelState.onClose = null;
       aiSelection = null;
       activeStreamId = null;
+    }
+
+    // The user explicitly closed the panel (× or click-outside): remember which
+    // selection it was for, so mouseup/selectionchange don't immediately reopen it.
+    let closedSelKey = '';
+    function userDismissAIPanel() {
+      closedSelKey = aiSelection ? `${aiSelection.start}:${aiSelection.end}` : '';
+      hideAIPanel();
     }
 
     function selectionRect(): { left: number; top: number; width: number; height: number } {
@@ -416,10 +425,13 @@ export default defineContentScript({
       if (!activeField) return;
       const info = getSelectionInfo(activeField, activeType);
       if (!info) {
+        closedSelKey = ''; // selection gone → allow a fresh panel next time
         // hide only if idle (not loading/result) and not hovering the panel
         if ((aiPanelState.phase === 'actions') && !aiPanelState.hovered) hideAIPanel();
         return;
       }
+      // Don't reopen the panel for a selection the user just closed.
+      if (`${info.start}:${info.end}` === closedSelKey) return;
       // A settled loading/result/error panel is immutable until resolved: don't
       // reposition, re-bind the selection, or reset the phase out from under it.
       if (aiPanelState.phase !== 'hidden' && aiPanelState.phase !== 'actions') return;
@@ -435,6 +447,7 @@ export default defineContentScript({
       aiPanelState.capability = kind === 'word' ? 'synonyms' : 'rewrite';
       aiPanelState.phase = 'actions';
       aiPanelState.onAction = (cap) => void doAction(cap);
+      aiPanelState.onClose = userDismissAIPanel;
     }
 
     function triggerAI(capability: AICapability | 'open') {
@@ -468,6 +481,7 @@ export default defineContentScript({
       if (!sel || !field) return;
       const gen = ++rewriteSeq;
       aiPanelState.capability = capability;
+      aiPanelState.onClose = userDismissAIPanel;
       aiPanelState.phase = 'loading';
       const streamId = crypto.randomUUID();
       activeStreamId = streamId;
@@ -678,7 +692,7 @@ export default defineContentScript({
       if (overlayHost && path.includes(overlayHost)) return; // clicking the panel itself
       const target = e.target as Node | null;
       if (target && overlayHost && overlayHost.contains(target)) return;
-      hideAIPanel();
+      userDismissAIPanel();
     });
     ctx.addEventListener(window, 'scroll', scheduleRedraw, { capture: true });
     ctx.addEventListener(window, 'resize', scheduleRedraw);
