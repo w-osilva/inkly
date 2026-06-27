@@ -3,21 +3,25 @@ import { AIConfig } from './ai-types';
 
 const KEY = 'inkly:ai';
 
+// Prefilled defaults: a fast, free OpenRouter model so the user only needs to paste a
+// key. (OpenRouter free tiers are rate-limited; the user can change endpoint/model.)
 export const DEFAULT_AI_CONFIG: AIConfig = {
   provider: 'openai-compatible',
-  endpoint: '',
+  endpoint: 'https://openrouter.ai/api/v1',
   apiKey: '',
-  model: '',
+  model: 'openai/gpt-oss-120b:free',
 };
 
 function normalize(raw: unknown): AIConfig {
   const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
   const str = (v: unknown, d: string) => (typeof v === 'string' ? v : d);
+  // Fall back to the prefilled default only when the field was never set (undefined),
+  // so a user can still deliberately clear endpoint/model to an empty string.
   return {
     provider: 'openai-compatible',
-    endpoint: str(o.endpoint, ''),
+    endpoint: str(o.endpoint, DEFAULT_AI_CONFIG.endpoint),
     apiKey: str(o.apiKey, ''),
-    model: str(o.model, ''),
+    model: str(o.model, DEFAULT_AI_CONFIG.model),
   };
 }
 

@@ -1,0 +1,59 @@
+/**
+ * inkly design tokens (M5).
+ * Defined on BOTH :root (popup/options pages) and :host (content shadow root)
+ * so the same variables resolve in every surface. Auto dark mode via
+ * prefers-color-scheme. Every token is prefixed --inkly-.
+ */
+:root,
+:host {
+  /* Brand */
+  --inkly-ink: #0f1729;
+  --inkly-accent: #6366f1;
+  --inkly-accent-press: #4f46e5;
+  --inkly-accent-contrast: #ffffff;
+  --inkly-accent-tint: rgba(99, 102, 241, 0.12);
+
+  /* Surfaces / text */
+  --inkly-bg: #ffffff;
+  --inkly-elevated: #ffffff;
+  --inkly-border: #e7e7f1;
+  --inkly-text: #15172b;
+  --inkly-muted: #6a6c84;
+
+  /* Ghost (secondary) controls */
+  --inkly-ghost-bg: #f3f4fb;
+  --inkly-ghost-text: #3a3c52;
+  --inkly-ghost-border: #e2e3f0;
+
+  /* Severity */
+  --inkly-sev-correct: #e5484d;
+  --inkly-sev-clarity: #e0a30c;
+  --inkly-sev-suggest: var(--inkly-accent);
+
+  /* Shape / type / depth */
+  --inkly-radius: 12px;
+  --inkly-radius-sm: 8px;
+  --inkly-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --inkly-shadow: 0 10px 34px rgba(15, 23, 41, 0.16), 0 2px 6px rgba(15, 23, 41, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root,
+  :host {
+    --inkly-accent: #818cf8;
+    --inkly-accent-press: #6366f1;
+    --inkly-accent-tint: rgba(129, 140, 248, 0.16);
+
+    --inkly-bg: #1e2030;
+    --inkly-elevated: #1e2030;
+    --inkly-border: #2e3142;
+    --inkly-text: #ecedf6;
+    --inkly-muted: #9a9cb4;
+
+    --inkly-ghost-bg: #2a2d3e;
+    --inkly-ghost-text: #c9cbdd;
+    --inkly-ghost-border: #383b4e;
+
+    --inkly-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
+  }
+}

@@ -36,7 +36,7 @@ test('Translate action translates the selection to the UI language', async ({ co
   await editor.type('hello world');
   await selectWorld(page);
 
-  await page.locator('css=.inkly-ai__btn').filter({ hasText: 'Translate' }).click();
+  await page.locator('css=.inkly-ai__tab').filter({ hasText: 'Translate' }).click();
   await expect(page.locator('css=.inkly-ai__result')).toHaveText('TRANSLATED[portuguese]: world', { timeout: 10_000 });
   await expect(page.locator('css=.inkly-ai__chip').filter({ hasText: 'Formal' })).toHaveCount(0);
   await page.locator('css=.inkly-ai__btn').filter({ hasText: 'Apply' }).click();

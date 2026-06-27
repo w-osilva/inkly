@@ -56,14 +56,29 @@
 </main>
 
 <style>
-  main { max-width: 480px; margin: 24px auto; padding: 0 16px; font: 14px/1.5 -apple-system, system-ui, sans-serif; }
-  h1 { font-size: 18px; margin: 0 0 4px; }
-  h2 { font-size: 15px; margin: 16px 0 4px; }
-  .hint { color: #888; margin: 0 0 12px; font-size: 13px; }
+  :global(body) { margin: 0; background: var(--inkly-bg); color: var(--inkly-text); }
+  main {
+    max-width: 480px; margin: 24px auto; padding: 0 16px;
+    font: 14px/1.5 var(--inkly-font); color: var(--inkly-text);
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; font-weight: 700; }
+  h2 { font-size: 15px; margin: 16px 0 4px; font-weight: 700; }
+  .hint { color: var(--inkly-muted); margin: 0 0 12px; font-size: 13px; }
   label { display: block; margin: 10px 0; }
-  input { display: block; width: 100%; margin-top: 4px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font: inherit; }
+  input {
+    display: block; width: 100%; margin-top: 4px; padding: 7px 9px;
+    border: 1px solid var(--inkly-border); border-radius: var(--inkly-radius-sm);
+    box-sizing: border-box; font: inherit;
+    background: var(--inkly-bg); color: var(--inkly-text);
+  }
+  input:focus { outline: none; border-color: var(--inkly-accent); }
   .row { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
-  button { border: 1px solid #7b53d6; background: #7b53d6; color: #fff; border-radius: 6px; padding: 6px 16px; cursor: pointer; font: inherit; font-weight: 600; }
-  .status { color: #c0392b; font-size: 13px; }
-  .status.ok { color: #2e7d32; }
+  button {
+    border: 1px solid var(--inkly-accent); background: var(--inkly-accent);
+    color: var(--inkly-accent-contrast); border-radius: var(--inkly-radius-sm);
+    padding: 7px 16px; cursor: pointer; font: inherit; font-weight: 600;
+  }
+  button:hover { background: var(--inkly-accent-press); border-color: var(--inkly-accent-press); }
+  .status { color: var(--inkly-sev-correct); font-size: 13px; }
+  .status.ok { color: var(--inkly-accent); }
 </style>

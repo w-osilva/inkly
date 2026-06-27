@@ -40,6 +40,18 @@ export function buildMessages(req: AIRequest): ChatMessage[] {
       ' Return ONLY a comma-separated list of up to 6 alternatives, no numbering, no explanation.';
     return [{ role: 'system', content: system }, { role: 'user', content: req.text }];
   }
+  if (req.capability === 'improve') {
+    const tone = req.options?.tone;
+    const toneClause = tone ? ` Prefer phrasing that sounds ${tone}.` : '';
+    const system =
+      "You are a careful writing assistant. Read the user's text in context and find spans to fix or improve:" +
+      ' grammar, subject/verb and article agreement, wrong word choice, awkward or unclear phrasing.' +
+      toneClause +
+      ' Return ONLY a JSON array of objects {"original","improved","reason"}, where "original" is an EXACT' +
+      ' substring of the input and "improved" is the corrected replacement; "reason" is a short phrase' +
+      ' (e.g. "article agreement"). Suggest at most 6, most important first. If nothing should change, return [].';
+    return [{ role: 'system', content: system }, { role: 'user', content: req.text }];
+  }
   if (req.capability === 'analyze') {
     const system =
       "You are a writing coach. Analyze the user's text and give brief, concrete feedback" +

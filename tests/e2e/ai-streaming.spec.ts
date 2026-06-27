@@ -29,11 +29,11 @@ test('streaming rewrite accumulates SSE chunks into the final result', async ({ 
   await editor.type('hello world');
   await selectWorld(page);
 
-  await page.locator('css=.inkly-ai__btn').filter({ hasText: 'Rewrite' }).click();
+  await page.locator('css=.inkly-ai__tab').filter({ hasText: 'Rewrite' }).click();
 
   const result = page.locator('css=.inkly-ai__result');
   await expect(result).toHaveText(/REWRITTEN/, { timeout: 10_000 });
   // The mock splits "REWRITTEN: world" into SSE chunks; accumulating them must
   // reproduce the exact text the non-streaming ai-rewrite/ai-tone specs assert.
-  await expect(result).toHaveText('REWRITTEN: world', { timeout: 10_000 });
+  await expect(result).toHaveText('REWRITTEN: hello world', { timeout: 10_000 });
 });

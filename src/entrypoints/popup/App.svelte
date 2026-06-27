@@ -71,6 +71,8 @@
     { id: 'casual', key: 'tone.casual' },
     { id: 'confident', key: 'tone.confident' },
     { id: 'friendly', key: 'tone.friendly' },
+    { id: 'professional', key: 'tone.professional' },
+    { id: 'technical', key: 'tone.technical' },
     { id: 'concise', key: 'tone.concise' },
   ];
 </script>
@@ -140,22 +142,33 @@
 </main>
 
 <style>
-  main { width: 300px; padding: 14px 16px; font: 14px/1.4 -apple-system, system-ui, sans-serif; }
-  h1 { margin: 0 0 12px; font-size: 16px; }
+  :global(body) { background: var(--inkly-bg); color: var(--inkly-text); }
+  main {
+    width: 300px; padding: 16px 18px;
+    font: 14px/1.45 var(--inkly-font);
+    background: var(--inkly-bg); color: var(--inkly-text);
+  }
+  h1 { margin: 0 0 12px; font-size: 16px; font-weight: 700; }
   .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; }
   .row.disabled { opacity: 0.5; }
   .row span { flex: 1; }
-  .muted { color: #888; }
-  section { margin-top: 14px; }
-  h2 { margin: 0 0 6px; font-size: 13px; color: #444; }
+  .muted { color: var(--inkly-muted); }
+  section { margin-top: 16px; }
+  h2 { margin: 0 0 6px; font-size: 13px; color: var(--inkly-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  select {
+    font: inherit; padding: 4px 6px; border-radius: var(--inkly-radius-sm);
+    border: 1px solid var(--inkly-border); background: var(--inkly-bg); color: var(--inkly-text);
+  }
+  input[type='checkbox'] { accent-color: var(--inkly-accent); }
   .cats { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; max-height: 180px; overflow: auto; }
   .cat { display: flex; align-items: center; gap: 6px; font-size: 12px; }
   .dict { list-style: none; margin: 0; padding: 0; }
   .dict li { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; font-size: 13px; }
-  .dict button { border: 0; background: none; cursor: pointer; color: #999; font-size: 15px; }
+  .dict button { border: 0; background: none; cursor: pointer; color: var(--inkly-muted); font-size: 15px; }
+  .dict button:hover { color: var(--inkly-text); }
   .ai-settings-link {
-    display: block; margin-top: 14px; border: 0; background: none; padding: 0;
-    color: #2d6cdf; cursor: pointer; font: inherit; font-size: 13px;
+    display: block; margin-top: 16px; border: 0; background: none; padding: 0;
+    color: var(--inkly-accent); cursor: pointer; font: inherit; font-size: 13px; font-weight: 600;
   }
   .ai-settings-link:hover { text-decoration: underline; }
 </style>

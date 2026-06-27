@@ -1,4 +1,8 @@
 import { browser } from 'wxt/browser';
+// Design tokens. With cssInjectionMode:'ui', WXT/Vite collects CSS imported by the
+// content entry and injects it into the shadow root, so :host token defs resolve
+// for the mounted Svelte components.
+import '../ui/tokens.css';
 import { classifyField, isEditableField } from '../core/field-detector';
 import { getFieldText } from '../core/text-model';
 import { mergeSuggestions } from '../core/orchestrator';
@@ -21,7 +25,15 @@ import { runAI } from '../core/ai/ai-client';
 import type { AICapability } from '../core/ai/ai-types';
 import AISelectionPanel from '../ui/AISelectionPanel.svelte';
 import { aiPanelState } from '../ui/ai-panel-state.svelte';
+import FieldButton from '../ui/FieldButton.svelte';
+import { fieldButtonState } from '../ui/field-button-state.svelte';
+import ReviewPanel from '../ui/ReviewPanel.svelte';
+import { reviewState } from '../ui/review-state.svelte';
+import { categoryLabel } from '../core/i18n';
+import { ruleExplanation } from '../core/rule-descriptions';
 import { getSelectionInfo, type SelectionInfo } from '../core/selection';
+import { expandToSentence, isSingleWord } from '../core/sentence';
+import { parseImprovements } from '../core/ai/parse-improvements';
 import { textareaSpanRects } from '../ui/textarea-rects';
 
 const provider = new HarperProvider();
@@ -83,6 +95,8 @@ export default defineContentScript({
         // container's pointer-events:none fix does not block its clicks.
         mount(SuggestionCard, { target: uiContainer });
         mount(AISelectionPanel, { target: uiContainer });
+        mount(FieldButton, { target: uiContainer });
+        mount(ReviewPanel, { target: uiContainer });
         return new OverlayRenderer(layer);
       },
     });
@@ -102,7 +116,7 @@ export default defineContentScript({
       return `${s.ruleId}:${s.offset}:${s.length}:${s.replacements.join('|')}`;
     }
 
-    const runCheck = debounce(async () => {
+    async function runCheckNow() {
       const field = activeField;
       const type = activeType;
       if (!enabled || !field) return;
@@ -117,7 +131,9 @@ export default defineContentScript({
       );
       if (cardState.visible) hideCard();
       drawUnderlines();
-    }, 400);
+      if (reviewState.visible) renderReviewItem();
+    }
+    const runCheck = debounce(runCheckNow, 400);
 
     function drawUnderlines() {
       if (!activeField) {
@@ -142,6 +158,130 @@ export default defineContentScript({
       });
       hitRects = nextHitRects;
       renderer.render(styles);
+      updateFieldButton();
+    }
+
+    // Turn off the browser's native spellcheck on a field we track, so its red
+    // squiggle doesn't double up with inkly's own underlines (Grammarly does this).
+    function suppressNativeSpellcheck(el: HTMLElement) {
+      try { el.setAttribute('spellcheck', 'false'); } catch { /* ignore */ }
+    }
+
+    // Kick off Harper's WASM compile (in the offscreen doc) on first field focus, so the
+    // first lint doesn't stall on the ~17MB cold start. Fire once per content script.
+    let warmed = false;
+    function warmEngine() {
+      if (warmed) return;
+      warmed = true;
+      void browser.runtime.sendMessage({ type: 'inkly:warm' }).catch(() => {});
+    }
+
+    // Severity priority for the field-button badge color (most severe wins).
+    const SEVERITY_RANK: Record<Suggestion['severity'], number> = { correctness: 3, clarity: 2, suggestion: 1 };
+
+    function updateFieldButton() {
+      if (!enabled || !activeField || current.length === 0) {
+        fieldButtonState.visible = false;
+        fieldButtonState.onOpen = null;
+        return;
+      }
+      const r = activeField.getBoundingClientRect();
+      // Off-screen / detached field → hide rather than park the button at 0,0.
+      if (r.width === 0 && r.height === 0) {
+        fieldButtonState.visible = false;
+        return;
+      }
+      const SIZE = 28, INSET = 6;
+      // Bottom-right for tall fields; vertically centered for short ones (inputs).
+      const top = r.height < SIZE + INSET * 2 ? r.top + (r.height - SIZE) / 2 : r.bottom - SIZE - INSET;
+      fieldButtonState.left = r.right - SIZE - INSET;
+      fieldButtonState.top = top;
+      fieldButtonState.count = current.length;
+      fieldButtonState.severity = current.reduce(
+        (acc, s) => (SEVERITY_RANK[s.severity] > SEVERITY_RANK[acc] ? s.severity : acc),
+        'suggestion' as Suggestion['severity'],
+      );
+      fieldButtonState.onOpen = openReview;
+      fieldButtonState.visible = true;
+    }
+
+    // ---- Review panel: step through the field's issues with Accept/Dismiss + prev/next ----
+    let reviewIndex = 0;
+
+    function positionReview() {
+      const W = 320, H_EST = 170, GAP = 8;
+      let left = fieldButtonState.left + 28 - W; // right edge aligns with the button
+      let top = fieldButtonState.top - H_EST - GAP; // above the button…
+      if (top < 8) top = fieldButtonState.top + 28 + GAP; // …or below if no room
+      if (left < 8) left = 8;
+      reviewState.left = left;
+      reviewState.top = top;
+    }
+
+    function renderReviewItem() {
+      if (!activeField || current.length === 0) { hideReview(); return; }
+      reviewIndex = Math.max(0, Math.min(reviewIndex, current.length - 1));
+      const s = current[reviewIndex];
+      const full = getFieldText(activeField, activeType);
+      const CTX = 28;
+      reviewState.before = full.slice(Math.max(0, s.offset - CTX), s.offset);
+      reviewState.oldText = full.slice(s.offset, s.offset + s.length);
+      reviewState.replacement = s.replacements[0] ?? '';
+      reviewState.after = full.slice(s.offset + s.length, s.offset + s.length + CTX);
+      reviewState.category = categoryLabel(lang, s.category);
+      reviewState.title = ruleExplanation(lang, s.ruleId, s.message) ?? '';
+      reviewState.replacements = s.replacements;
+      reviewState.canAccept = s.replacements.length > 0;
+      reviewState.index = reviewIndex + 1;
+      reviewState.total = current.length;
+      positionReview();
+      renderer.highlight(getSpanRects(activeField, activeType, s.offset, s.length), s.severity);
+    }
+
+    function openReview() {
+      if (!activeField || current.length === 0) return;
+      reviewIndex = 0;
+      hideCard();
+      hideAIPanel();
+      reviewState.onAccept = () => { const s = current[reviewIndex]; if (s) void reviewApply(s.replacements[0] ?? ''); };
+      reviewState.onPick = (rep) => void reviewApply(rep);
+      reviewState.onDismiss = reviewDismiss;
+      reviewState.onPrev = () => { reviewIndex = (reviewIndex - 1 + current.length) % current.length; renderReviewItem(); };
+      reviewState.onNext = () => { reviewIndex = (reviewIndex + 1) % current.length; renderReviewItem(); };
+      reviewState.onClose = hideReview;
+      renderReviewItem();
+      reviewState.visible = true;
+    }
+
+    function hideReview() {
+      reviewState.visible = false;
+      reviewState.onAccept = null;
+      reviewState.onPick = null;
+      reviewState.onDismiss = null;
+      reviewState.onPrev = null;
+      reviewState.onNext = null;
+      reviewState.onClose = null;
+      renderer.clearHighlight();
+    }
+
+    async function reviewApply(rep: string) {
+      const s = current[reviewIndex];
+      if (!s || !activeField) return;
+      applyReplacement(activeField, activeType, s, rep);
+      // Text changed → re-check for valid offsets; runCheckNow re-renders the panel.
+      await runCheckNow();
+      if (current.length === 0) hideReview();
+      else renderReviewItem();
+    }
+
+    function reviewDismiss() {
+      const s = current[reviewIndex];
+      if (!s) return;
+      dismissed.add(suggestionKey(s));
+      current = current.filter((c) => suggestionKey(c) !== suggestionKey(s));
+      drawUnderlines();
+      if (current.length === 0) hideReview();
+      else renderReviewItem();
     }
 
     let rafId = 0;
@@ -149,12 +289,16 @@ export default defineContentScript({
       // M2b: hide the card on scroll/resize rather than repositioning it.
       // Repositioning against moving anchors is M4; hiding is the accepted fallback.
       if (cardState.visible) hideCard();
+      if (reviewState.visible) renderReviewItem();
       if (rafId) return;
       rafId = requestAnimationFrame(() => { rafId = 0; drawUnderlines(); });
     }
 
     const HOVER_DELAY = 150;
-    const HIDE_GRACE = 120;
+    // Generous grace so moving the mouse from the underline across the gap to the
+    // card doesn't dismiss it (Grammarly waits ~1s). The card's own mouseenter sets
+    // cardState.hovered, which cancels the hide entirely once reached.
+    const HIDE_GRACE = 700;
     let hoverTimer = 0, hideTimer = 0, shownIndex = -1, pendingHoverIndex = -1;
     let mouseMoveScheduled = false, lastX = 0, lastY = 0;
 
@@ -169,12 +313,24 @@ export default defineContentScript({
       cardState.left = pos.left;
       cardState.top = pos.top;
       cardState.onApply = (replacement: string) => {
+        const key = suggestionKey(s);
         if (activeField) applyReplacement(activeField, activeType, s, replacement);
+        // Drop the applied suggestion immediately so its underline disappears and the
+        // field-button count drops now — don't wait for a re-focus. The text changed,
+        // so re-check for the authoritative set (other offsets have shifted).
+        current = current.filter((c) => suggestionKey(c) !== key);
         hideCard();
-        renderer.clear();
+        drawUnderlines();
+        if (activeField) runCheck();
       };
       cardState.onDismiss = () => {
-        dismissed.add(suggestionKey(s));
+        const key = suggestionKey(s);
+        dismissed.add(key);
+        // Actually drop the dismissed suggestion so its underline disappears and the
+        // field-button count decrements. (Previously dismiss only hid the card; the
+        // underline used to vanish only as a side effect of the field-blur clearing
+        // everything — which no longer happens now that results persist on blur.)
+        current = current.filter((c) => suggestionKey(c) !== key);
         hideCard();
         drawUnderlines();
       };
@@ -197,6 +353,8 @@ export default defineContentScript({
       cardState.lang = lang;
       cardState.visible = true;
       shownIndex = index;
+      // Tint the flagged span while its card is open.
+      if (activeField) renderer.highlight(getSpanRects(activeField, activeType, s.offset, s.length), s.severity);
     }
 
     function clearHoverTimers() {
@@ -216,6 +374,7 @@ export default defineContentScript({
       cardState.dictionaryWord = null;
       cardState.onAddToDictionary = null;
       shownIndex = -1;
+      renderer.clearHighlight();
     }
 
     let aiSelection: SelectionInfo | null = null;
@@ -238,8 +397,19 @@ export default defineContentScript({
       aiPanelState.length = 'asis';
       aiPanelState.onSetTone = null;
       aiPanelState.onSetLength = null;
+      aiPanelState.onClose = null;
+      aiPanelState.improvements = [];
+      aiPanelState.onApplyImprovement = null;
       aiSelection = null;
       activeStreamId = null;
+    }
+
+    // The user explicitly closed the panel (× or click-outside): remember which
+    // selection it was for, so mouseup/selectionchange don't immediately reopen it.
+    let closedSelKey = '';
+    function userDismissAIPanel() {
+      closedSelKey = aiSelection ? `${aiSelection.start}:${aiSelection.end}` : '';
+      hideAIPanel();
     }
 
     function selectionRect(): { left: number; top: number; width: number; height: number } {
@@ -258,10 +428,13 @@ export default defineContentScript({
       if (!activeField) return;
       const info = getSelectionInfo(activeField, activeType);
       if (!info) {
+        closedSelKey = ''; // selection gone → allow a fresh panel next time
         // hide only if idle (not loading/result) and not hovering the panel
         if ((aiPanelState.phase === 'actions') && !aiPanelState.hovered) hideAIPanel();
         return;
       }
+      // Don't reopen the panel for a selection the user just closed.
+      if (`${info.start}:${info.end}` === closedSelKey) return;
       // A settled loading/result/error panel is immutable until resolved: don't
       // reposition, re-bind the selection, or reset the phase out from under it.
       if (aiPanelState.phase !== 'hidden' && aiPanelState.phase !== 'actions') return;
@@ -271,14 +444,18 @@ export default defineContentScript({
       aiPanelState.top = pos.top;
       aiPanelState.tone = defaultTone;
       aiPanelState.length = 'asis';
-      aiPanelState.capability = 'rewrite';
+      // Word selection → Synonyms-first; phrase/sentence → Rewrite-first.
+      const kind = isSingleWord(info.text) ? 'word' : 'phrase';
+      aiPanelState.selectionKind = kind;
+      aiPanelState.capability = kind === 'word' ? 'synonyms' : 'rewrite';
       aiPanelState.phase = 'actions';
       aiPanelState.onAction = (cap) => void doAction(cap);
+      aiPanelState.onClose = userDismissAIPanel;
     }
 
     function triggerAI(capability: AICapability | 'open') {
       if (!enabled || !activeField) return;
-      if (capability !== 'open' && !['rewrite', 'translate', 'synonyms', 'analyze'].includes(capability)) return;
+      if (capability !== 'open' && !['rewrite', 'translate', 'synonyms', 'improve'].includes(capability)) return;
       const info = getSelectionInfo(activeField, activeType);
       if (!info) return; // need a non-collapsed selection in the focused field
       aiSelection = info;
@@ -307,29 +484,63 @@ export default defineContentScript({
       if (!sel || !field) return;
       const gen = ++rewriteSeq;
       aiPanelState.capability = capability;
+      aiPanelState.onClose = userDismissAIPanel;
       aiPanelState.phase = 'loading';
       const streamId = crypto.randomUUID();
       activeStreamId = streamId;
       aiPanelState.streamingText = '';
+      // Rewrite & Analyze operate on the whole sentence the selection belongs to (so a
+      // single selected word still gets a meaningful rewrite/analysis). Translate &
+      // Synonyms act on the literal selection.
+      let aStart = sel.start, aEnd = sel.end, aText = sel.text;
+      if (capability === 'rewrite' || capability === 'improve') {
+        const full = getFieldText(field, type);
+        const span = expandToSentence(full, sel.start, sel.end);
+        aStart = span.start; aEnd = span.end; aText = full.slice(aStart, aEnd);
+      }
       const options: Record<string, string> = {};
       if (capability === 'rewrite') {
         if (aiPanelState.tone) options.tone = aiPanelState.tone;
         if (aiPanelState.length && aiPanelState.length !== 'asis') options.length = aiPanelState.length;
+      } else if (capability === 'improve') {
+        if (aiPanelState.tone) options.tone = aiPanelState.tone;
       } else if (capability === 'translate') {
         options.targetLang = lang === 'pt-br' ? 'Portuguese' : 'English';
       }
-      const res = await runAI({ capability, text: sel.text, options }, streamId);
+      const res = await runAI({ capability, text: aText, options }, streamId);
       // Guard: if the panel was dismissed/hidden meanwhile, or a newer call started, drop the result.
       if (gen !== rewriteSeq || aiPanelState.phase !== 'loading') return;
       activeStreamId = null;
       if (res.ok) {
+        if (capability === 'improve') {
+          // Parse the model's edit list into applicable items; each Apply finds its
+          // `original` in the live text (offsets may have shifted) and replaces it.
+          const imps = parseImprovements(res.text);
+          const toState = () => imps.map((x) => ({ from: x.original, to: x.improved, reason: x.reason }));
+          aiPanelState.improvements = toState();
+          aiPanelState.onApplyImprovement = (i: number) => {
+            const im = imps[i];
+            if (im && activeField) {
+              const full = getFieldText(activeField, activeType);
+              const off = full.indexOf(im.original);
+              if (off !== -1) applyRange(activeField, activeType, off, off + im.original.length, im.improved);
+            }
+            imps.splice(i, 1);
+            aiPanelState.improvements = toState();
+            if (activeField) runCheck();
+            if (imps.length === 0) hideAIPanel();
+          };
+          aiPanelState.onDismiss = () => hideAIPanel();
+          aiPanelState.phase = 'result';
+          return;
+        }
         aiPanelState.result = res.text;
         aiPanelState.phase = 'result';
         aiPanelState.onCopy = () => { void navigator.clipboard?.writeText(res.text); };
         aiPanelState.onDismiss = () => hideAIPanel();
         aiPanelState.onApply =
           (capability === 'rewrite' || capability === 'translate')
-            ? () => { applyRange(field, type, sel.start, sel.end, res.text); hideAIPanel(); }
+            ? () => { applyRange(field, type, aStart, aEnd, res.text); hideAIPanel(); }
             : null;
         aiPanelState.onPickSynonym =
           capability === 'synonyms'
@@ -372,6 +583,8 @@ export default defineContentScript({
         current = [];
         hitRects = [];
         renderer.clear();
+        fieldButtonState.visible = false;
+        hideReview();
       } else {
         // Re-enabled or settings changed (categories/dictionary).
         // While disabled, focusin was gated, so a field that was
@@ -382,6 +595,7 @@ export default defineContentScript({
           if (focused instanceof HTMLElement && isEditableField(focused)) {
             activeField = focused;
             activeType = classifyField(focused);
+            suppressNativeSpellcheck(focused);
           }
         }
         if (activeField) runCheck();
@@ -433,8 +647,20 @@ export default defineContentScript({
         runCheck.cancel();
         clearHoverTimers();
         hideCard();
+        // Switching to a different field: drop the previous field's persisted
+        // underlines/button immediately so they don't linger at stale positions
+        // until the new check completes.
+        if (t !== activeField) {
+          current = [];
+          hitRects = [];
+          renderer.clear();
+          fieldButtonState.visible = false;
+          hideReview();
+        }
         activeField = t;
         activeType = classifyField(t);
+        suppressNativeSpellcheck(t);
+        warmEngine();
         runCheck();
       }
     });
@@ -473,16 +699,11 @@ export default defineContentScript({
       clearHoverTimers();
       hideCard();
       if (!keepAIPanel) hideAIPanel();
-      // When the AI panel survives a panel-button click (keepAIPanel), keep the
-      // active field/type bound too: result-phase tone/length chips re-run
-      // doAction(), which reads the live activeField. Nulling it here would make
-      // doAction bail and the regenerate silently no-op.
-      if (!keepAIPanel) {
-        activeField = null;
-        activeType = 'unknown';
-      }
-      current = [];
-      renderer.clear();
+      // Persist the underlines and the field button after blur — Grammarly/LanguageTool
+      // behavior. We KEEP activeField/activeType tracked and the results drawn; they are
+      // replaced only when another editable field is focused (focusin) or inkly is
+      // disabled. (Keeping activeField also lets result-phase tone/length chips re-run
+      // doAction() against the live field.)
     });
     // Deterministic outside-click dismissal for the AI panel. focusout can't tell a
     // genuine click on empty page area (relatedTarget=null) from panel-button churn
@@ -498,7 +719,7 @@ export default defineContentScript({
       if (overlayHost && path.includes(overlayHost)) return; // clicking the panel itself
       const target = e.target as Node | null;
       if (target && overlayHost && overlayHost.contains(target)) return;
-      hideAIPanel();
+      userDismissAIPanel();
     });
     ctx.addEventListener(window, 'scroll', scheduleRedraw, { capture: true });
     ctx.addEventListener(window, 'resize', scheduleRedraw);

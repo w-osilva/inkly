@@ -11,10 +11,17 @@ export interface AIPanelState {
   error: string;
   onAction: ((capability: AICapability) => void) | null;
   onPickSynonym: ((word: string) => void) | null;
+  /** 'improve' result: applicable edits (old → new + reason), each applied by index. */
+  improvements: Array<{ from: string; to: string; reason: string }>;
+  onApplyImprovement: ((index: number) => void) | null;
   capability: AICapability;
+  /** 'word' = a single token selected (Synonyms-first); 'phrase' = multi-word (Rewrite-first). */
+  selectionKind: 'word' | 'phrase';
   onApply: (() => void) | null;
   onCopy: (() => void) | null;
   onDismiss: (() => void) | null;
+  /** Header × — dismiss the panel and suppress reopening for the same selection. */
+  onClose: (() => void) | null;
   hovered: boolean;
   tone: string;
   length: string;
@@ -31,10 +38,14 @@ export const aiPanelState = $state<AIPanelState>({
   error: '',
   onAction: null,
   onPickSynonym: null,
+  improvements: [],
+  onApplyImprovement: null,
   capability: 'rewrite',
+  selectionKind: 'phrase',
   onApply: null,
   onCopy: null,
   onDismiss: null,
+  onClose: null,
   hovered: false,
   tone: '',
   length: 'asis',

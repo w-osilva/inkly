@@ -39,7 +39,7 @@ test('a Rewrite trigger runs the AI panel on the current selection', async ({ co
   await editor.click(); await editor.type('hello world');
   await selectWorld(page);
   await sendTrigger(sw, 'rewrite');
-  await expect(page.locator('css=.inkly-ai__result')).toHaveText('REWRITTEN: world', { timeout: 10_000 });
+  await expect(page.locator('css=.inkly-ai__result')).toHaveText('REWRITTEN: hello world', { timeout: 10_000 });
 });
 
 test('an "open" trigger shows the action menu', async ({ context }) => {
@@ -50,5 +50,5 @@ test('an "open" trigger shows the action menu', async ({ context }) => {
   await editor.click(); await editor.type('hello world');
   await selectWorld(page);
   await sendTrigger(sw, 'open');
-  await expect(page.locator('css=.inkly-ai__btn').filter({ hasText: 'Rewrite' })).toBeVisible({ timeout: 5_000 });
+  await expect(page.locator('css=.inkly-ai__tab').filter({ hasText: 'Rewrite' })).toBeVisible({ timeout: 5_000 });
 });

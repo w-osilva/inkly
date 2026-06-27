@@ -1,11 +1,18 @@
 import { Severity } from '../core/types';
 import { UnderlineStyle } from './underline-layout';
 
-/** Visual treatment per severity (color + dash) — the Grammarly-style distinction. */
-const SEVERITY_BACKGROUND: Record<Severity, string> = {
-  correctness: 'repeating-linear-gradient(90deg,#e23b3b 0 4px,#e23b3b 4px 4px)',
-  clarity: 'repeating-linear-gradient(90deg,#d99100 0 2px,transparent 2px 4px)',
-  suggestion: 'repeating-linear-gradient(90deg,#7b53d6 0 2px,transparent 2px 4px)',
+/** Solid underline color per severity (Inkly palette) — consistent style, distinct hue. */
+const SEVERITY_COLOR: Record<Severity, string> = {
+  correctness: '#E5484D',
+  clarity: '#E0A30C',
+  suggestion: '#6366F1',
+};
+
+/** Translucent fill for the active-span highlight (shown while its card/review is open). */
+const HIGHLIGHT_BG: Record<Severity, string> = {
+  correctness: 'rgba(229,72,77,0.16)',
+  clarity: 'rgba(224,163,12,0.18)',
+  suggestion: 'rgba(99,102,241,0.16)',
 };
 
 /**
@@ -29,7 +36,7 @@ export class OverlayRenderer {
       node.style.width = `${s.width}px`;
       node.style.height = '2px';
       node.style.borderRadius = '1px';
-      node.style.background = SEVERITY_BACKGROUND[s.severity];
+      node.style.background = SEVERITY_COLOR[s.severity];
       node.style.pointerEvents = 'none';
       this.layer.appendChild(node);
     }
@@ -37,5 +44,28 @@ export class OverlayRenderer {
 
   clear(): void {
     this.layer.querySelectorAll('.inkly-underline').forEach((n) => n.remove());
+  }
+
+  /** Tint the active span (the one whose card/review is open). Rects are viewport coords. */
+  highlight(rects: { left: number; top: number; width: number; height: number }[], severity: Severity): void {
+    this.clearHighlight();
+    for (const r of rects) {
+      if (r.width <= 0) continue;
+      const node = document.createElement('div');
+      node.className = 'inkly-highlight';
+      node.style.position = 'absolute';
+      node.style.left = `${r.left}px`;
+      node.style.top = `${r.top}px`;
+      node.style.width = `${r.width}px`;
+      node.style.height = `${r.height}px`;
+      node.style.borderRadius = '2px';
+      node.style.background = HIGHLIGHT_BG[severity];
+      node.style.pointerEvents = 'none';
+      this.layer.appendChild(node);
+    }
+  }
+
+  clearHighlight(): void {
+    this.layer.querySelectorAll('.inkly-highlight').forEach((n) => n.remove());
   }
 }
