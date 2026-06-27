@@ -166,6 +166,15 @@ export default defineContentScript({
       try { el.setAttribute('spellcheck', 'false'); } catch { /* ignore */ }
     }
 
+    // Kick off Harper's WASM compile (in the offscreen doc) on first field focus, so the
+    // first lint doesn't stall on the ~17MB cold start. Fire once per content script.
+    let warmed = false;
+    function warmEngine() {
+      if (warmed) return;
+      warmed = true;
+      void browser.runtime.sendMessage({ type: 'inkly:warm' }).catch(() => {});
+    }
+
     // Severity priority for the field-button badge color (most severe wins).
     const SEVERITY_RANK: Record<Suggestion['severity'], number> = { correctness: 3, clarity: 2, suggestion: 1 };
 
@@ -224,6 +233,7 @@ export default defineContentScript({
       reviewState.index = reviewIndex + 1;
       reviewState.total = current.length;
       positionReview();
+      renderer.highlight(getSpanRects(activeField, activeType, s.offset, s.length), s.severity);
     }
 
     function openReview() {
@@ -247,6 +257,7 @@ export default defineContentScript({
       reviewState.onPrev = null;
       reviewState.onNext = null;
       reviewState.onClose = null;
+      renderer.clearHighlight();
     }
 
     async function reviewAccept() {
@@ -274,7 +285,7 @@ export default defineContentScript({
       // M2b: hide the card on scroll/resize rather than repositioning it.
       // Repositioning against moving anchors is M4; hiding is the accepted fallback.
       if (cardState.visible) hideCard();
-      if (reviewState.visible) positionReview();
+      if (reviewState.visible) renderReviewItem();
       if (rafId) return;
       rafId = requestAnimationFrame(() => { rafId = 0; drawUnderlines(); });
     }
@@ -338,6 +349,8 @@ export default defineContentScript({
       cardState.lang = lang;
       cardState.visible = true;
       shownIndex = index;
+      // Tint the flagged span while its card is open.
+      if (activeField) renderer.highlight(getSpanRects(activeField, activeType, s.offset, s.length), s.severity);
     }
 
     function clearHoverTimers() {
@@ -357,6 +370,7 @@ export default defineContentScript({
       cardState.dictionaryWord = null;
       cardState.onAddToDictionary = null;
       shownIndex = -1;
+      renderer.clearHighlight();
     }
 
     let aiSelection: SelectionInfo | null = null;
@@ -602,6 +616,7 @@ export default defineContentScript({
         activeField = t;
         activeType = classifyField(t);
         suppressNativeSpellcheck(t);
+        warmEngine();
         runCheck();
       }
     });

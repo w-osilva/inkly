@@ -55,6 +55,12 @@ export default defineBackground(() => {
   browser.runtime.onMessage.addListener((msg: unknown, sender, sendResponse: (r: unknown) => void): true | undefined => {
     const m = msg as Partial<LintRequest> & { target?: string; type?: string };
     if (m?.target === 'offscreen') return undefined;        // destined for the offscreen doc, not us
+    if ((m as { type?: string })?.type === 'inkly:warm') {
+      // Pre-warm: create the offscreen doc so Harper's WASM starts compiling while the
+      // user is still typing, instead of stalling the first lint (cold start ~seconds).
+      void ensureOffscreen().catch(() => {});
+      return undefined;
+    }
     if ((m as { type?: string })?.type === 'inkly:ai:chunk') {
       const { streamId, delta } = msg as { streamId: string; delta: string };
       const tabId = streamTabs.get(streamId);
