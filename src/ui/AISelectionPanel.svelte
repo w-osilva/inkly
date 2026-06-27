@@ -52,8 +52,7 @@
       <div class="inkly-ai__head">
         <span class="inkly-ai__mark" aria-hidden="true"></span>
         <span class="inkly-ai__brand">Inkly</span>
-        <span class="inkly-ai__kbd" aria-hidden="true">⌥I</span>
-        <button class="inkly-ai__x" aria-label="Close" onclick={() => aiPanelState.onClose?.()}>×</button>
+        <button class="inkly-ai__x inkly-ai__x--head" aria-label="Close" onclick={() => aiPanelState.onClose?.()}>×</button>
       </div>
     {/if}
     {#if aiPanelState.phase === 'actions'}
@@ -147,14 +146,11 @@
   .inkly-ai__brand {
     font-weight: 700; font-size: 11.5px; color: var(--inkly-muted); letter-spacing: 0.02em;
   }
-  .inkly-ai__kbd {
-    margin-left: auto; font-size: 10px; color: var(--inkly-muted);
-    border: 1px solid var(--inkly-border); border-radius: 4px; padding: 0 4px;
-  }
   .inkly-ai__x {
     border: 0; background: none; cursor: pointer; color: var(--inkly-muted);
     font-size: 16px; line-height: 1; padding: 0 2px; border-radius: 5px;
   }
+  .inkly-ai__x--head { margin-left: auto; }
   .inkly-ai__x:hover { color: var(--inkly-text); }
 
   .inkly-ai__result { margin: 2px; white-space: pre-wrap; color: var(--inkly-text); }
