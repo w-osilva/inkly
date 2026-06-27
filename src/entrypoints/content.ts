@@ -13,6 +13,7 @@ import { applyReplacement, applyRange } from '../core/apply-engine';
 import { debounce } from '../core/debounce';
 import { offsetToRange } from '../core/dom-offset';
 import type { FieldType, Suggestion } from '../core/types';
+import { makeSuggestion } from '../core/types';
 import { mount } from 'svelte';
 import SuggestionCard from '../ui/SuggestionCard.svelte';
 import { cardState } from '../ui/card-state.svelte';
@@ -132,8 +133,40 @@ export default defineContentScript({
       if (cardState.visible) hideCard();
       drawUnderlines();
       if (reviewState.visible) renderReviewItem();
+      scheduleAutoImprove();
     }
     const runCheck = debounce(runCheckNow, 400);
+
+    // Automatic, FREE writing-improvement pass: only via the on-device model (builtinOnly),
+    // so it never spends BYOK quota. Where the browser has no on-device AI it silently
+    // no-ops. Results are merged as indigo 'suggestion' underlines alongside Harper's.
+    async function runAutoImprove() {
+      const field = activeField;
+      const type = activeType;
+      if (!enabled || !field) return;
+      const text = getFieldText(field, type);
+      if (text.trim().length < 12) return;
+      const myCheck = checkSeq;
+      const res = await runAI({ capability: 'improve', text, options: defaultTone ? { tone: defaultTone } : {}, builtinOnly: true }, crypto.randomUUID());
+      if (!res.ok) return; // no on-device model (or nothing) — silent, no cost
+      if (checkSeq !== myCheck || activeField !== field) return; // text changed meanwhile
+      const seen = new Set(current.map((s) => `${s.offset}:${s.length}`));
+      const add: Suggestion[] = [];
+      for (const im of parseImprovements(res.text)) {
+        const off = text.indexOf(im.original);
+        if (off === -1 || seen.has(`${off}:${im.original.length}`)) continue;
+        const sug = makeSuggestion({
+          offset: off, length: im.original.length, replacements: [im.improved],
+          message: im.reason || 'Suggestion', ruleId: 'ai-improve', category: 'Enhancement',
+          severity: 'suggestion', source: 'chrome-ai',
+        });
+        if (!dismissed.has(suggestionKey(sug))) add.push(sug);
+      }
+      if (add.length === 0) return;
+      current = [...current, ...add];
+      drawUnderlines();
+    }
+    const scheduleAutoImprove = debounce(() => { void runAutoImprove(); }, 1500);
 
     function drawUnderlines() {
       if (!activeField) {

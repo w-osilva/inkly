@@ -63,6 +63,8 @@ async function runAI(request: AIRequest, config: AIConfig, streamId: string): Pr
   // 1) Opportunistic free on-device tier (Chrome built-in Prompt API), if available.
   const builtin = await tryChromeAI(request);
   if (builtin !== null) return { ok: true, text: builtin };
+  // Automatic passes only use the free on-device model — never spend BYOK quota.
+  if (request.builtinOnly) return { ok: false, error: 'no-builtin' };
   // 2) Fall back to BYOK — stream the OpenAI-compatible SSE response.
   if (!hasKey(config)) return { ok: false, error: 'no-api-key' };
   try {
