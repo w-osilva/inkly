@@ -50,5 +50,5 @@ test('an "open" trigger shows the action menu', async ({ context }) => {
   await editor.click(); await editor.type('hello world');
   await selectWorld(page);
   await sendTrigger(sw, 'open');
-  await expect(page.locator('css=.inkly-ai__btn').filter({ hasText: 'Rewrite' })).toBeVisible({ timeout: 5_000 });
+  await expect(page.locator('css=.inkly-ai__tab').filter({ hasText: 'Rewrite' })).toBeVisible({ timeout: 5_000 });
 });

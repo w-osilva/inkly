@@ -27,24 +27,15 @@
 
   // Actions reorder by selection kind: a single word leads with Synonyms; a phrase/
   // sentence leads with Rewrite. The primary (first) button is the accent-filled one.
-  type Act = { cap: 'rewrite' | 'translate' | 'synonyms' | 'analyze'; label: string };
-  const ACTIONS: Record<'word' | 'phrase', { primary: Act; rest: Act[] }> = {
-    word: {
-      primary: { cap: 'synonyms', label: '⇄ Synonyms' },
-      rest: [
-        { cap: 'translate', label: '🌐 Translate' },
-        { cap: 'analyze', label: '🔍 Analyze' },
-        { cap: 'rewrite', label: '✨ Rewrite' },
-      ],
-    },
-    phrase: {
-      primary: { cap: 'rewrite', label: '✨ Rewrite' },
-      rest: [
-        { cap: 'translate', label: '🌐 Translate' },
-        { cap: 'synonyms', label: '⇄ Synonyms' },
-        { cap: 'analyze', label: '🔍 Analyze' },
-      ],
-    },
+  type Act = { cap: 'rewrite' | 'translate' | 'synonyms' | 'analyze'; icon: string; label: string };
+  const TRANSLATE: Act = { cap: 'translate', icon: '🌐', label: 'Translate' };
+  const SYNONYMS: Act = { cap: 'synonyms', icon: '⇄', label: 'Synonyms' };
+  const ANALYZE: Act = { cap: 'analyze', icon: '🔍', label: 'Analyze' };
+  const REWRITE: Act = { cap: 'rewrite', icon: '✦', label: 'Rewrite' };
+  // Tab order leads with the most relevant action for the selection kind.
+  const ACTIONS: Record<'word' | 'phrase', Act[]> = {
+    word: [SYNONYMS, TRANSLATE, ANALYZE, REWRITE],
+    phrase: [REWRITE, TRANSLATE, SYNONYMS, ANALYZE],
   };
 </script>
 
@@ -65,11 +56,16 @@
       </div>
     {/if}
     {#if aiPanelState.phase === 'actions'}
-      {@const acts = ACTIONS[aiPanelState.selectionKind]}
-      <div class="inkly-ai__actions">
-        <button class="inkly-ai__btn" onclick={() => aiPanelState.onAction?.(acts.primary.cap)}>{acts.primary.label}</button>
-        {#each acts.rest as a}
-          <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onAction?.(a.cap)}>{a.label}</button>
+      <div class="inkly-ai__tabs">
+        {#each ACTIONS[aiPanelState.selectionKind] as a, i}
+          <button
+            class="inkly-ai__tab"
+            class:inkly-ai__tab--primary={i === 0}
+            onclick={() => aiPanelState.onAction?.(a.cap)}
+          >
+            <span class="inkly-ai__tab-i" aria-hidden="true">{a.icon}</span>
+            <span class="inkly-ai__tab-l">{a.label}</span>
+          </button>
         {/each}
       </div>
     {:else if aiPanelState.phase === 'loading'}
@@ -161,10 +157,20 @@
   .inkly-ai__loading { color: var(--inkly-muted); }
   .inkly-ai__error { color: var(--inkly-sev-correct); margin: 0 0 8px; }
 
-  /* Actions: tidy 2×2 grid of equal, compact buttons. */
-  .inkly-ai__actions {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  /* Actions: one compact row of icon+label tabs (no chunky buttons). */
+  .inkly-ai__tabs { display: flex; gap: 3px; }
+  .inkly-ai__tab {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    border: 0; background: none; color: var(--inkly-muted); cursor: pointer;
+    font: 600 10px var(--inkly-font); padding: 7px 2px; border-radius: 8px;
+    transition: background 0.12s ease, color 0.12s ease;
   }
+  .inkly-ai__tab-i { font-size: 15px; line-height: 1; }
+  .inkly-ai__tab-l { white-space: nowrap; }
+  .inkly-ai__tab:hover { background: var(--inkly-ghost-bg); color: var(--inkly-text); }
+  .inkly-ai__tab--primary { color: var(--inkly-accent); }
+  .inkly-ai__tab--primary:hover { color: var(--inkly-accent); }
+
   .inkly-ai__btn {
     display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
     justify-content: center;

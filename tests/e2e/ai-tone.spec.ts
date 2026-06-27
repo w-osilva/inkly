@@ -29,7 +29,7 @@ test('changing the tone regenerates the rewrite with the tone option', async ({ 
   await editor.type('hello world');
   await selectWorld(page);
 
-  await page.locator('css=.inkly-ai__btn').filter({ hasText: 'Rewrite' }).click();
+  await page.locator('css=.inkly-ai__tab').filter({ hasText: 'Rewrite' }).click();
   await expect(page.locator('css=.inkly-ai__result')).toHaveText('REWRITTEN: hello world', { timeout: 10_000 });
 
   await page.locator('css=.inkly-ai__chip').filter({ hasText: 'Formal' }).click();
