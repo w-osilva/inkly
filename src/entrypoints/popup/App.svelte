@@ -71,7 +71,7 @@
     await setSettings(next);
   }
 
-  async function setLanguage(value: 'auto' | 'en' | 'pt-br' | 'es' | 'fr' | 'de') {
+  async function setLanguage(value: 'auto' | 'en' | 'pt-br' | 'es' | 'fr' | 'de' | 'it' | 'nl' | 'ru' | 'pl') {
     const cur = await getSettings();
     const next = { ...cur, uiLanguage: value };
     settings = next;
@@ -137,13 +137,17 @@
     </div>
     <label class="row">
       <span>{t(lang, 'popup.language')}</span>
-      <select value={settings.uiLanguage} onchange={(e) => setLanguage((e.currentTarget as HTMLSelectElement).value as 'auto' | 'en' | 'pt-br' | 'es' | 'fr' | 'de')}>
+      <select value={settings.uiLanguage} onchange={(e) => setLanguage((e.currentTarget as HTMLSelectElement).value as 'auto' | 'en' | 'pt-br' | 'es' | 'fr' | 'de' | 'it' | 'nl' | 'ru' | 'pl')}>
         <option value="auto">{t(lang, 'lang.auto')}</option>
         <option value="en">{t(lang, 'lang.en')}</option>
         <option value="pt-br">{t(lang, 'lang.pt-br')}</option>
         <option value="es">{t(lang, 'lang.es')}</option>
         <option value="fr">{t(lang, 'lang.fr')}</option>
         <option value="de">{t(lang, 'lang.de')}</option>
+        <option value="it">{t(lang, 'lang.it')}</option>
+        <option value="nl">{t(lang, 'lang.nl')}</option>
+        <option value="ru">{t(lang, 'lang.ru')}</option>
+        <option value="pl">{t(lang, 'lang.pl')}</option>
       </select>
     </label>
     <label class="row">
