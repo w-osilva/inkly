@@ -55,7 +55,7 @@ test('Define shows the word meaning (read-only, no Apply)', async ({ context }) 
   const editor = page.locator('#editor');
   await editor.click(); await editor.type('hello world');
   await selectWorld(page);
-  await page.locator('css=.inkly-ai__tab').filter({ hasText: 'Define' }).click();
+  await page.locator('css=.inkly-ai__tab').filter({ hasText: 'Dictionary' }).click();
   await expect(page.locator('css=.inkly-ai__result')).toContainText('DEFINITION:', { timeout: 10_000 });
   await expect(page.locator('css=.inkly-ai__btn').filter({ hasText: 'Apply' })).toHaveCount(0);
 });

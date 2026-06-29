@@ -34,7 +34,7 @@
   const SYNONYMS: Act = { cap: 'synonyms', icon: '⇄', label: 'Synonyms' };
   const IMPROVE: Act = { cap: 'improve', icon: '✨', label: 'Improve' };
   const REWRITE: Act = { cap: 'rewrite', icon: '✦', label: 'Rewrite' };
-  const DEFINE: Act = { cap: 'define', icon: '📖', label: 'Define' };
+  const DEFINE: Act = { cap: 'define', icon: '📖', label: 'Dictionary' };
   // Tab order leads with the most relevant action for the selection kind. Define is
   // word-only (you look up the meaning of a word, not a sentence).
   const ACTIONS: Record<'word' | 'phrase', Act[]> = {
