@@ -118,7 +118,6 @@
     { id: '', key: 'tone.none' },
     { id: 'confident', key: 'tone.confident' },
     { id: 'technical', key: 'tone.technical' },
-    { id: 'persuasive', key: 'tone.persuasive' },
     { id: 'simple', key: 'tone.simple' },
   ];
   const LENGTH_OPTIONS = [
