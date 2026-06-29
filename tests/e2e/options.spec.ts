@@ -12,7 +12,7 @@ test('the options page saves the BYOK config to storage.local', async ({ context
 
   // A custom endpoint requires the "Custom" provider preset.
   await page.locator('select').first().selectOption('custom');
-  await page.locator('input[type="url"]').first().fill('https://api.example.com/v1');
+  await page.locator('input[placeholder="https://api.openai.com/v1"]').fill('https://api.example.com/v1');
   await page.locator('input[type="text"]').fill('gpt-test');
   await page.locator('input[type="password"]').fill('sk-secret');
   await page.locator('button').filter({ hasText: /Save|Salvar/ }).click();

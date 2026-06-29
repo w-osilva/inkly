@@ -131,6 +131,46 @@
   <h1>inkly</h1>
   {#if loaded}
     <section>
+      <h2>{t(lang, 'tools.heading')}</h2>
+
+      <h3 class="tools-group">{t(lang, 'tools.correctionGroup')}</h3>
+      <p class="hint">{t(lang, 'tools.priorityHint')}</p>
+      <ul class="tools">
+        {#each order as id, i (id)}
+          <li class="tool" class:off={!toolOn(id)}>
+            <span class="tool-rank">{i + 1}</span>
+            <span class="tool-reorder">
+              <button class="tool-move" aria-label={t(lang, 'tools.moveUp')} disabled={i === 0} onclick={() => moveTool(i, -1)}>▲</button>
+              <button class="tool-move" aria-label={t(lang, 'tools.moveDown')} disabled={i === order.length - 1} onclick={() => moveTool(i, 1)}>▼</button>
+            </span>
+            <span class="tool-main">
+              <span class="tool-name">{t(lang, `tool.${id}`)}<span class="badge badge--{TOOL_SCOPE[id]}">{t(lang, `tools.scope.${TOOL_SCOPE[id]}`)}</span></span>
+              <span class="tool-desc">{t(lang, `tool.desc.${id}`)}</span>
+            </span>
+            <label class="switch"><input type="checkbox" checked={toolOn(id)} onchange={() => toggleTool(id)} /></label>
+          </li>
+        {/each}
+      </ul>
+      {#if toolOn('languagetool')}
+        <label class="lt-server">{t(lang, 'options.ltServer')}
+          <input type="url" bind:value={ltEndpoint} onblur={persistTools} placeholder={DEFAULT_LT_ENDPOINT} />
+        </label>
+        <p class="hint">{t(lang, 'options.ltPrivacy')}</p>
+      {/if}
+
+      <h3 class="tools-group">{t(lang, 'tools.actionsGroup')}</h3>
+      <p class="hint">{t(lang, 'tools.actionsHint')}</p>
+      <div class="actions">
+        {#each SELECTION_ACTIONS as a}
+          <label class="action" class:off={actionsDisabled.includes(a)}>
+            <input type="checkbox" checked={!actionsDisabled.includes(a)} onchange={() => toggleAction(a)} />
+            <span>{t(lang, `tool.action.${a}`)}</span>
+          </label>
+        {/each}
+      </div>
+    </section>
+
+    <section>
       <h2>{t(lang, 'options.aiHeading')}</h2>
       <p class="hint">{t(lang, 'options.aiHint')}</p>
 
@@ -196,44 +236,6 @@
         </span>
       </div>
     </section>
-
-    <section>
-      <h2>{t(lang, 'tools.heading')}</h2>
-
-      <h3 class="tools-group">{t(lang, 'tools.correctionGroup')}</h3>
-      <p class="hint">{t(lang, 'tools.priorityHint')}</p>
-      <ul class="tools">
-        {#each order as id, i (id)}
-          <li class="tool" class:off={!toolOn(id)}>
-            <span class="tool-rank">{i + 1}</span>
-            <span class="tool-reorder">
-              <button class="tool-move" aria-label={t(lang, 'tools.moveUp')} disabled={i === 0} onclick={() => moveTool(i, -1)}>▲</button>
-              <button class="tool-move" aria-label={t(lang, 'tools.moveDown')} disabled={i === order.length - 1} onclick={() => moveTool(i, 1)}>▼</button>
-            </span>
-            <span class="tool-name">{t(lang, `tool.${id}`)}</span>
-            <span class="badge badge--{TOOL_SCOPE[id]}">{t(lang, `tools.scope.${TOOL_SCOPE[id]}`)}</span>
-            <label class="switch"><input type="checkbox" checked={toolOn(id)} onchange={() => toggleTool(id)} /></label>
-          </li>
-        {/each}
-      </ul>
-      {#if toolOn('languagetool')}
-        <label class="lt-server">{t(lang, 'options.ltServer')}
-          <input type="url" bind:value={ltEndpoint} onblur={persistTools} placeholder={DEFAULT_LT_ENDPOINT} />
-        </label>
-        <p class="hint">{t(lang, 'options.ltPrivacy')}</p>
-      {/if}
-
-      <h3 class="tools-group">{t(lang, 'tools.actionsGroup')}</h3>
-      <p class="hint">{t(lang, 'tools.actionsHint')}</p>
-      <div class="actions">
-        {#each SELECTION_ACTIONS as a}
-          <label class="action" class:off={actionsDisabled.includes(a)}>
-            <input type="checkbox" checked={!actionsDisabled.includes(a)} onchange={() => toggleAction(a)} />
-            <span>{t(lang, `tool.action.${a}`)}</span>
-          </label>
-        {/each}
-      </div>
-    </section>
   {/if}
 </main>
 
@@ -289,7 +291,9 @@
   }
   .tool-move:hover:not(:disabled) { color: var(--inkly-accent); }
   .tool-move:disabled { opacity: 0.3; cursor: default; }
-  .tool-name { flex: 1; }
+  .tool-main { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .tool-name { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+  .tool-desc { font-size: 12px; color: var(--inkly-muted); line-height: 1.35; }
   .switch input { width: auto; margin: 0; }
   .lt-server { display: block; margin: 8px 0; }
   .actions { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 4px 0; }
