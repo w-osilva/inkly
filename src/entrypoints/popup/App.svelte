@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { browser } from 'wxt/browser';
-  import { getSettings, setSettings, hostOf, isEnabledForHost, isCategoryEnabled, toggleCategory, removeWord, DEFAULT_SETTINGS, effectiveLang, type Settings } from '../../core/settings';
+  import { getSettings, setSettings, hostOf, isEnabledForHost, isCategoryEnabled, toggleCategory, removeWord, DEFAULT_SETTINGS, effectiveLang, type Settings, type ThemePref } from '../../core/settings';
   import { LINT_CATEGORIES } from '../../core/lint-categories';
   import { t, categoryLabel } from '../../core/i18n';
 
@@ -65,6 +65,13 @@
     await setSettings(next);
   }
 
+  async function setTheme(value: ThemePref) {
+    const cur = await getSettings();
+    const next = { ...cur, theme: value };
+    settings = next;
+    await setSettings(next);
+  }
+
   const TONE_OPTIONS = [
     { id: '', key: 'tone.neutral' },
     { id: 'formal', key: 'tone.formal' },
@@ -86,6 +93,14 @@
         <option value="auto">{t(lang, 'lang.auto')}</option>
         <option value="en">{t(lang, 'lang.en')}</option>
         <option value="pt-br">{t(lang, 'lang.pt-br')}</option>
+      </select>
+    </label>
+    <label class="row">
+      <span>{t(lang, 'options.theme')}</span>
+      <select value={settings.theme} onchange={(e) => setTheme((e.currentTarget as HTMLSelectElement).value as ThemePref)}>
+        <option value="auto">{t(lang, 'theme.auto')}</option>
+        <option value="light">{t(lang, 'theme.light')}</option>
+        <option value="dark">{t(lang, 'theme.dark')}</option>
       </select>
     </label>
     <label class="row">
