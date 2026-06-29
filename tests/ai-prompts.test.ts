@@ -19,6 +19,10 @@ describe('buildMessages', () => {
     expect(sys).toMatch(/preserv/);
     expect(sys).toMatch(/not (a )?(chatbot|assistant)|do not (answer|respond)/);
   });
+  it('rewrite length=shorter/longer adds a length instruction', () => {
+    expect(buildMessages({ capability: 'rewrite', text: 'x', options: { length: 'shorter' } })[0].content.toLowerCase()).toContain('concise');
+    expect(buildMessages({ capability: 'rewrite', text: 'x', options: { length: 'longer' } })[0].content.toLowerCase()).toContain('expand');
+  });
   it('translate: system instructs to translate to the target language, user carries the text', () => {
     const msgs = buildMessages({ capability: 'translate', text: 'hello', options: { targetLang: 'Portuguese' } });
     expect(msgs[0].role).toBe('system');

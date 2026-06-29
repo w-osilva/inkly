@@ -20,6 +20,11 @@
     { id: 'technical', label: 'Technical' },
     { id: 'concise', label: 'Concise' },
   ];
+  const LENGTHS = [
+    { id: 'asis', label: 'Same length' },
+    { id: 'shorter', label: 'Shorter' },
+    { id: 'longer', label: 'Longer' },
+  ];
 
   // Actions reorder by selection kind: a single word leads with Synonyms; a phrase/
   // sentence leads with Rewrite. The primary (first) button is the accent-filled one.
@@ -69,6 +74,12 @@
       <select id="inkly-tone" class="inkly-ai__select" bind:value={aiPanelState.tone}>
         {#each TONES as t}
           <option value={t.id}>{t.label}</option>
+        {/each}
+      </select>
+      <label class="inkly-ai__seg" for="inkly-length">Length</label>
+      <select id="inkly-length" class="inkly-ai__select" bind:value={aiPanelState.length}>
+        {#each LENGTHS as l}
+          <option value={l.id}>{l.label}</option>
         {/each}
       </select>
       <div class="inkly-ai__row">
