@@ -140,16 +140,23 @@
       <ul class="tools">
         {#each order as id, i (id)}
           <li class="tool" class:off={!toolOn(id)}>
-            <span class="tool-rank">{i + 1}</span>
-            <span class="tool-reorder">
-              <button class="tool-move" aria-label={t(lang, 'tools.moveUp')} disabled={i === 0} onclick={() => moveTool(i, -1)}>▲</button>
-              <button class="tool-move" aria-label={t(lang, 'tools.moveDown')} disabled={i === order.length - 1} onclick={() => moveTool(i, 1)}>▼</button>
-            </span>
-            <span class="tool-main">
-              <span class="tool-name">{t(lang, `tool.${id}`)}<span class="badge badge--{TOOL_SCOPE[id]}">{t(lang, `tools.scope.${TOOL_SCOPE[id]}`)}</span></span>
-              <span class="tool-desc">{t(lang, `tool.desc.${id}`)}</span>
-            </span>
-            <label class="switch"><input type="checkbox" checked={toolOn(id)} onchange={() => toggleTool(id)} /></label>
+            <div class="tool-row">
+              <span class="tool-reorder">
+                <button class="tool-move" aria-label={t(lang, 'tools.moveUp')} disabled={i === 0} onclick={() => moveTool(i, -1)}>▲</button>
+                <button class="tool-move" aria-label={t(lang, 'tools.moveDown')} disabled={i === order.length - 1} onclick={() => moveTool(i, 1)}>▼</button>
+              </span>
+              <span class="tool-main">
+                <span class="tool-name">{t(lang, `tool.${id}`)}<span class="badge badge--{TOOL_SCOPE[id]}">{t(lang, `tools.scope.${TOOL_SCOPE[id]}`)}</span></span>
+                <span class="tool-desc">{t(lang, `tool.desc.${id}`)}</span>
+              </span>
+              <label class="switch"><input type="checkbox" checked={toolOn(id)} onchange={() => toggleTool(id)} /></label>
+            </div>
+            {#if id === 'languagetool' && toolOn(id)}
+              <div class="tool-sub">
+                <input type="url" bind:value={ltEndpoint} onblur={persistTools} placeholder={DEFAULT_LT_ENDPOINT} aria-label={t(lang, 'options.ltServer')} />
+                <p class="hint">{t(lang, 'options.ltPrivacy')}</p>
+              </div>
+            {/if}
           </li>
         {/each}
       </ul>
@@ -160,12 +167,6 @@
             winner: t(lang, `tool.${overlappingOn[0]}`).split(/ [—(]/)[0],
           })}
         </p>
-      {/if}
-      {#if toolOn('languagetool')}
-        <label class="lt-server">{t(lang, 'options.ltServer')}
-          <input type="url" bind:value={ltEndpoint} onblur={persistTools} placeholder={DEFAULT_LT_ENDPOINT} />
-        </label>
-        <p class="hint">{t(lang, 'options.ltPrivacy')}</p>
       {/if}
 
       <h3 class="tools-group">{t(lang, 'tools.actionsGroup')}</h3>
@@ -192,7 +193,6 @@
           <span class="builtin-caps">{t(lang, 'options.builtinCaps')}: {builtinNames.join(', ')}</span>
         {/if}
       </div>
-      <p class="hint">{t(lang, 'options.builtinNote')}</p>
 
       <label>{t(lang, 'options.provider')}
         <select value={providerId} onchange={(e) => selectProvider((e.currentTarget as HTMLSelectElement).value)}>
@@ -282,18 +282,19 @@
     border: 1px solid var(--inkly-border); color: var(--inkly-muted);
   }
   .badge--local, .badge--no-train { color: var(--inkly-accent); border-color: var(--inkly-accent); }
-  .badge--server, .badge--trains { color: var(--inkly-sev-correct); border-color: var(--inkly-sev-correct); }
-  .badge--mixed { color: var(--inkly-sev-clarity, #e0a30c); border-color: var(--inkly-sev-clarity, #e0a30c); }
+  .badge--trains { color: var(--inkly-sev-correct); border-color: var(--inkly-sev-correct); }
+  /* Scope badges are informational, not severity — keep them subtle/muted. */
+  .badge--server, .badge--mixed { color: var(--inkly-muted); border-color: var(--inkly-border); }
   .badge--rec { color: var(--inkly-accent-contrast); background: var(--inkly-accent); border-color: var(--inkly-accent); }
   /* Tools page */
-  h3.tools-group { font-size: 13px; margin: 16px 0 2px; font-weight: 700; }
+  h3.tools-group { font-size: 13px; margin: 18px 0 2px; font-weight: 700; }
   .tools { list-style: none; margin: 6px 0; padding: 0; }
-  .tool {
-    display: flex; align-items: center; gap: 8px; padding: 6px 0;
-    border-bottom: 1px solid var(--inkly-border);
-  }
+  .tool { padding: 8px 0; border-bottom: 1px solid var(--inkly-border); }
   .tool.off { opacity: 0.55; }
-  .tool-rank { width: 16px; color: var(--inkly-muted); font-size: 12px; text-align: center; }
+  .tool-row { display: flex; align-items: center; gap: 8px; }
+  .tool-sub { margin: 8px 0 2px 26px; }
+  .tool-sub input { width: 100%; }
+  .tool-sub .hint { margin: 4px 0 0; }
   .tool-reorder { display: flex; flex-direction: column; line-height: 0.8; }
   .tool-move {
     border: 0; background: none; cursor: pointer; color: var(--inkly-muted);
