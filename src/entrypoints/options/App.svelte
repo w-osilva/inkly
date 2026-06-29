@@ -5,7 +5,13 @@
   import { getSettings, effectiveLang } from '../../core/settings';
   import { t, type Lang } from '../../core/i18n';
   import { AI_PROVIDERS, getProvider, providerForEndpoint } from '../../core/ai/providers';
-  import { builtinAvailability, type BuiltinStatus } from '../../core/ai/chrome-ai';
+  import { detectBuiltins, type BuiltinStatus, type BuiltinCapability } from '../../core/ai/builtin-apis';
+
+  // Friendly names for the on-device Writing Assistance capabilities, in display order.
+  const BUILTIN_LABELS: Record<BuiltinCapability, string> = {
+    languageModel: 'Prompt', rewriter: 'Rewriter', writer: 'Writer',
+    proofreader: 'Proofreader', summarizer: 'Summarizer',
+  };
 
   let providerId = $state('openrouter');
   let endpoint = $state('');
@@ -14,7 +20,20 @@
   let lang = $state<Lang>('en');
   let loaded = $state(false);
   let savedFlag = $state(false);
-  let builtin = $state<BuiltinStatus>('unavailable');
+  let builtins = $state<Record<BuiltinCapability, BuiltinStatus> | null>(null);
+
+  // Headline state: any capability ready → active; else any downloadable → soon; else none.
+  const builtin = $derived<BuiltinStatus>(
+    !builtins ? 'unavailable'
+    : Object.values(builtins).includes('available') ? 'available'
+    : Object.values(builtins).includes('downloadable') ? 'downloadable'
+    : 'unavailable',
+  );
+  const builtinNames = $derived(
+    !builtins ? [] :
+    (Object.keys(BUILTIN_LABELS) as BuiltinCapability[])
+      .filter((c) => builtins![c] === 'available').map((c) => BUILTIN_LABELS[c]),
+  );
 
   const provider = $derived(getProvider(providerId));
   const config = $derived({ provider: 'openai-compatible', endpoint, apiKey, model } as AIConfig);
@@ -26,13 +45,13 @@
   );
 
   onMount(async () => {
-    const [cfg, settings, status] = await Promise.all([getAIConfig(), getSettings(), builtinAvailability()]);
+    const [cfg, settings, detected] = await Promise.all([getAIConfig(), getSettings(), detectBuiltins()]);
     endpoint = cfg.endpoint;
     apiKey = cfg.apiKey;
     model = cfg.model;
     providerId = providerForEndpoint(cfg.endpoint);
     lang = effectiveLang(settings, navigator.language);
-    builtin = status;
+    builtins = detected;
     loaded = true;
   });
 
@@ -67,6 +86,9 @@
         {#if builtin === 'available'}{t(lang, 'options.builtinAvailable')}
         {:else if builtin === 'downloadable'}{t(lang, 'options.builtinDownloadable')}
         {:else}{t(lang, 'options.builtinUnavailable')}{/if}
+        {#if builtinNames.length > 0}
+          <span class="builtin-caps">{t(lang, 'options.builtinCaps')}: {builtinNames.join(', ')}</span>
+        {/if}
       </div>
       <p class="hint">{t(lang, 'options.builtinNote')}</p>
 
@@ -151,6 +173,7 @@
   }
   .builtin.on { border-color: var(--inkly-accent); color: var(--inkly-text); }
   .builtin.soon { border-color: var(--inkly-accent); }
+  .builtin-caps { display: block; margin-top: 4px; font-size: 12px; color: var(--inkly-muted); }
   .badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
   .badge {
     font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px;

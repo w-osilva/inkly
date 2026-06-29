@@ -6,6 +6,7 @@ import { buildHttpRequest } from '../../core/ai/openai-provider';
 import { splitSSE, deltaFromEvent } from '../../core/ai/sse';
 import type { AIConfig, AIRequest, AIResponse } from '../../core/ai/ai-types';
 import { tryChromeAI } from '../../core/ai/chrome-ai';
+import { tryChromeRewrite } from '../../core/ai/builtin-apis';
 import { tryChromeTranslate } from '../../core/ai/chrome-translator';
 import { lookupDefinition } from '../../core/ai/dictionary';
 
@@ -68,7 +69,13 @@ async function runAI(request: AIRequest, config: AIConfig, streamId: string): Pr
     const def = await lookupDefinition(request.text, request.options?.defineLang || 'en');
     if (def !== null) return { ok: true, text: def };
   }
-  // 1) Opportunistic free on-device tier (Chrome built-in Prompt API), if available.
+  // 1) Rewrite prefers the purpose-built on-device Rewriter API when available (free,
+  // local, tone/length-aware) before the generic Prompt API.
+  if (request.capability === 'rewrite') {
+    const rewritten = await tryChromeRewrite(request);
+    if (rewritten !== null) return { ok: true, text: rewritten };
+  }
+  // 2) Opportunistic free on-device tier (Chrome built-in Prompt API), if available.
   const builtin = await tryChromeAI(request);
   if (builtin !== null) return { ok: true, text: builtin };
   // Automatic passes only use the free on-device model — never spend BYOK quota.
