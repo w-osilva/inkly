@@ -19,7 +19,7 @@ import SuggestionCard from '../ui/SuggestionCard.svelte';
 import { cardState } from '../ui/card-state.svelte';
 import { findHitIndex, type HitRect } from '../ui/hit-test';
 import { computeCardPosition } from '../ui/card-position';
-import { getSettings, setSettings, addWord, onSettingsChanged, isEnabledForHost, effectiveLang } from '../core/settings';
+import { getSettings, setSettings, addWord, onSettingsChanged, isEnabledForHost, effectiveLang, applyTheme } from '../core/settings';
 import { isSuppressed, isDictionaryCategory } from '../core/suppression';
 import type { Lang } from '../core/i18n';
 import { runAI } from '../core/ai/ai-client';
@@ -617,6 +617,7 @@ export default defineContentScript({
       dictionary = new Set(s.dictionary);
       lang = effectiveLang(s, navigator.language);
       defaultTone = s.defaultTone;
+      if (overlayHost) applyTheme(overlayHost, s.theme);
     });
     onSettingsChanged((s) => {
       const next = isEnabledForHost(s, host);
@@ -625,6 +626,7 @@ export default defineContentScript({
       dictionary = new Set(s.dictionary);
       lang = effectiveLang(s, navigator.language);
       defaultTone = s.defaultTone;
+      if (overlayHost) applyTheme(overlayHost, s.theme);
       if (cardState.visible) cardState.lang = lang;
       if (!enabled) {
         runCheck.cancel();

@@ -1,6 +1,8 @@
 import { browser } from 'wxt/browser';
 import { type Lang, detectLang } from './i18n';
 
+export type ThemePref = 'auto' | 'light' | 'dark';
+
 export interface Settings {
   globalEnabled: boolean;
   siteOverrides: Record<string, boolean>; // host (incl. port) -> enabled
@@ -8,6 +10,7 @@ export interface Settings {
   dictionary: string[];
   uiLanguage: 'auto' | 'en' | 'pt-br';
   defaultTone: string;
+  theme: ThemePref;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -17,6 +20,7 @@ export const DEFAULT_SETTINGS: Settings = {
   dictionary: [],
   uiLanguage: 'auto',
   defaultTone: '',
+  theme: 'auto',
 };
 
 const KEY = 'inkly:settings';
@@ -38,7 +42,14 @@ function normalize(raw: unknown): Settings {
         ? o.uiLanguage
         : 'auto',
     defaultTone: typeof o.defaultTone === 'string' ? o.defaultTone : '',
+    theme: o.theme === 'light' || o.theme === 'dark' || o.theme === 'auto' ? o.theme : 'auto',
   };
+}
+
+/** Apply a theme preference to an element via the data attribute the tokens read. */
+export function applyTheme(el: HTMLElement, theme: ThemePref): void {
+  if (theme === 'auto') el.removeAttribute('data-inkly-theme');
+  else el.setAttribute('data-inkly-theme', theme);
 }
 
 export async function getSettings(): Promise<Settings> {

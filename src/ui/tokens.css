@@ -37,9 +37,13 @@
   --inkly-shadow: 0 10px 34px rgba(15, 23, 41, 0.16), 0 2px 6px rgba(15, 23, 41, 0.08);
 }
 
+/* Dark palette. Applied automatically by OS preference ONLY when no explicit theme is
+ * chosen (the :not([data-inkly-theme]) gate), and always when theme is forced to dark.
+ * Forcing theme to light just leaves the base light tokens above (the media query is
+ * excluded by the gate), so no separate light block is needed. */
 @media (prefers-color-scheme: dark) {
-  :root,
-  :host {
+  :root:not([data-inkly-theme]),
+  :host(:not([data-inkly-theme])) {
     --inkly-accent: #818cf8;
     --inkly-accent-press: #6366f1;
     --inkly-accent-tint: rgba(129, 140, 248, 0.16);
@@ -56,4 +60,23 @@
 
     --inkly-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
   }
+}
+
+:root[data-inkly-theme='dark'],
+:host([data-inkly-theme='dark']) {
+  --inkly-accent: #818cf8;
+  --inkly-accent-press: #6366f1;
+  --inkly-accent-tint: rgba(129, 140, 248, 0.16);
+
+  --inkly-bg: #1e2030;
+  --inkly-elevated: #1e2030;
+  --inkly-border: #2e3142;
+  --inkly-text: #ecedf6;
+  --inkly-muted: #9a9cb4;
+
+  --inkly-ghost-bg: #2a2d3e;
+  --inkly-ghost-text: #c9cbdd;
+  --inkly-ghost-border: #383b4e;
+
+  --inkly-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
 }

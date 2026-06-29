@@ -57,6 +57,10 @@ const en: Dict = {
   'options.saved': 'Saved ✓',
   'options.configured': 'AI is configured.',
   'options.notConfigured': 'Not configured — add your key to enable AI features.',
+  'options.theme': 'Appearance',
+  'theme.auto': 'System',
+  'theme.light': 'Light',
+  'theme.dark': 'Dark',
 };
 
 const ptBr: Dict = {
@@ -114,6 +118,10 @@ const ptBr: Dict = {
   'options.saved': 'Salvo ✓',
   'options.configured': 'IA configurada.',
   'options.notConfigured': 'Não configurada — adicione sua chave para habilitar os recursos de IA.',
+  'options.theme': 'Aparência',
+  'theme.auto': 'Sistema',
+  'theme.light': 'Claro',
+  'theme.dark': 'Escuro',
 };
 
 export const MESSAGES: Record<Lang, Dict> = { en, 'pt-br': ptBr };
