@@ -13,6 +13,8 @@ export interface FieldButtonState {
   count: number;
   /** AI writing-improvement count (shown as a separate indigo badge). */
   improveCount: number;
+  /** An AI improvement pass is in flight — show a spinner on the ✨ button. */
+  improveLoading: boolean;
   /** Highest-priority severity among grammar issues — drives the main badge color. */
   severity: Severity;
   /** Open the grammar review (the ink-drop button). */
@@ -27,6 +29,7 @@ export const fieldButtonState = $state<FieldButtonState>({
   top: 0,
   count: 0,
   improveCount: 0,
+  improveLoading: false,
   severity: 'correctness',
   onOpen: null,
   onOpenImprove: null,

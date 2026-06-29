@@ -9,10 +9,14 @@
     <button
       class="inkly-fb__btn inkly-fb__btn--improve"
       aria-label="inkly: improve writing{fieldButtonState.improveCount > 0 ? ` (${fieldButtonState.improveCount})` : ''}"
-      title="Improve writing"
+      title={fieldButtonState.improveLoading ? 'Analyzing…' : 'Improve writing'}
       onclick={() => fieldButtonState.onOpenImprove?.()}
     >
-      <span class="inkly-fb__icon" aria-hidden="true">✨</span>
+      {#if fieldButtonState.improveLoading}
+        <span class="inkly-fb__spinner" aria-hidden="true"></span>
+      {:else}
+        <span class="inkly-fb__icon" aria-hidden="true">✨</span>
+      {/if}
       {#if fieldButtonState.improveCount > 0}
         <span class="inkly-fb__badge inkly-fb__badge--imp">{fieldButtonState.improveCount}</span>
       {/if}
@@ -62,6 +66,17 @@
   }
   .inkly-fb__mark { display: inline-flex; color: var(--inkly-accent, #6366f1); }
   .inkly-fb__icon { font-size: 14px; line-height: 1; }
+  /* Spinner shown on the ✨ button while an AI improvement pass is running. */
+  .inkly-fb__spinner {
+    width: 14px; height: 14px; border-radius: 999px;
+    border: 2px solid var(--inkly-border, #e7e7f1);
+    border-top-color: var(--inkly-accent, #6366f1);
+    animation: inkly-fb-spin 0.7s linear infinite;
+  }
+  @keyframes inkly-fb-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .inkly-fb__spinner { animation-duration: 1.6s; }
+  }
   .inkly-fb__badge {
     position: absolute;
     min-width: 15px;

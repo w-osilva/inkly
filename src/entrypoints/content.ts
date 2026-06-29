@@ -149,6 +149,13 @@ export default defineContentScript({
     // exists (free), otherwise the user's BYOK key. Gated by the autoSuggest setting so a
     // cost-conscious user can turn off the BYOK passes. Results surface inline (and in the
     // ✨ panel). Errors/rate-limits are swallowed silently — no cost surprises, no spam.
+    // Count of in-flight AI improvement passes → drives the ✨ button spinner. A counter
+    // (not a boolean) so overlapping passes don't clear the spinner prematurely.
+    let improveInFlight = 0;
+    function setImproveLoading() {
+      fieldButtonState.improveLoading = improveInFlight > 0;
+    }
+
     async function runAutoImprove() {
       const field = activeField;
       const type = activeType;
@@ -156,12 +163,19 @@ export default defineContentScript({
       const text = getFieldText(field, type);
       if (text.trim().length < 12) return;
       const myCheck = checkSeq;
-      const res = await runAI({ capability: 'improve', text, options: defaultTone ? { tone: defaultTone } : {} }, crypto.randomUUID());
-      if (!res.ok) return; // no on-device model AND no/failed BYOK — silent
-      if (checkSeq !== myCheck || activeField !== field) return;
-      aiImprovements = parseImprovements(res.text).filter((im) => text.includes(im.original));
-      updateFieldButton();
-      drawUnderlines(); // surface the new suggestions inline
+      improveInFlight++;
+      setImproveLoading();
+      try {
+        const res = await runAI({ capability: 'improve', text, options: defaultTone ? { tone: defaultTone } : {} }, crypto.randomUUID());
+        if (!res.ok) return; // no on-device model AND no/failed BYOK — silent
+        if (checkSeq !== myCheck || activeField !== field) return;
+        aiImprovements = parseImprovements(res.text).filter((im) => text.includes(im.original));
+        updateFieldButton();
+        drawUnderlines(); // surface the new suggestions inline
+      } finally {
+        improveInFlight--;
+        setImproveLoading();
+      }
     }
     const scheduleAutoImprove = debounce(() => { void runAutoImprove(); }, 1500);
 
@@ -223,7 +237,15 @@ export default defineContentScript({
       aiPanelState.onClose = userDismissAIPanel;
       aiPanelState.phase = 'loading';
       const gen = ++rewriteSeq;
-      const res = await runAI({ capability: 'improve', text, options: defaultTone ? { tone: defaultTone } : {} }, crypto.randomUUID());
+      improveInFlight++;
+      setImproveLoading();
+      let res;
+      try {
+        res = await runAI({ capability: 'improve', text, options: defaultTone ? { tone: defaultTone } : {} }, crypto.randomUUID());
+      } finally {
+        improveInFlight--;
+        setImproveLoading();
+      }
       if (gen !== rewriteSeq || aiPanelState.phase !== 'loading') return;
       if (!res.ok) {
         aiPanelState.error = res.error;
