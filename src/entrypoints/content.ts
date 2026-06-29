@@ -175,6 +175,8 @@ export default defineContentScript({
       if (left < 8) left = 8;
       aiPanelState.left = left;
       aiPanelState.top = top;
+      // Anchor to the field-button widget so the panel can re-fit after measuring.
+      aiPanelState.anchor = { left: fieldButtonState.left, top: fieldButtonState.top, width: 28, height: 28 };
     }
 
     function improvementsToState() {
@@ -530,9 +532,11 @@ export default defineContentScript({
       // reposition, re-bind the selection, or reset the phase out from under it.
       if (aiPanelState.phase !== 'hidden' && aiPanelState.phase !== 'actions') return;
       aiSelection = info;
-      const pos = computeCardPosition(selectionRect(), { width: 320, height: 160 }, { width: window.innerWidth, height: window.innerHeight });
+      const rect = selectionRect();
+      const pos = computeCardPosition(rect, { width: 320, height: 160 }, { width: window.innerWidth, height: window.innerHeight });
       aiPanelState.left = pos.left;
       aiPanelState.top = pos.top;
+      aiPanelState.anchor = rect;
       aiPanelState.tone = defaultTone;
       aiPanelState.length = 'asis';
       // Word selection → Synonyms-first; phrase/sentence → Rewrite-first.
@@ -550,13 +554,15 @@ export default defineContentScript({
       const info = getSelectionInfo(activeField, activeType);
       if (!info) return; // need a non-collapsed selection in the focused field
       aiSelection = info;
+      const rect = selectionRect();
       const pos = computeCardPosition(
-        selectionRect(),
+        rect,
         { width: 320, height: 160 },
         { width: window.innerWidth, height: window.innerHeight },
       );
       aiPanelState.left = pos.left;
       aiPanelState.top = pos.top;
+      aiPanelState.anchor = rect;
       aiPanelState.tone = defaultTone;
       aiPanelState.length = 'asis';
       if (capability === 'open') {

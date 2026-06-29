@@ -4,8 +4,12 @@ export type AIPanelPhase = 'hidden' | 'actions' | 'rewrite-config' | 'loading' |
 
 export interface AIPanelState {
   phase: AIPanelPhase;
+  /** Initial guess; the panel self-corrects from `anchor` after measuring its real size. */
   left: number;
   top: number;
+  /** The rect the panel is anchored to (selection or widget), in viewport coords. The
+   * panel positions below it, flips above when it doesn't fit, and clamps to the viewport. */
+  anchor: { left: number; top: number; width: number; height: number };
   result: string;
   streamingText: string;
   error: string;
@@ -33,6 +37,7 @@ export const aiPanelState = $state<AIPanelState>({
   phase: 'hidden',
   left: 0,
   top: 0,
+  anchor: { left: 0, top: 0, width: 0, height: 0 },
   result: '',
   streamingText: '',
   error: '',

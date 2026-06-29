@@ -41,14 +41,58 @@
     word: [SYNONYMS, DEFINE, TRANSLATE, IMPROVE, REWRITE],
     phrase: [REWRITE, IMPROVE, TRANSLATE, SYNONYMS],
   };
+
+  // Positioning: content.ts gives a best-guess left/top + the anchor rect. Once mounted we
+  // measure the panel's real height (which the guess can't know — synonyms/results vary a
+  // lot) and re-fit: cap the scrollable body to the available space and place it on the
+  // side (below/above) with more room, clamped to the viewport. This prevents the panel
+  // from overflowing offscreen and clipping content.
+  const MARGIN = 8, GAP = 6, MIN_BODY = 120;
+  let node = $state<HTMLDivElement>();
+  let bodyEl = $state<HTMLDivElement>();
+  let posLeft = $state(0);
+  let posTop = $state(0);
+  let bodyMax = $state(10000);
+
+  function reposition() {
+    if (!node || !bodyEl) return;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const a = aiPanelState.anchor;
+    const chrome = node.offsetHeight - bodyEl.offsetHeight; // header + paddings
+    const natural = bodyEl.scrollHeight;                    // full content height, uncapped
+    const spaceBelow = vh - (a.top + a.height) - GAP - MARGIN;
+    const spaceAbove = a.top - GAP - MARGIN;
+    // Prefer below; flip above only when it doesn't fit below and above is roomier.
+    const fitsBelow = spaceBelow >= chrome + natural;
+    const below = fitsBelow || spaceBelow >= spaceAbove;
+    const avail = below ? spaceBelow : spaceAbove;
+    bodyMax = Math.max(MIN_BODY, Math.min(natural, avail - chrome));
+    const totalH = chrome + bodyMax;
+    let top = below ? a.top + a.height + GAP : a.top - GAP - totalH;
+    posTop = Math.max(MARGIN, Math.min(top, vh - totalH - MARGIN));
+    let left = a.left;
+    posLeft = Math.max(MARGIN, Math.min(left, vw - node.offsetWidth - MARGIN));
+  }
+
+  // Re-fit whenever the panel opens or its content (and thus height) changes.
+  $effect(() => {
+    void [
+      aiPanelState.phase, aiPanelState.capability, aiPanelState.result,
+      aiPanelState.streamingText, aiPanelState.improvements.length,
+      aiPanelState.anchor.top, aiPanelState.anchor.left,
+    ];
+    if (aiPanelState.phase === 'hidden') return;
+    reposition();
+  });
 </script>
 
 {#if aiPanelState.phase !== 'hidden'}
   <div
+    bind:this={node}
     class="inkly-ai"
     role="group"
     aria-label="inkly AI"
-    style="left:{aiPanelState.left}px; top:{aiPanelState.top}px;"
+    style="left:{posLeft}px; top:{posTop}px;"
     onmouseenter={() => (aiPanelState.hovered = true)}
     onmouseleave={() => (aiPanelState.hovered = false)}
   >
@@ -59,6 +103,7 @@
         <button class="inkly-ai__x inkly-ai__x--head" aria-label="Close" onclick={() => aiPanelState.onClose?.()}>×</button>
       </div>
     {/if}
+    <div class="inkly-ai__body" bind:this={bodyEl} style="max-height:{bodyMax}px">
     {#if aiPanelState.phase === 'actions'}
       <div class="inkly-ai__tabs">
         {#each ACTIONS[aiPanelState.selectionKind] as a, i}
@@ -145,6 +190,7 @@
       <p class="inkly-ai__error">AI error: {aiPanelState.error}</p>
       <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onDismiss?.()}>Dismiss</button>
     {/if}
+    </div>
   </div>
 {/if}
 
@@ -155,6 +201,15 @@
     border: 1px solid var(--inkly-border); border-radius: 10px;
     box-shadow: var(--inkly-shadow); padding: 8px;
     font: 12.5px/1.4 var(--inkly-font); pointer-events: auto;
+  }
+
+  /* Scrollable body: caps to the available viewport space (set inline) so tall content
+     (synonyms, long results) scrolls instead of overflowing offscreen. The header stays
+     pinned above it. -2px/2px padding keeps focus rings from clipping at the scroll edge. */
+  .inkly-ai__body {
+    overflow-y: auto; overflow-x: hidden;
+    margin: 0 -2px; padding: 0 2px;
+    overscroll-behavior: contain;
   }
 
   /* Header row: mark + brand label + hotkey hint. */
