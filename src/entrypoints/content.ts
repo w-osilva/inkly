@@ -764,6 +764,12 @@ export default defineContentScript({
       }
     });
     ctx.addEventListener(document, 'focusout', (e) => {
+      // Only the tracked field's own blur matters here. Focus churn *inside* our shadow
+      // overlay — clicking a panel button, or the panel unmounting after Apply — retargets
+      // to the overlay host, not the field. Acting on it would cancel the pending recheck
+      // (`runCheck.cancel()` below), which left the grammar count/underlines stale after
+      // applying an edit in a textarea/input (where applyRange doesn't refocus the field).
+      if (e.target !== activeField) return;
       // Clicking a card button moves focus into our shadow-DOM overlay, which the
       // editor sees as a focusout. Ignore it: tearing down here would unmount the
       // card mid-click, so the replacement/dismiss handler would never run.
