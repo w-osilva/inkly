@@ -4,7 +4,7 @@ export default defineConfig({
   srcDir: 'src',
   modules: ['@wxt-dev/module-svelte'],
   manifest: {
-    name: 'inkly',
+    name: 'Inkly',
     description:
       'Open-source, privacy-first writing assistant for Chrome/Edge/Brave — local grammar & spelling + optional AI.',
     icons: {
