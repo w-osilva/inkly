@@ -39,6 +39,7 @@ test('select → Rewrite → result → Apply replaces the selection', async ({ 
   const rewriteBtn = page.locator('css=.inkly-ai__tab').filter({ hasText: 'Rewrite' });
   await expect(rewriteBtn).toBeVisible({ timeout: 5_000 });
   await rewriteBtn.click();
+  await page.locator('css=.inkly-ai__btn').filter({ hasText: 'Rewrite' }).click(); // confirm tone config
 
   await expect(page.locator('css=.inkly-ai__result')).toContainText('REWRITTEN: hello world', { timeout: 10_000 });
   await page.locator('css=.inkly-ai__btn').filter({ hasText: 'Apply' }).click();
@@ -56,6 +57,7 @@ test('rewrite without a key shows the error phase', async ({ context }) => {
   const rewriteBtn = page.locator('css=.inkly-ai__tab').filter({ hasText: 'Rewrite' });
   await expect(rewriteBtn).toBeVisible({ timeout: 5_000 });
   await rewriteBtn.click();
+  await page.locator('css=.inkly-ai__btn').filter({ hasText: 'Rewrite' }).click(); // confirm tone config
   await expect(page.locator('css=.inkly-ai__error')).toContainText('no-api-key', { timeout: 10_000 });
 });
 
@@ -74,6 +76,7 @@ test('clicking away dismisses a result panel (no orphan)', async ({ context }) =
   const rewriteBtn = page.locator('css=.inkly-ai__tab').filter({ hasText: 'Rewrite' });
   await expect(rewriteBtn).toBeVisible({ timeout: 5_000 });
   await rewriteBtn.click();
+  await page.locator('css=.inkly-ai__btn').filter({ hasText: 'Rewrite' }).click(); // confirm tone config
   await expect(page.locator('css=.inkly-ai__result')).toContainText('REWRITTEN: hello world', { timeout: 10_000 });
 
   // Click on empty page area (top-left), away from the panel.

@@ -717,17 +717,14 @@ export default defineContentScript({
       if (intoOverlay) {
         return;
       }
-      // An in-flight AI panel (loading/result/error) survives the blur churn of a
-      // panel-button click: that click focuses the button, then a follow-up focusout
-      // fires with relatedTarget=null (focus settling), which would otherwise tear
-      // down the panel mid-action and make doAction's loading-phase guard drop the
-      // result. So keep it alive ONLY when related is null or moving into the overlay.
-      // A genuine focus-away (Tab to another field, focus to a real element outside
-      // the overlay) must tear the panel down so it does not orphan over the old field.
-      const aiInFlight = aiPanelState.phase === 'loading'
-        || aiPanelState.phase === 'result'
-        || aiPanelState.phase === 'error';
-      const keepAIPanel = aiInFlight && (related === null || intoOverlay);
+      // Clicking any panel button (tab, tone chip, Apply, …) focuses it and fires a
+      // focusout on the field with relatedTarget null (focus settling) or the overlay
+      // host. That must NOT tear the panel down — otherwise multi-step flows like the
+      // rewrite tone-config collapse mid-interaction. Keep ANY visible panel alive when
+      // focus goes to null or into the overlay; only a genuine focus-away to another
+      // real element (e.g. Tab to a different field) closes it. Outside clicks are
+      // handled separately by the pointerdown dismissal.
+      const keepAIPanel = aiPanelState.phase !== 'hidden' && (related === null || intoOverlay);
       runCheck.cancel();
       clearHoverTimers();
       hideCard();

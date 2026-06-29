@@ -10,6 +10,22 @@
     improve: 'Checking…',
   };
 
+  const TONES = [
+    { id: '', label: 'Neutral' },
+    { id: 'formal', label: 'Formal' },
+    { id: 'casual', label: 'Casual' },
+    { id: 'confident', label: 'Confident' },
+    { id: 'friendly', label: 'Friendly' },
+    { id: 'professional', label: 'Professional' },
+    { id: 'technical', label: 'Technical' },
+    { id: 'concise', label: 'Concise' },
+  ];
+  const LENGTHS = [
+    { id: 'shorter', label: 'Shorter' },
+    { id: 'asis', label: 'As is' },
+    { id: 'longer', label: 'Longer' },
+  ];
+
   // Actions reorder by selection kind: a single word leads with Synonyms; a phrase/
   // sentence leads with Rewrite. The primary (first) button is the accent-filled one.
   type Act = { cap: 'rewrite' | 'translate' | 'synonyms' | 'improve'; icon: string; label: string };
@@ -46,12 +62,37 @@
           <button
             class="inkly-ai__tab"
             class:inkly-ai__tab--primary={i === 0}
-            onclick={() => aiPanelState.onAction?.(a.cap)}
+            onclick={() => (a.cap === 'rewrite' ? (aiPanelState.phase = 'rewrite-config') : aiPanelState.onAction?.(a.cap))}
           >
             <span class="inkly-ai__tab-i" aria-hidden="true">{a.icon}</span>
             <span class="inkly-ai__tab-l">{a.label}</span>
           </button>
         {/each}
+      </div>
+    {:else if aiPanelState.phase === 'rewrite-config'}
+      <p class="inkly-ai__seg">Tone</p>
+      <div class="inkly-ai__chips" role="group" aria-label="Tone">
+        {#each TONES as t}
+          <button
+            class="inkly-ai__chip"
+            class:inkly-ai__chip--active={aiPanelState.tone === t.id}
+            onclick={() => (aiPanelState.tone = t.id)}
+          >{t.label}</button>
+        {/each}
+      </div>
+      <p class="inkly-ai__seg">Length</p>
+      <div class="inkly-ai__chips" role="group" aria-label="Length">
+        {#each LENGTHS as l}
+          <button
+            class="inkly-ai__chip"
+            class:inkly-ai__chip--active={aiPanelState.length === l.id}
+            onclick={() => (aiPanelState.length = l.id)}
+          >{l.label}</button>
+        {/each}
+      </div>
+      <div class="inkly-ai__row">
+        <button class="inkly-ai__btn" onclick={() => aiPanelState.onAction?.('rewrite')}>Rewrite</button>
+        <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => (aiPanelState.phase = 'actions')}>Back</button>
       </div>
     {:else if aiPanelState.phase === 'loading'}
       {#if aiPanelState.streamingText}
@@ -74,7 +115,7 @@
         <div class="inkly-ai__subactions">
           <button class="inkly-ai__mini" onclick={() => aiPanelState.onAction?.('improve')}>✨ Improve</button>
           <button class="inkly-ai__mini" onclick={() => aiPanelState.onAction?.('translate')}>🌐 Translate</button>
-          <button class="inkly-ai__mini" onclick={() => aiPanelState.onAction?.('rewrite')}>✦ Rewrite</button>
+          <button class="inkly-ai__mini" onclick={() => (aiPanelState.phase = 'rewrite-config')}>✦ Rewrite</button>
         </div>
         <div class="inkly-ai__row">
           <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onDismiss?.()}>Dismiss</button>
@@ -193,6 +234,13 @@
     padding: 3px 11px; cursor: pointer; font: 600 11.5px var(--inkly-font);
   }
   .inkly-ai__chip:hover { border-color: var(--inkly-accent); color: var(--inkly-accent); }
+  .inkly-ai__chip--active {
+    background: var(--inkly-accent); color: var(--inkly-accent-contrast); border-color: var(--inkly-accent);
+  }
+  .inkly-ai__seg {
+    margin: 2px 0 5px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--inkly-muted);
+  }
   /* Secondary actions (in the synonyms result): light text buttons, same family. */
   .inkly-ai__subactions { display: flex; flex-wrap: wrap; gap: 2px; margin: 2px 0 9px; }
   .inkly-ai__mini {

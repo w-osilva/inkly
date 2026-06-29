@@ -30,6 +30,7 @@ test('streaming rewrite accumulates SSE chunks into the final result', async ({ 
   await selectWorld(page);
 
   await page.locator('css=.inkly-ai__tab').filter({ hasText: 'Rewrite' }).click();
+  await page.locator('css=.inkly-ai__btn').filter({ hasText: 'Rewrite' }).click(); // confirm tone config
 
   const result = page.locator('css=.inkly-ai__result');
   await expect(result).toHaveText(/REWRITTEN/, { timeout: 10_000 });

@@ -1,6 +1,6 @@
 import type { AICapability } from '../core/ai/ai-types';
 
-export type AIPanelPhase = 'hidden' | 'actions' | 'loading' | 'result' | 'error';
+export type AIPanelPhase = 'hidden' | 'actions' | 'rewrite-config' | 'loading' | 'result' | 'error';
 
 export interface AIPanelState {
   phase: AIPanelPhase;

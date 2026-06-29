@@ -34,6 +34,7 @@ test('a configured defaultTone is applied to the first rewrite (no chip click)',
   await editor.click(); await editor.type('hello world');
   await selectWorld(page);
   await page.locator('css=.inkly-ai__tab').filter({ hasText: 'Rewrite' }).click();
+  await page.locator('css=.inkly-ai__btn').filter({ hasText: 'Rewrite' }).click(); // confirm tone config
   await expect(page.locator('css=.inkly-ai__result')).toHaveText('REWRITTEN[formal]: hello world', { timeout: 10_000 });
 });
 
@@ -45,5 +46,6 @@ test('no defaultTone → neutral rewrite (no tone tag)', async ({ context }) => 
   await editor.click(); await editor.type('hello world');
   await selectWorld(page);
   await page.locator('css=.inkly-ai__tab').filter({ hasText: 'Rewrite' }).click();
+  await page.locator('css=.inkly-ai__btn').filter({ hasText: 'Rewrite' }).click(); // confirm tone config
   await expect(page.locator('css=.inkly-ai__result')).toHaveText('REWRITTEN: hello world', { timeout: 10_000 });
 });
