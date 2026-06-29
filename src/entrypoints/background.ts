@@ -78,9 +78,11 @@ export default defineBackground(() => {
       const harper = ensureOffscreen().then(() =>
         browser.runtime.sendMessage({ target: 'offscreen', type: 'harper:lint', text }),
       );
-      const lt = getSettings().then((s) =>
-        s.languageToolEnabled ? checkLanguageTool(text, s.languageToolEndpoint) : [],
-      );
+      const lt = getSettings().then((s) => {
+        // Under e2e, only call a local (mock) LanguageTool — never the real public API.
+        const e2eOk = !import.meta.env.VITE_INKLY_E2E || /localhost|127\.0\.0\.1/.test(s.languageToolEndpoint);
+        return s.languageToolEnabled && e2eOk ? checkLanguageTool(text, s.languageToolEndpoint) : [];
+      });
       Promise.all([harper, lt])
         .then(([res, ltExtra]) => {
           const base = (res ?? { ok: false, error: 'no offscreen response' }) as LintResponse;

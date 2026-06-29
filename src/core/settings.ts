@@ -30,7 +30,7 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultTone: '',
   theme: 'auto',
   autoSuggest: true,
-  languageToolEnabled: false,
+  languageToolEnabled: true,
   languageToolEndpoint: DEFAULT_LT_ENDPOINT,
 };
 
