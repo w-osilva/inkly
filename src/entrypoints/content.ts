@@ -13,7 +13,6 @@ import { applyReplacement, applyRange } from '../core/apply-engine';
 import { debounce } from '../core/debounce';
 import { offsetToRange } from '../core/dom-offset';
 import type { FieldType, Suggestion } from '../core/types';
-import { makeSuggestion } from '../core/types';
 import { mount } from 'svelte';
 import SuggestionCard from '../ui/SuggestionCard.svelte';
 import { cardState } from '../ui/card-state.svelte';
@@ -34,7 +33,7 @@ import { categoryLabel } from '../core/i18n';
 import { ruleExplanation } from '../core/rule-descriptions';
 import { getSelectionInfo, type SelectionInfo } from '../core/selection';
 import { expandToSentence, isSingleWord } from '../core/sentence';
-import { parseImprovements } from '../core/ai/parse-improvements';
+import { parseImprovements, type Improvement } from '../core/ai/parse-improvements';
 import { textareaSpanRects } from '../ui/textarea-rects';
 
 const provider = new HarperProvider();
@@ -137,9 +136,14 @@ export default defineContentScript({
     }
     const runCheck = debounce(runCheckNow, 400);
 
-    // Automatic, FREE writing-improvement pass: only via the on-device model (builtinOnly),
-    // so it never spends BYOK quota. Where the browser has no on-device AI it silently
-    // no-ops. Results are merged as indigo 'suggestion' underlines alongside Harper's.
+    // AI writing improvements live in their OWN list (not in `current`), so grammar
+    // underlines and the grammar review stay clean. They surface via a separate ✨
+    // field button. `current` is grammar/spelling (Harper) only.
+    let aiImprovements: Improvement[] = [];
+
+    // Free on-device pass: when a built-in model exists, pre-populate improvements as the
+    // user types (no quota). With no on-device model this no-ops — the ✨ button fetches
+    // them on demand (BYOK) instead.
     async function runAutoImprove() {
       const field = activeField;
       const type = activeType;
@@ -148,25 +152,87 @@ export default defineContentScript({
       if (text.trim().length < 12) return;
       const myCheck = checkSeq;
       const res = await runAI({ capability: 'improve', text, options: defaultTone ? { tone: defaultTone } : {}, builtinOnly: true }, crypto.randomUUID());
-      if (!res.ok) return; // no on-device model (or nothing) — silent, no cost
-      if (checkSeq !== myCheck || activeField !== field) return; // text changed meanwhile
-      const seen = new Set(current.map((s) => `${s.offset}:${s.length}`));
-      const add: Suggestion[] = [];
-      for (const im of parseImprovements(res.text)) {
-        const off = text.indexOf(im.original);
-        if (off === -1 || seen.has(`${off}:${im.original.length}`)) continue;
-        const sug = makeSuggestion({
-          offset: off, length: im.original.length, replacements: [im.improved],
-          message: im.reason || 'Suggestion', ruleId: 'ai-improve', category: 'Enhancement',
-          severity: 'suggestion', source: 'chrome-ai',
-        });
-        if (!dismissed.has(suggestionKey(sug))) add.push(sug);
-      }
-      if (add.length === 0) return;
-      current = [...current, ...add];
-      drawUnderlines();
+      if (!res.ok) return; // no on-device model — silent, no cost
+      if (checkSeq !== myCheck || activeField !== field) return;
+      aiImprovements = parseImprovements(res.text).filter((im) => text.includes(im.original));
+      updateFieldButton();
     }
     const scheduleAutoImprove = debounce(() => { void runAutoImprove(); }, 1500);
+
+    // ✨ button: show the improvements we have, or fetch them on demand (built-in→BYOK).
+    function openImprovePanel() {
+      if (aiImprovements.length > 0) showImprovePanel();
+      else void runFieldImprove();
+    }
+
+    function positionImprovePanel() {
+      const W = 300, H = 160, GAP = 8;
+      let left = fieldButtonState.left + 56 - W; // right-align near the widget
+      let top = fieldButtonState.top - H - GAP;
+      if (top < 8) top = fieldButtonState.top + 32 + GAP;
+      if (left < 8) left = 8;
+      aiPanelState.left = left;
+      aiPanelState.top = top;
+    }
+
+    function improvementsToState() {
+      return aiImprovements.map((im) => ({ from: im.original, to: im.improved, reason: im.reason }));
+    }
+
+    function showImprovePanel() {
+      if (!activeField) return;
+      hideCard();
+      hideReview();
+      positionImprovePanel();
+      aiPanelState.capability = 'improve';
+      aiPanelState.onClose = userDismissAIPanel;
+      aiPanelState.improvements = improvementsToState();
+      aiPanelState.onApplyImprovement = (i: number) => {
+        const im = aiImprovements[i];
+        if (im && activeField) {
+          const full = getFieldText(activeField, activeType);
+          const off = full.indexOf(im.original);
+          if (off !== -1) applyRange(activeField, activeType, off, off + im.original.length, im.improved);
+        }
+        aiImprovements = aiImprovements.filter((_, idx) => idx !== i);
+        aiPanelState.improvements = improvementsToState();
+        updateFieldButton();
+        if (activeField) runCheck();
+        if (aiImprovements.length === 0) hideAIPanel();
+      };
+      aiPanelState.onDismiss = () => hideAIPanel();
+      aiPanelState.phase = 'result';
+    }
+
+    async function runFieldImprove() {
+      const field = activeField;
+      const type = activeType;
+      if (!field) return;
+      const text = getFieldText(field, type);
+      if (!text.trim()) return;
+      positionImprovePanel();
+      aiPanelState.capability = 'improve';
+      aiPanelState.onClose = userDismissAIPanel;
+      aiPanelState.phase = 'loading';
+      const gen = ++rewriteSeq;
+      const res = await runAI({ capability: 'improve', text, options: defaultTone ? { tone: defaultTone } : {} }, crypto.randomUUID());
+      if (gen !== rewriteSeq || aiPanelState.phase !== 'loading') return;
+      if (!res.ok) {
+        aiPanelState.error = res.error;
+        aiPanelState.phase = 'error';
+        aiPanelState.onDismiss = () => hideAIPanel();
+        return;
+      }
+      aiImprovements = parseImprovements(res.text).filter((im) => text.includes(im.original));
+      updateFieldButton();
+      if (aiImprovements.length === 0) {
+        aiPanelState.improvements = [];
+        aiPanelState.onDismiss = () => hideAIPanel();
+        aiPanelState.phase = 'result'; // shows "Looks good — no changes to suggest."
+        return;
+      }
+      showImprovePanel();
+    }
 
     function drawUnderlines() {
       if (!activeField) {
@@ -176,10 +242,6 @@ export default defineContentScript({
       const containerRect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
       const nextHitRects: HitRect[] = [];
       const styles = current.flatMap((s, index) => {
-        // AI 'improve' suggestions cover whole sentences — drawing them as underlines
-        // overlaps the word-level grammar marks. They surface only via the field-button
-        // count and the review panel (no inline underline / hit-rect).
-        if (s.ruleId === 'ai-improve') return [];
         const rects = getSpanRects(activeField!, activeType, s.offset, s.length);
         const first = rects[0];
         if (first) {
@@ -217,31 +279,30 @@ export default defineContentScript({
     const SEVERITY_RANK: Record<Suggestion['severity'], number> = { correctness: 3, clarity: 2, suggestion: 1 };
 
     function updateFieldButton() {
-      if (!enabled || !activeField || current.length === 0) {
-        fieldButtonState.visible = false;
-        fieldButtonState.onOpen = null;
-        return;
-      }
+      if (!enabled || !activeField) { fieldButtonState.visible = false; return; }
       const r = activeField.getBoundingClientRect();
-      // Off-screen / detached field → hide rather than park the button at 0,0.
-      if (r.width === 0 && r.height === 0) {
+      // Off-screen / detached field → hide rather than park the widget at 0,0.
+      if (r.width === 0 && r.height === 0) { fieldButtonState.visible = false; return; }
+      const hasText = getFieldText(activeField, activeType).trim().length > 0;
+      // Show the widget whenever there's text to act on (so the ✨ improve button is
+      // always reachable), or there are grammar issues / improvements pending.
+      if (!hasText && current.length === 0 && aiImprovements.length === 0) {
         fieldButtonState.visible = false;
         return;
       }
-      const SIZE = 28, INSET = 6;
+      const SIZE = 28, INSET = 6, GROUP_W = SIZE * 2 + 4; // two buttons side by side
       // Bottom-right for tall fields; vertically centered for short ones (inputs).
       const top = r.height < SIZE + INSET * 2 ? r.top + (r.height - SIZE) / 2 : r.bottom - SIZE - INSET;
-      fieldButtonState.left = r.right - SIZE - INSET;
+      fieldButtonState.left = Math.max(8, r.right - GROUP_W - INSET);
       fieldButtonState.top = top;
-      // Separate the two kinds: grammar/spelling (Harper) vs AI improvements.
-      const errors = current.filter((s) => s.ruleId !== 'ai-improve');
-      fieldButtonState.count = errors.length;
-      fieldButtonState.improveCount = current.length - errors.length;
-      fieldButtonState.severity = errors.reduce(
+      fieldButtonState.count = current.length; // grammar/spelling (Harper) only
+      fieldButtonState.improveCount = aiImprovements.length;
+      fieldButtonState.severity = current.reduce(
         (acc, s) => (SEVERITY_RANK[s.severity] > SEVERITY_RANK[acc] ? s.severity : acc),
         'suggestion' as Suggestion['severity'],
       );
       fieldButtonState.onOpen = openReview;
+      fieldButtonState.onOpenImprove = openImprovePanel;
       fieldButtonState.visible = true;
     }
 
@@ -634,6 +695,7 @@ export default defineContentScript({
         hideAIPanel();
         current = [];
         hitRects = [];
+        aiImprovements = [];
         renderer.clear();
         fieldButtonState.visible = false;
         hideReview();
@@ -680,30 +742,34 @@ export default defineContentScript({
 
     ctx.addEventListener(document, 'focusin', (e) => {
       const t = e.target as Element;
-      if (enabled && t instanceof HTMLElement && isEditableField(t)) {
-        runCheck.cancel();
-        hideCard();
-        // Switching to a different field: drop the previous field's persisted
-        // underlines/button immediately so they don't linger at stale positions
-        // until the new check completes.
-        if (t !== activeField) {
-          current = [];
-          hitRects = [];
-          renderer.clear();
-          fieldButtonState.visible = false;
-          hideReview();
-        }
-        activeField = t;
-        activeType = classifyField(t);
+      if (!(enabled && t instanceof HTMLElement && isEditableField(t))) return;
+      // Re-focusing the field we already track (e.g. clicking an underline to open its
+      // card): results are still valid — leave the card and underlines alone. Tearing
+      // down + re-checking here is what made a just-clicked card flash open then closed.
+      if (t === activeField) {
         suppressNativeSpellcheck(t);
-        warmEngine();
-        runCheck();
+        return;
       }
+      // A different field → adopt it; drop the previous field's persisted marks.
+      runCheck.cancel();
+      hideCard();
+      current = [];
+      hitRects = [];
+      aiImprovements = [];
+      renderer.clear();
+      fieldButtonState.visible = false;
+      hideReview();
+      activeField = t;
+      activeType = classifyField(t);
+      suppressNativeSpellcheck(t);
+      warmEngine();
+      runCheck();
     });
     ctx.addEventListener(document, 'input', (e) => {
       if (e.target === activeField) {
-        // Text changed → offsets stale: drop dismissals and any open card.
+        // Text changed → offsets stale: drop dismissals, improvements, and any open card.
         dismissed.clear();
+        aiImprovements = [];
         hideCard();
         hideAIPanel();
         renderer.clear();

@@ -4,26 +4,45 @@
 </script>
 
 {#if fieldButtonState.visible}
-  <button
-    class="inkly-fb"
-    style="left:{fieldButtonState.left}px; top:{fieldButtonState.top}px;"
-    aria-label="inkly: {fieldButtonState.count} suggestion{fieldButtonState.count === 1 ? '' : 's'}"
-    onclick={() => fieldButtonState.onOpen?.()}
-  >
-    <span class="inkly-fb__mark" aria-hidden="true"><InklyMark size={15} /></span>
-    {#if fieldButtonState.count > 0}
-      <span class="inkly-fb__badge inkly-fb__badge--err" data-sev={fieldButtonState.severity}>{fieldButtonState.count}</span>
-    {/if}
-    {#if fieldButtonState.improveCount > 0}
-      <span class="inkly-fb__badge inkly-fb__badge--imp">{fieldButtonState.improveCount}</span>
-    {/if}
-  </button>
+  <div class="inkly-fb" style="left:{fieldButtonState.left}px; top:{fieldButtonState.top}px;">
+    <!-- AI writing improvements (separate from grammar). -->
+    <button
+      class="inkly-fb__btn inkly-fb__btn--improve"
+      aria-label="inkly: improve writing{fieldButtonState.improveCount > 0 ? ` (${fieldButtonState.improveCount})` : ''}"
+      title="Improve writing"
+      onclick={() => fieldButtonState.onOpenImprove?.()}
+    >
+      <span class="inkly-fb__icon" aria-hidden="true">✨</span>
+      {#if fieldButtonState.improveCount > 0}
+        <span class="inkly-fb__badge inkly-fb__badge--imp">{fieldButtonState.improveCount}</span>
+      {/if}
+    </button>
+
+    <!-- Grammar / spelling (Harper). -->
+    <button
+      class="inkly-fb__btn inkly-fb__btn--grammar"
+      aria-label="inkly: {fieldButtonState.count} suggestion{fieldButtonState.count === 1 ? '' : 's'}"
+      title="Review suggestions"
+      onclick={() => fieldButtonState.onOpen?.()}
+    >
+      <span class="inkly-fb__mark" aria-hidden="true"><InklyMark size={15} /></span>
+      {#if fieldButtonState.count > 0}
+        <span class="inkly-fb__badge inkly-fb__badge--err" data-sev={fieldButtonState.severity}>{fieldButtonState.count}</span>
+      {/if}
+    </button>
+  </div>
 {/if}
 
 <style>
   .inkly-fb {
     position: fixed;
     z-index: 2147483647;
+    display: flex;
+    gap: 4px;
+    pointer-events: none; /* the group spacer; buttons re-enable */
+  }
+  .inkly-fb__btn {
+    position: relative;
     width: 28px;
     height: 28px;
     display: grid;
@@ -37,14 +56,12 @@
     pointer-events: auto;
     transition: transform 0.12s ease, border-color 0.12s ease;
   }
-  .inkly-fb:hover {
+  .inkly-fb__btn:hover {
     border-color: var(--inkly-accent, #6366f1);
     transform: translateY(-1px);
   }
-  .inkly-fb__mark {
-    display: inline-flex;
-    color: var(--inkly-accent, #6366f1);
-  }
+  .inkly-fb__mark { display: inline-flex; color: var(--inkly-accent, #6366f1); }
+  .inkly-fb__icon { font-size: 14px; line-height: 1; }
   .inkly-fb__badge {
     position: absolute;
     min-width: 15px;
@@ -61,9 +78,9 @@
   .inkly-fb__badge--err { top: -5px; right: -5px; background: var(--inkly-sev-correct, #e5484d); }
   .inkly-fb__badge--err[data-sev='clarity'] { background: var(--inkly-sev-clarity, #e0a30c); }
   .inkly-fb__badge--err[data-sev='suggestion'] { background: var(--inkly-sev-suggest, #6366f1); }
-  /* AI improvements count — bottom-right, indigo. */
-  .inkly-fb__badge--imp { bottom: -5px; right: -5px; background: var(--inkly-accent, #6366f1); }
+  /* AI improvements count — top-right of the ✨ button, indigo. */
+  .inkly-fb__badge--imp { top: -5px; right: -5px; background: var(--inkly-accent, #6366f1); }
   @media (prefers-reduced-motion: reduce) {
-    .inkly-fb { transition: none; }
+    .inkly-fb__btn { transition: none; }
   }
 </style>

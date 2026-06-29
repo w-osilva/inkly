@@ -15,9 +15,16 @@
 
     <p class="inkly-rv__cat">{reviewState.category}{reviewState.title ? ` · ${reviewState.title}` : ''}</p>
 
-    <p class="inkly-rv__preview">
-      <span class="inkly-rv__ctx">{reviewState.before}</span>{#if reviewState.oldText}<del>{reviewState.oldText}</del>{/if}{#if reviewState.replacement}<strong>{reviewState.replacement}</strong>{/if}<span class="inkly-rv__ctx">{reviewState.after}</span>
-    </p>
+    <div class="inkly-rv__preview">
+      <p class="inkly-rv__line inkly-rv__line--old">
+        <span class="inkly-rv__ctx">{reviewState.before}</span><del>{reviewState.oldText}</del><span class="inkly-rv__ctx">{reviewState.after}</span>
+      </p>
+      {#if reviewState.replacement || reviewState.replacements.length}
+        <p class="inkly-rv__line inkly-rv__line--new">
+          <span class="inkly-rv__ctx">{reviewState.before}</span><strong>{reviewState.replacement === '' ? '(removed)' : reviewState.replacement}</strong><span class="inkly-rv__ctx">{reviewState.after}</span>
+        </p>
+      {/if}
+    </div>
 
     {#if reviewState.replacements.length > 1}
       <div class="inkly-rv__choices" role="group" aria-label="Replacement options">
@@ -72,12 +79,13 @@
   .inkly-rv__cat {
     margin: 0 0 8px; font-size: 11.5px; font-weight: 600; color: var(--inkly-muted, #6a6c84);
   }
-  .inkly-rv__preview {
-    margin: 0 0 14px; font-size: 14px; line-height: 1.5; word-break: break-word;
-  }
+  .inkly-rv__preview { margin: 0 0 14px; font-size: 13.5px; line-height: 1.5; word-break: break-word; }
+  .inkly-rv__line { margin: 0; padding: 4px 8px; border-radius: 6px; }
+  .inkly-rv__line--old { background: rgba(229, 72, 77, 0.08); margin-bottom: 4px; }
+  .inkly-rv__line--new { background: rgba(99, 102, 241, 0.1); }
   .inkly-rv__ctx { color: var(--inkly-muted, #6a6c84); }
-  .inkly-rv__preview del { color: var(--inkly-sev-correct, #e5484d); text-decoration: line-through; }
-  .inkly-rv__preview strong { color: var(--inkly-text, #15172b); font-weight: 700; }
+  .inkly-rv__line--old del { color: var(--inkly-sev-correct, #e5484d); text-decoration: line-through; }
+  .inkly-rv__line--new strong { color: var(--inkly-accent, #6366f1); font-weight: 700; }
   .inkly-rv__choices { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
   .inkly-rv__choice {
     border: 1px solid transparent; border-radius: 7px;

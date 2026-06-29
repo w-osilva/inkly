@@ -118,8 +118,9 @@
         {:else}
           {#each aiPanelState.improvements as imp, i}
             <div class="inkly-ai__imp">
-              <p class="inkly-ai__imp-text"><del>{imp.from}</del> <strong>{imp.to}</strong></p>
               {#if imp.reason}<p class="inkly-ai__imp-reason">{imp.reason}</p>{/if}
+              <p class="inkly-ai__imp-line inkly-ai__imp-line--old"><del>{imp.from}</del></p>
+              <p class="inkly-ai__imp-line inkly-ai__imp-line--new"><strong>{imp.to}</strong></p>
               <button class="inkly-ai__chip" onclick={() => aiPanelState.onApplyImprovement?.(i)}>Apply</button>
             </div>
           {/each}
@@ -169,12 +170,14 @@
   .inkly-ai__x:hover { color: var(--inkly-text); }
 
   .inkly-ai__result { margin: 2px; white-space: pre-wrap; color: var(--inkly-text); }
-  .inkly-ai__imp { padding: 7px 2px; border-bottom: 1px solid var(--inkly-border); }
+  .inkly-ai__imp { padding: 8px 2px; border-bottom: 1px solid var(--inkly-border); }
   .inkly-ai__imp:last-of-type { border-bottom: 0; margin-bottom: 4px; }
-  .inkly-ai__imp-text { margin: 0 0 3px; line-height: 1.45; }
-  .inkly-ai__imp-text del { color: var(--inkly-sev-correct); text-decoration: line-through; }
-  .inkly-ai__imp-text strong { color: var(--inkly-accent); font-weight: 700; }
-  .inkly-ai__imp-reason { margin: 0 0 7px; font-size: 11px; color: var(--inkly-muted); }
+  .inkly-ai__imp-reason { margin: 0 0 5px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--inkly-muted); }
+  .inkly-ai__imp-line { margin: 0 0 4px; padding: 4px 8px; border-radius: 6px; line-height: 1.4; font-size: 12.5px; }
+  .inkly-ai__imp-line--old { background: rgba(229, 72, 77, 0.08); }
+  .inkly-ai__imp-line--old del { color: var(--inkly-sev-correct); text-decoration: line-through; }
+  .inkly-ai__imp-line--new { background: rgba(99, 102, 241, 0.1); margin-bottom: 7px; }
+  .inkly-ai__imp-line--new strong { color: var(--inkly-accent); font-weight: 700; }
   .inkly-ai__row { display: flex; gap: 6px; }
   .inkly-ai__loading, .inkly-ai__error { display: block; padding: 2px; }
   .inkly-ai__loading { color: var(--inkly-muted); }

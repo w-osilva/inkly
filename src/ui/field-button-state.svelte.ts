@@ -15,7 +15,10 @@ export interface FieldButtonState {
   improveCount: number;
   /** Highest-priority severity among grammar issues — drives the main badge color. */
   severity: Severity;
+  /** Open the grammar review (the ink-drop button). */
   onOpen: (() => void) | null;
+  /** Open / run AI writing improvements (the separate ✨ button). */
+  onOpenImprove: (() => void) | null;
 }
 
 export const fieldButtonState = $state<FieldButtonState>({
@@ -26,4 +29,5 @@ export const fieldButtonState = $state<FieldButtonState>({
   improveCount: 0,
   severity: 'correctness',
   onOpen: null,
+  onOpenImprove: null,
 });
