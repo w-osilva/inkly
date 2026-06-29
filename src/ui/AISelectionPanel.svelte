@@ -32,7 +32,7 @@
   // Length scale (shorter ↔ longer); 'asis' is the middle. Slider index maps here.
   const LENGTHS = [
     { id: 'shorter', label: 'Shorter' },
-    { id: 'asis', label: 'Same length' },
+    { id: 'asis', label: 'As is' },
     { id: 'longer', label: 'Longer' },
   ];
   const lengthIdx = $derived(Math.max(0, LENGTHS.findIndex((l) => l.id === (aiPanelState.length || 'asis'))));

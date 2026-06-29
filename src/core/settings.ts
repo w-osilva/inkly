@@ -35,7 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
   dictionary: [],
   uiLanguage: 'auto',
   defaultTone: '',
-  defaultStyles: [],
+  defaultStyles: ['simple'],
   defaultLength: 'asis',
   theme: 'auto',
   correctionOrder: [...DEFAULT_CORRECTION_ORDER],
@@ -78,7 +78,7 @@ function normalize(raw: unknown): Settings {
         ? o.uiLanguage
         : 'auto',
     defaultTone: typeof o.defaultTone === 'string' ? o.defaultTone : '',
-    defaultStyles: strArray(o.defaultStyles),
+    defaultStyles: o.defaultStyles === undefined ? [...DEFAULT_SETTINGS.defaultStyles] : strArray(o.defaultStyles),
     defaultLength: o.defaultLength === 'shorter' || o.defaultLength === 'longer' ? o.defaultLength : 'asis',
     theme: o.theme === 'light' || o.theme === 'dark' || o.theme === 'auto' ? o.theme : 'auto',
     correctionOrder: normalizeOrder(o.correctionOrder),
