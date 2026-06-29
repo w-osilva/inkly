@@ -176,6 +176,10 @@ export default defineContentScript({
       const containerRect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
       const nextHitRects: HitRect[] = [];
       const styles = current.flatMap((s, index) => {
+        // AI 'improve' suggestions cover whole sentences — drawing them as underlines
+        // overlaps the word-level grammar marks. They surface only via the field-button
+        // count and the review panel (no inline underline / hit-rect).
+        if (s.ruleId === 'ai-improve') return [];
         const rects = getSpanRects(activeField!, activeType, s.offset, s.length);
         const first = rects[0];
         if (first) {
