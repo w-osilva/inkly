@@ -143,6 +143,18 @@ export default defineContentScript({
     };
     const priority = () => priorityFromOrder(correctionOrder);
 
+    // AI "improve" never converges (clarity can always be re-tweaked), so applying one of
+    // its suggestions used to re-trigger auto-improve on the changed text → endless loop.
+    // After applying an AI improvement we PAUSE auto-improve until the user actually types
+    // again. `programmaticEdit` marks edits we make ourselves (their input event isn't
+    // typing, so it must not lift the pause).
+    let programmaticEdit = false;
+    let suppressAutoImprove = false;
+    function applyEdit(fn: () => void) {
+      programmaticEdit = true;
+      try { fn(); } finally { programmaticEdit = false; }
+    }
+
     const dismissed = new Set<string>();
     function suggestionKey(s: Suggestion): string {
       return `${s.ruleId}:${s.offset}:${s.length}:${s.replacements.join('|')}`;
@@ -194,7 +206,7 @@ export default defineContentScript({
     async function runAutoImprove() {
       const field = activeField;
       const type = activeType;
-      if (!enabled || !aiImproveEnabled() || !field) return;
+      if (!enabled || !aiImproveEnabled() || suppressAutoImprove || !field) return;
       const text = getFieldText(field, type);
       if (text.trim().length < 12) return;
       const myCheck = checkSeq;
@@ -250,8 +262,9 @@ export default defineContentScript({
         if (im && activeField) {
           const full = getFieldText(activeField, activeType);
           const off = full.indexOf(im.original);
-          if (off !== -1) applyRange(activeField, activeType, off, off + im.original.length, im.improved);
+          if (off !== -1) applyEdit(() => applyRange(activeField!, activeType, off, off + im.original.length, im.improved));
         }
+        suppressAutoImprove = true; // don't auto-suggest more until the user types again
         aiImprovements = aiImprovements.filter((_, idx) => idx !== i);
         aiPanelState.improvements = improvementsToState();
         updateFieldButton();
@@ -471,7 +484,7 @@ export default defineContentScript({
     async function reviewApply(rep: string) {
       const s = current[reviewIndex];
       if (!s || !activeField) return;
-      applyReplacement(activeField, activeType, s, rep);
+      applyEdit(() => applyReplacement(activeField!, activeType, s, rep));
       // Text changed → re-check for valid offsets; runCheckNow re-renders the panel.
       await runCheckNow();
       if (current.length === 0) hideReview();
@@ -527,7 +540,8 @@ export default defineContentScript({
         }
       };
       cardState.onApply = (replacement: string) => {
-        if (activeField) applyReplacement(activeField, activeType, s, replacement);
+        if (activeField) applyEdit(() => applyReplacement(activeField!, activeType, s, replacement));
+        if (isAI) suppressAutoImprove = true; // applying an AI clarity fix shouldn't spawn more
         // Drop it now so its underline/count update immediately; the text changed, so
         // re-check for the authoritative set (other offsets have shifted).
         dropSuggestion();
@@ -735,8 +749,9 @@ export default defineContentScript({
             if (im && activeField) {
               const full = getFieldText(activeField, activeType);
               const off = full.indexOf(im.original);
-              if (off !== -1) applyRange(activeField, activeType, off, off + im.original.length, im.improved);
+              if (off !== -1) applyEdit(() => applyRange(activeField!, activeType, off, off + im.original.length, im.improved));
             }
+            suppressAutoImprove = true;
             imps.splice(i, 1);
             aiPanelState.improvements = toState();
             if (activeField) runCheck();
@@ -751,11 +766,11 @@ export default defineContentScript({
         aiPanelState.onDismiss = () => hideAIPanel();
         aiPanelState.onApply =
           (capability === 'rewrite' || capability === 'translate')
-            ? () => { applyRange(field, type, aStart, aEnd, res.text); hideAIPanel(); }
+            ? () => { applyEdit(() => applyRange(field, type, aStart, aEnd, res.text)); hideAIPanel(); }
             : null;
         aiPanelState.onPickSynonym =
           capability === 'synonyms'
-            ? (w: string) => { applyRange(field, type, sel.start, sel.end, w); hideAIPanel(); }
+            ? (w: string) => { applyEdit(() => applyRange(field, type, sel.start, sel.end, w)); hideAIPanel(); }
             : null;
         if (capability === 'rewrite') {
           aiPanelState.onSetTone = (t: string) => { aiPanelState.tone = t; void doAction('rewrite'); };
@@ -882,6 +897,8 @@ export default defineContentScript({
     });
     ctx.addEventListener(document, 'input', (e) => {
       if (e.target === activeField) {
+        // Real typing (not our own applied edit) lifts the auto-improve pause.
+        if (!programmaticEdit) suppressAutoImprove = false;
         // Text changed → offsets stale: drop dismissals, improvements, and any open card.
         dismissed.clear();
         aiImprovements = [];
