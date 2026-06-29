@@ -170,6 +170,7 @@
           {/each}
         </select>
       </label>
+      <div class="mods-label">{t(lang, 'popup.styleMods')}</div>
       <div class="mods">
         {#each STYLE_OPTIONS as opt}
           <label class="mod" class:on={settings.defaultStyles.includes(opt.id)}>
@@ -256,7 +257,8 @@
   }
   .ondevice.on, .ondevice.soon { border-color: var(--inkly-accent); }
   .ondevice.on { color: var(--inkly-text); }
-  .mods { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .mods-label { margin-top: 8px; font-size: 12px; color: var(--inkly-muted); }
+  .mods { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
   .mod { display: flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 8px; border: 1px solid var(--inkly-border); border-radius: 999px; cursor: pointer; }
   .mod.on { border-color: var(--inkly-accent); color: var(--inkly-accent); }
   .mod input { accent-color: var(--inkly-accent); }

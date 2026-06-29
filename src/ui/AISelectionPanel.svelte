@@ -140,6 +140,7 @@
         oninput={(e) => setRegister(+(e.currentTarget as HTMLInputElement).value)}
       />
       <div class="inkly-ai__range-ends"><span>{REGISTER[0].label}</span><span>{REGISTER[REGISTER.length - 1].label}</span></div>
+      <div class="inkly-ai__seg">Style <span class="inkly-ai__seg-opt">(optional, combinable)</span></div>
       <div class="inkly-ai__mods">
         {#each MODIFIERS as m}
           <button
@@ -311,6 +312,7 @@
     letter-spacing: 0.04em; text-transform: uppercase; color: var(--inkly-muted);
   }
   .inkly-ai__seg strong { color: var(--inkly-accent); text-transform: none; letter-spacing: 0; }
+  .inkly-ai__seg-opt { font-weight: 500; text-transform: none; letter-spacing: 0; opacity: 0.8; }
   .inkly-ai__range { width: 100%; margin: 0 0 2px; accent-color: var(--inkly-accent); cursor: pointer; }
   .inkly-ai__range-ends {
     display: flex; justify-content: space-between; margin-bottom: 9px;
