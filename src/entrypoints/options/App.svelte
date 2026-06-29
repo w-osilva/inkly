@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { getAIConfig, setAIConfig, hasKey } from '../../core/ai/ai-config';
   import type { AIConfig } from '../../core/ai/ai-types';
-  import { getSettings, effectiveLang } from '../../core/settings';
+  import { getSettings, setSettings, effectiveLang, DEFAULT_LT_ENDPOINT } from '../../core/settings';
   import { t, type Lang } from '../../core/i18n';
   import { AI_PROVIDERS, getProvider, providerForEndpoint } from '../../core/ai/providers';
   import { detectBuiltins, type BuiltinStatus, type BuiltinCapability } from '../../core/ai/builtin-apis';
@@ -47,6 +47,10 @@
   // Per-provider keys, so switching providers keeps each one's saved key.
   let keys = $state<Record<string, string>>({});
 
+  // LanguageTool (opt-in): richer grammar/punctuation via an open-source server.
+  let ltEnabled = $state(false);
+  let ltEndpoint = $state(DEFAULT_LT_ENDPOINT);
+
   onMount(async () => {
     const [cfg, settings, detected] = await Promise.all([getAIConfig(), getSettings(), detectBuiltins()]);
     endpoint = cfg.endpoint;
@@ -56,10 +60,21 @@
     keys = { ...(cfg.keys ?? {}) };
     // Migrate: seed the active provider's key from the legacy single key if unset.
     if (cfg.apiKey && !keys[providerId]) keys[providerId] = cfg.apiKey;
+    ltEnabled = settings.languageToolEnabled;
+    ltEndpoint = settings.languageToolEndpoint;
     lang = effectiveLang(settings, navigator.language);
     builtins = detected;
     loaded = true;
   });
+
+  async function saveLanguageTool() {
+    const cur = await getSettings();
+    await setSettings({ ...cur, languageToolEnabled: ltEnabled, languageToolEndpoint: ltEndpoint.trim() || DEFAULT_LT_ENDPOINT });
+  }
+  function toggleLanguageTool() {
+    ltEnabled = !ltEnabled;
+    void saveLanguageTool();
+  }
 
   // Picking a preset fills the endpoint + a default model (both still editable) and swaps
   // in that provider's saved key. The key being left is stashed first so it isn't lost.
@@ -153,6 +168,21 @@
         </span>
       </div>
     </section>
+
+    <section>
+      <h2>{t(lang, 'options.ltHeading')}</h2>
+      <p class="hint">{t(lang, 'options.ltHint')}</p>
+      <label class="lt-toggle">
+        <input type="checkbox" checked={ltEnabled} onchange={toggleLanguageTool} />
+        <span>{t(lang, 'options.ltEnable')}</span>
+      </label>
+      {#if ltEnabled}
+        <label>{t(lang, 'options.ltServer')}
+          <input type="url" bind:value={ltEndpoint} onblur={saveLanguageTool} placeholder={DEFAULT_LT_ENDPOINT} />
+        </label>
+        <p class="hint">{t(lang, 'options.ltPrivacy')}</p>
+      {/if}
+    </section>
   {/if}
 </main>
 
@@ -175,6 +205,9 @@
   input:focus, select:focus { outline: none; border-color: var(--inkly-accent); }
   .key-link { display: inline-block; margin-top: 2px; color: var(--inkly-accent); font-size: 13px; text-decoration: none; }
   .key-link:hover { text-decoration: underline; }
+  .lt-toggle { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+  .lt-toggle input { width: auto; margin: 0; }
+  .lt-toggle span { font-weight: 600; }
   .builtin {
     margin: 8px 0 4px; padding: 8px 10px; font-size: 13px; line-height: 1.4;
     border-radius: var(--inkly-radius-sm); border: 1px solid var(--inkly-border);

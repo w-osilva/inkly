@@ -13,7 +13,13 @@ export interface Settings {
   theme: ThemePref;
   /** Auto-generate AI writing suggestions on typing pause (on-device when free, else BYOK). */
   autoSuggest: boolean;
+  /** Send text to a LanguageTool server for richer grammar/punctuation (opt-in). */
+  languageToolEnabled: boolean;
+  /** LanguageTool API base (…/v2). Public API by default; point to a self-hosted server for privacy. */
+  languageToolEndpoint: string;
 }
+
+export const DEFAULT_LT_ENDPOINT = 'https://api.languagetool.org/v2';
 
 export const DEFAULT_SETTINGS: Settings = {
   globalEnabled: true,
@@ -24,6 +30,8 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultTone: '',
   theme: 'auto',
   autoSuggest: true,
+  languageToolEnabled: false,
+  languageToolEndpoint: DEFAULT_LT_ENDPOINT,
 };
 
 const KEY = 'inkly:settings';
@@ -47,6 +55,8 @@ function normalize(raw: unknown): Settings {
     defaultTone: typeof o.defaultTone === 'string' ? o.defaultTone : '',
     theme: o.theme === 'light' || o.theme === 'dark' || o.theme === 'auto' ? o.theme : 'auto',
     autoSuggest: typeof o.autoSuggest === 'boolean' ? o.autoSuggest : DEFAULT_SETTINGS.autoSuggest,
+    languageToolEnabled: typeof o.languageToolEnabled === 'boolean' ? o.languageToolEnabled : DEFAULT_SETTINGS.languageToolEnabled,
+    languageToolEndpoint: typeof o.languageToolEndpoint === 'string' && o.languageToolEndpoint ? o.languageToolEndpoint : DEFAULT_LT_ENDPOINT,
   };
 }
 

@@ -1,5 +1,7 @@
 import type { LintRequest, LintResponse } from '../core/providers/harper-messages';
 import { getAIConfig } from '../core/ai/ai-config';
+import { getSettings } from '../core/settings';
+import { checkLanguageTool } from '../core/providers/languagetool';
 
 const OFFSCREEN_URL = 'offscreen.html';
 
@@ -70,9 +72,21 @@ export default defineBackground(() => {
       return undefined; // fire-and-forget, no response expected
     }
     if (m?.type === 'inkly:harper:lint') {
-      ensureOffscreen()
-        .then(() => browser.runtime.sendMessage({ target: 'offscreen', type: 'harper:lint', text: (m as Partial<LintRequest>).text ?? '' }))
-        .then((res) => sendResponse((res ?? { ok: false, error: 'no offscreen response' }) as LintResponse))
+      const text = (m as Partial<LintRequest>).text ?? '';
+      // Harper (offscreen) + opt-in LanguageTool (fetched here — the SW has host_permissions,
+      // so no page CORS) run in parallel; LanguageTool hits merge into the response `extra`.
+      const harper = ensureOffscreen().then(() =>
+        browser.runtime.sendMessage({ target: 'offscreen', type: 'harper:lint', text }),
+      );
+      const lt = getSettings().then((s) =>
+        s.languageToolEnabled ? checkLanguageTool(text, s.languageToolEndpoint) : [],
+      );
+      Promise.all([harper, lt])
+        .then(([res, ltExtra]) => {
+          const base = (res ?? { ok: false, error: 'no offscreen response' }) as LintResponse;
+          if (base.ok && ltExtra.length) base.extra = [...(base.extra ?? []), ...ltExtra];
+          sendResponse(base);
+        })
         .catch((err) => sendResponse({ ok: false, error: String((err as Error)?.stack ?? err) }));
       return true;
     }

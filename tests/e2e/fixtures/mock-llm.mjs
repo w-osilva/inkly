@@ -2,6 +2,24 @@ import { createServer } from 'node:http';
 
 const PORT = 5199;
 const server = createServer((req, res) => {
+  // Mock LanguageTool API: flag "really" → "very" so the e2e can assert an LT suggestion.
+  // (A correctly-spelled word Harper won't flag, so there's no overlap to drop it.)
+  if (req.method === 'POST' && req.url === '/v2/check') {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      const text = new URLSearchParams(body).get('text') ?? '';
+      const offset = text.indexOf('really');
+      const matches = offset === -1 ? [] : [{
+        offset, length: 6, message: 'Consider a stronger word',
+        replacements: [{ value: 'very' }],
+        rule: { id: 'REALLY', issueType: 'style', category: { name: 'Style' } },
+      }];
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ matches }));
+    });
+    return;
+  }
   if (req.method === 'POST' && req.url === '/v1/chat/completions') {
     let body = '';
     req.on('data', (c) => (body += c));
