@@ -13,16 +13,22 @@ const TONE_GUIDE: Record<string, string> = {
   technical: 'precise and technical — exact terminology, unambiguous, no filler',
   concise: 'concise and tight — cut filler and redundancy, keep only what carries meaning',
 };
-function toneInstruction(tone?: string): string {
-  if (!tone) return '';
-  return ` Write it in a ${tone} tone: make it ${TONE_GUIDE[tone] ?? `sound ${tone}`}.`;
-}
 
 /** Build chat messages for an AI request. M3a-1 covers 'rewrite'; others land in M3c. */
 export function buildMessages(req: AIRequest): ChatMessage[] {
   if (req.capability === 'rewrite') {
     const length = req.options?.length;
-    const toneClause = toneInstruction(req.options?.tone);
+    // Register (casual↔formal scale) sets the main tone; optional style modifiers
+    // (technical/concise/confident) layer on top.
+    const register = req.options?.tone;
+    const styleList = (req.options?.style ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    const registerClause = register
+      ? ` Write it in a ${register} tone: make it ${TONE_GUIDE[register] ?? `sound ${register}`}.`
+      : '';
+    const styleClause = styleList.length
+      ? ` Also make it ${styleList.map((s) => TONE_GUIDE[s] ?? s).join('; ')}.`
+      : '';
+    const toneClause = registerClause + styleClause;
     const lengthClause =
       length === 'shorter' ? ' Make it more concise without dropping any information.'
       : length === 'longer' ? ' Expand it with a little more detail, without inventing new facts.'

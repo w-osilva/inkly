@@ -92,15 +92,13 @@
     await setSettings(next);
   }
 
+  // Default rewrite register (the casual↔formal scale). Style modifiers are per-rewrite.
   const TONE_OPTIONS = [
-    { id: '', key: 'tone.neutral' },
-    { id: 'formal', key: 'tone.formal' },
     { id: 'casual', key: 'tone.casual' },
-    { id: 'confident', key: 'tone.confident' },
     { id: 'friendly', key: 'tone.friendly' },
+    { id: '', key: 'tone.neutral' },
     { id: 'professional', key: 'tone.professional' },
-    { id: 'technical', key: 'tone.technical' },
-    { id: 'concise', key: 'tone.concise' },
+    { id: 'formal', key: 'tone.formal' },
   ];
 </script>
 

@@ -28,7 +28,8 @@ export interface AIPanelState {
   /** Header × — dismiss the panel and suppress reopening for the same selection. */
   onClose: (() => void) | null;
   hovered: boolean;
-  tone: string;
+  tone: string;        // register: '' (neutral) | casual | friendly | professional | formal
+  styles: string[];    // orthogonal modifiers: confident | technical | concise
   length: string;
   onSetTone: ((tone: string) => void) | null;
   onSetLength: ((length: string) => void) | null;
@@ -54,6 +55,7 @@ export const aiPanelState = $state<AIPanelState>({
   onClose: null,
   hovered: false,
   tone: '',
+  styles: [],
   length: 'asis',
   onSetTone: null,
   onSetLength: null,

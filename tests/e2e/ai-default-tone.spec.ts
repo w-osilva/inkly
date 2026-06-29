@@ -38,6 +38,19 @@ test('a configured defaultTone is applied to the first rewrite (no chip click)',
   await expect(page.locator('css=.inkly-ai__result')).toHaveText('REWRITTEN[formal]: hello world', { timeout: 10_000 });
 });
 
+test('the tone slider sets the register (move to Formal → [formal])', async ({ context }) => {
+  await configure(context, ''); // start neutral
+  const page = await context.newPage();
+  await page.goto('/contenteditable.html');
+  const editor = page.locator('#editor');
+  await editor.click(); await editor.type('hello world');
+  await selectWorld(page);
+  await page.locator('css=.inkly-ai__tab').filter({ hasText: 'Rewrite' }).click();
+  await page.locator('css=.inkly-ai__range').fill('4'); // slide to Formal (last stop)
+  await page.locator('css=.inkly-ai__btn').filter({ hasText: 'Rewrite' }).click();
+  await expect(page.locator('css=.inkly-ai__result')).toHaveText('REWRITTEN[formal]: hello world', { timeout: 10_000 });
+});
+
 test('no defaultTone → neutral rewrite (no tone tag)', async ({ context }) => {
   await configure(context, '');
   const page = await context.newPage();

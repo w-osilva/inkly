@@ -11,16 +11,27 @@
     define: 'Looking up…',
   };
 
-  const TONES = [
-    { id: '', label: 'Neutral' },
-    { id: 'formal', label: 'Formal' },
+  // Register scale (casual ↔ formal); neutral is the middle. The slider index maps here.
+  const REGISTER = [
     { id: 'casual', label: 'Casual' },
-    { id: 'confident', label: 'Confident' },
     { id: 'friendly', label: 'Friendly' },
+    { id: '', label: 'Neutral' },
     { id: 'professional', label: 'Professional' },
+    { id: 'formal', label: 'Formal' },
+  ];
+  // Orthogonal style modifiers, layered on top of the register.
+  const MODIFIERS = [
+    { id: 'confident', label: 'Confident' },
     { id: 'technical', label: 'Technical' },
     { id: 'concise', label: 'Concise' },
   ];
+  const registerIdx = $derived(Math.max(0, REGISTER.findIndex((r) => r.id === (aiPanelState.tone || ''))));
+  function setRegister(i: number) { aiPanelState.tone = REGISTER[i]?.id ?? ''; }
+  function toggleStyle(id: string) {
+    aiPanelState.styles = aiPanelState.styles.includes(id)
+      ? aiPanelState.styles.filter((s) => s !== id)
+      : [...aiPanelState.styles, id];
+  }
   const LENGTHS = [
     { id: 'asis', label: 'Same length' },
     { id: 'shorter', label: 'Shorter' },
@@ -118,12 +129,21 @@
         {/each}
       </div>
     {:else if aiPanelState.phase === 'rewrite-config'}
-      <label class="inkly-ai__seg" for="inkly-tone">Tone</label>
-      <select id="inkly-tone" class="inkly-ai__select" bind:value={aiPanelState.tone}>
-        {#each TONES as t}
-          <option value={t.id}>{t.label}</option>
+      <div class="inkly-ai__seg">Tone — <strong>{REGISTER[registerIdx].label}</strong></div>
+      <input
+        class="inkly-ai__range" type="range" min="0" max={REGISTER.length - 1} step="1"
+        value={registerIdx} aria-label="Tone register"
+        oninput={(e) => setRegister(+(e.currentTarget as HTMLInputElement).value)}
+      />
+      <div class="inkly-ai__range-ends"><span>{REGISTER[0].label}</span><span>{REGISTER[REGISTER.length - 1].label}</span></div>
+      <div class="inkly-ai__mods">
+        {#each MODIFIERS as m}
+          <button
+            class="inkly-ai__mod" class:inkly-ai__mod--on={aiPanelState.styles.includes(m.id)}
+            aria-pressed={aiPanelState.styles.includes(m.id)} onclick={() => toggleStyle(m.id)}
+          >{m.label}</button>
         {/each}
-      </select>
+      </div>
       <label class="inkly-ai__seg" for="inkly-length">Length</label>
       <select id="inkly-length" class="inkly-ai__select" bind:value={aiPanelState.length}>
         {#each LENGTHS as l}
@@ -292,4 +312,17 @@
     font: 500 12.5px var(--inkly-font); appearance: none;
   }
   .inkly-ai__select:focus-visible { outline: 2px solid var(--inkly-accent); outline-offset: 1px; }
+  .inkly-ai__seg strong { color: var(--inkly-accent); text-transform: none; letter-spacing: 0; }
+  .inkly-ai__range { width: 100%; margin: 0 0 2px; accent-color: var(--inkly-accent); cursor: pointer; }
+  .inkly-ai__range-ends {
+    display: flex; justify-content: space-between; margin-bottom: 9px;
+    font-size: 10.5px; color: var(--inkly-muted);
+  }
+  .inkly-ai__mods { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+  .inkly-ai__mod {
+    border: 1px solid var(--inkly-ghost-border); background: var(--inkly-ghost-bg);
+    color: var(--inkly-muted); border-radius: 999px; padding: 4px 10px; cursor: pointer;
+    font: 600 11.5px var(--inkly-font);
+  }
+  .inkly-ai__mod--on { background: var(--inkly-accent); border-color: var(--inkly-accent); color: var(--inkly-accent-contrast); }
 </style>

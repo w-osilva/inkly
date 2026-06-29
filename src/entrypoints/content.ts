@@ -585,6 +585,7 @@ export default defineContentScript({
       aiPanelState.onPickSynonym = null;
       aiPanelState.hovered = false;
       aiPanelState.tone = '';
+      aiPanelState.styles = [];
       aiPanelState.length = 'asis';
       aiPanelState.onSetTone = null;
       aiPanelState.onSetLength = null;
@@ -637,6 +638,7 @@ export default defineContentScript({
       aiPanelState.top = pos.top;
       aiPanelState.anchor = rect;
       aiPanelState.tone = defaultTone;
+      aiPanelState.styles = [];
       aiPanelState.length = 'asis';
       // Word selection → Synonyms-first; phrase/sentence → Rewrite-first.
       const kind = isSingleWord(info.text) ? 'word' : 'phrase';
@@ -665,6 +667,7 @@ export default defineContentScript({
       aiPanelState.top = pos.top;
       aiPanelState.anchor = rect;
       aiPanelState.tone = defaultTone;
+      aiPanelState.styles = [];
       aiPanelState.length = 'asis';
       if (capability === 'open') {
         aiPanelState.capability = 'rewrite';
@@ -700,6 +703,7 @@ export default defineContentScript({
       const options: Record<string, string> = {};
       if (capability === 'rewrite') {
         if (aiPanelState.tone) options.tone = aiPanelState.tone;
+        if (aiPanelState.styles.length) options.style = aiPanelState.styles.join(', ');
         if (aiPanelState.length && aiPanelState.length !== 'asis') options.length = aiPanelState.length;
       } else if (capability === 'improve') {
         if (aiPanelState.tone) options.tone = aiPanelState.tone;
