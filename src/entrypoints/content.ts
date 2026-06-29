@@ -86,6 +86,22 @@ export default defineContentScript({
         (uiContainer.parentElement as HTMLElement | null)?.style.setProperty('pointer-events', 'none');
         (shadowHost as HTMLElement).style.setProperty('pointer-events', 'none');
 
+        // Promote the overlay into the browser TOP LAYER (Popover API) so it renders above
+        // ALL page content — including the page's own top-layer popovers/tooltips (e.g. a
+        // docs site's "Copy to clipboard" button), which otherwise leak in front of our
+        // dropdown regardless of z-index. Reset the UA popover styles back to our
+        // full-viewport, transparent, click-through overlay.
+        try {
+          const host = shadowHost as HTMLElement & { showPopover?: () => void };
+          host.setAttribute('popover', 'manual');
+          for (const [k, v] of Object.entries({
+            border: '0', background: 'transparent', padding: '0', margin: '0',
+            inset: '0', width: '100%', height: '100%', 'max-width': 'none', 'max-height': 'none',
+            overflow: 'visible',
+          })) host.style.setProperty(k, v);
+          host.showPopover?.();
+        } catch { /* no Popover API → falls back to the high z-index below */ }
+
         const layer = document.createElement('div');
         layer.style.position = 'fixed';
         layer.style.inset = '0';
@@ -215,6 +231,7 @@ export default defineContentScript({
 
     function showImprovePanel() {
       if (!activeField) return;
+      raiseOverlay();
       hideCard();
       hideReview();
       positionImprovePanel();
@@ -298,6 +315,15 @@ export default defineContentScript({
         }));
       }
       return out;
+    }
+
+    // Re-promote our top-layer overlay to the FRONT of the top layer. Page top-layer
+    // elements (e.g. a docs "Copy" popover) shown after us would otherwise sit in front;
+    // re-showing the popover moves us back on top whenever we open interactive UI.
+    function raiseOverlay() {
+      const host = overlayHost as (HTMLElement & { hidePopover?: () => void; showPopover?: () => void }) | null;
+      if (!host?.showPopover) return;
+      try { host.hidePopover?.(); host.showPopover(); } catch { /* not open / unsupported */ }
     }
 
     function drawUnderlines() {
@@ -410,6 +436,7 @@ export default defineContentScript({
 
     function openReview() {
       if (!activeField || current.length === 0) return;
+      raiseOverlay();
       reviewIndex = 0;
       hideCard();
       hideAIPanel();
@@ -469,6 +496,7 @@ export default defineContentScript({
     let shownIndex = -1;
 
     function showCardFor(index: number) {
+      raiseOverlay();
       const s = rendered[index];
       const hit = hitRects.find((h) => h.index === index);
       if (!s || !hit) return;
@@ -553,7 +581,6 @@ export default defineContentScript({
       aiPanelState.onAction = null;
       aiPanelState.capability = 'rewrite';
       aiPanelState.onApply = null;
-      aiPanelState.onCopy = null;
       aiPanelState.onDismiss = null;
       aiPanelState.onPickSynonym = null;
       aiPanelState.hovered = false;
@@ -590,6 +617,7 @@ export default defineContentScript({
 
     function showAIActions() {
       if (!activeField) return;
+      raiseOverlay();
       const info = getSelectionInfo(activeField, activeType);
       if (!info) {
         closedSelKey = ''; // selection gone → allow a fresh panel next time
@@ -625,6 +653,7 @@ export default defineContentScript({
       if (capability !== 'open' && !['rewrite', 'translate', 'synonyms', 'improve'].includes(capability)) return;
       const info = getSelectionInfo(activeField, activeType);
       if (!info) return; // need a non-collapsed selection in the focused field
+      raiseOverlay();
       aiSelection = info;
       const rect = selectionRect();
       const pos = computeCardPosition(
@@ -708,7 +737,6 @@ export default defineContentScript({
         }
         aiPanelState.result = res.text;
         aiPanelState.phase = 'result';
-        aiPanelState.onCopy = () => { void navigator.clipboard?.writeText(res.text); };
         aiPanelState.onDismiss = () => hideAIPanel();
         aiPanelState.onApply =
           (capability === 'rewrite' || capability === 'translate')

@@ -24,7 +24,6 @@ export interface AIPanelState {
   /** Selection-action ids the user disabled — hidden from the toolbar tabs. */
   disabledActions: string[];
   onApply: (() => void) | null;
-  onCopy: (() => void) | null;
   onDismiss: (() => void) | null;
   /** Header × — dismiss the panel and suppress reopening for the same selection. */
   onClose: (() => void) | null;
@@ -51,7 +50,6 @@ export const aiPanelState = $state<AIPanelState>({
   selectionKind: 'phrase',
   disabledActions: [],
   onApply: null,
-  onCopy: null,
   onDismiss: null,
   onClose: null,
   hovered: false,
