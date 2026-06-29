@@ -19,11 +19,14 @@ const server = createServer((req, res) => {
       const tag = toneMatch ? `[${toneMatch[1].toLowerCase()}]` : '';
       const translateMatch = systemText.match(/translate the user'?s text into (\w+)/i);
       const isSynonyms = /thesaurus|synonyms/i.test(systemText);
-      const isImprove = /careful writing assistant|JSON array of objects/i.test(systemText);
+      const isImprove = /careful (writing assistant|proofreader)|JSON array of objects/i.test(systemText);
       const isAnalyze = /writing coach/i.test(systemText);
+      const isDefine = /concise dictionary|define the user/i.test(systemText);
       let content;
       if (translateMatch) {
         content = `TRANSLATED[${translateMatch[1].toLowerCase()}]: ${userText}`;
+      } else if (isDefine) {
+        content = `DEFINITION: ${userText}`;
       } else if (isSynonyms) {
         content = JSON.stringify([
           { sense: 'first sense', synonyms: ['alpha', 'beta'] },

@@ -8,6 +8,7 @@
     translate: 'Translating…',
     synonyms: 'Finding synonyms…',
     improve: 'Checking…',
+    define: 'Looking up…',
   };
 
   const TONES = [
@@ -28,14 +29,16 @@
 
   // Actions reorder by selection kind: a single word leads with Synonyms; a phrase/
   // sentence leads with Rewrite. The primary (first) button is the accent-filled one.
-  type Act = { cap: 'rewrite' | 'translate' | 'synonyms' | 'improve'; icon: string; label: string };
+  type Act = { cap: 'rewrite' | 'translate' | 'synonyms' | 'improve' | 'define'; icon: string; label: string };
   const TRANSLATE: Act = { cap: 'translate', icon: '🌐', label: 'Translate' };
   const SYNONYMS: Act = { cap: 'synonyms', icon: '⇄', label: 'Synonyms' };
   const IMPROVE: Act = { cap: 'improve', icon: '✨', label: 'Improve' };
   const REWRITE: Act = { cap: 'rewrite', icon: '✦', label: 'Rewrite' };
-  // Tab order leads with the most relevant action for the selection kind.
+  const DEFINE: Act = { cap: 'define', icon: '📖', label: 'Define' };
+  // Tab order leads with the most relevant action for the selection kind. Define is
+  // word-only (you look up the meaning of a word, not a sentence).
   const ACTIONS: Record<'word' | 'phrase', Act[]> = {
-    word: [SYNONYMS, TRANSLATE, IMPROVE, REWRITE],
+    word: [SYNONYMS, DEFINE, TRANSLATE, IMPROVE, REWRITE],
     phrase: [REWRITE, IMPROVE, TRANSLATE, SYNONYMS],
   };
 </script>
@@ -147,7 +150,7 @@
 
 <style>
   .inkly-ai {
-    position: fixed; z-index: 2147483647; width: 240px; max-width: calc(100vw - 24px);
+    position: fixed; z-index: 2147483647; width: 274px; max-width: calc(100vw - 24px);
     background: var(--inkly-bg); color: var(--inkly-text);
     border: 1px solid var(--inkly-border); border-radius: 10px;
     box-shadow: var(--inkly-shadow); padding: 8px;
@@ -192,7 +195,7 @@
     transition: background 0.12s ease, color 0.12s ease;
   }
   .inkly-ai__tab-i { font-size: 15px; line-height: 1; }
-  .inkly-ai__tab-l { white-space: nowrap; }
+  .inkly-ai__tab-l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .inkly-ai__tab:hover { background: var(--inkly-ghost-bg); color: var(--inkly-text); }
   .inkly-ai__tab--primary { color: var(--inkly-accent); }
   .inkly-ai__tab--primary:hover { color: var(--inkly-accent); }

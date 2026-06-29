@@ -7,6 +7,7 @@ import { splitSSE, deltaFromEvent } from '../../core/ai/sse';
 import type { AIConfig, AIRequest, AIResponse } from '../../core/ai/ai-types';
 import { tryChromeAI } from '../../core/ai/chrome-ai';
 import { tryChromeTranslate } from '../../core/ai/chrome-translator';
+import { lookupDefinition } from '../../core/ai/dictionary';
 
 let linter: Linter | null = null;
 let setupPromise: Promise<void> | null = null;
@@ -59,6 +60,13 @@ async function runAI(request: AIRequest, config: AIConfig, streamId: string): Pr
   if (request.capability === 'translate') {
     const translated = await tryChromeTranslate(request);
     if (translated !== null) return { ok: true, text: translated };
+  }
+  // Definitions prefer the free, open-source Free Dictionary API (Wiktionary-based, no
+  // key) — only fall back to AI when the word isn't found. Skipped under e2e (the mock
+  // LLM provides deterministic results without hitting the network).
+  if (request.capability === 'define' && !import.meta.env.VITE_INKLY_E2E) {
+    const def = await lookupDefinition(request.text, request.options?.defineLang || 'en');
+    if (def !== null) return { ok: true, text: def };
   }
   // 1) Opportunistic free on-device tier (Chrome built-in Prompt API), if available.
   const builtin = await tryChromeAI(request);

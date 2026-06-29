@@ -47,3 +47,15 @@ test('Improve lists applicable edits; Apply replaces the text', async ({ context
   await applyChip.first().click();
   await expect(editor).toContainText('IMPROVED: hello world');
 });
+
+test('Define shows the word meaning (read-only, no Apply)', async ({ context }) => {
+  await setAIConfig(context);
+  const page = await context.newPage();
+  await page.goto('/contenteditable.html');
+  const editor = page.locator('#editor');
+  await editor.click(); await editor.type('hello world');
+  await selectWorld(page);
+  await page.locator('css=.inkly-ai__tab').filter({ hasText: 'Define' }).click();
+  await expect(page.locator('css=.inkly-ai__result')).toContainText('DEFINITION:', { timeout: 10_000 });
+  await expect(page.locator('css=.inkly-ai__btn').filter({ hasText: 'Apply' })).toHaveCount(0);
+});

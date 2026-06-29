@@ -618,6 +618,8 @@ export default defineContentScript({
         if (aiPanelState.tone) options.tone = aiPanelState.tone;
       } else if (capability === 'translate') {
         options.targetLang = lang === 'pt-br' ? 'Portuguese' : 'English';
+      } else if (capability === 'define') {
+        options.defineLang = lang === 'pt-br' ? 'pt-BR' : 'en';
       }
       const res = await runAI({ capability, text: aText, options }, streamId);
       // Guard: if the panel was dismissed/hidden meanwhile, or a newer call started, drop the result.
