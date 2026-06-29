@@ -152,11 +152,6 @@
             </div>
           </div>
         {/each}
-        <div class="inkly-ai__subactions">
-          <button class="inkly-ai__mini" onclick={() => aiPanelState.onAction?.('improve')}>✨ Improve</button>
-          <button class="inkly-ai__mini" onclick={() => aiPanelState.onAction?.('translate')}>🌐 Translate</button>
-          <button class="inkly-ai__mini" onclick={() => (aiPanelState.phase = 'rewrite-config')}>✦ Rewrite</button>
-        </div>
         <div class="inkly-ai__row">
           <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onDismiss?.()}>Dismiss</button>
         </div>
@@ -298,12 +293,4 @@
     font: 500 12.5px var(--inkly-font); appearance: none;
   }
   .inkly-ai__select:focus-visible { outline: 2px solid var(--inkly-accent); outline-offset: 1px; }
-  /* Secondary actions (in the synonyms result): light text buttons, same family. */
-  .inkly-ai__subactions { display: flex; flex-wrap: wrap; gap: 2px; margin: 2px 0 9px; }
-  .inkly-ai__mini {
-    display: inline-flex; align-items: center; gap: 5px; border: 0; background: none;
-    color: var(--inkly-muted); border-radius: 7px; padding: 5px 8px; cursor: pointer;
-    font: 600 11.5px var(--inkly-font); white-space: nowrap;
-  }
-  .inkly-ai__mini:hover { background: var(--inkly-ghost-bg); color: var(--inkly-text); }
 </style>
