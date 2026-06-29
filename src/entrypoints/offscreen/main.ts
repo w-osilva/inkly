@@ -69,18 +69,24 @@ async function runAI(request: AIRequest, config: AIConfig, streamId: string): Pr
     const def = await lookupDefinition(request.text, request.options?.defineLang || 'en');
     if (def !== null) return { ok: true, text: def };
   }
-  // 1) Rewrite prefers the purpose-built on-device Rewriter API when available (free,
-  // local, tone/length-aware) before the generic Prompt API.
-  if (request.capability === 'rewrite') {
-    const rewritten = await tryChromeRewrite(request);
-    if (rewritten !== null) return { ok: true, text: rewritten };
+  // On-device (Gemini Nano) is the FREE fallback for users without a key. When the user
+  // has configured a BYOK provider they chose it on purpose (e.g. Groq — fast, higher
+  // quality than Nano), so we go straight to it: Nano is both slower and weaker, which
+  // made rewrite/improve sluggish and produced whole-sentence rewrites instead of targeted
+  // edits. `builtinOnly` still forces the free path (no key spend) regardless.
+  const preferBuiltin = request.builtinOnly || !hasKey(config);
+  if (preferBuiltin) {
+    // Rewrite prefers the purpose-built on-device Rewriter API (tone/length-aware).
+    if (request.capability === 'rewrite') {
+      const rewritten = await tryChromeRewrite(request);
+      if (rewritten !== null) return { ok: true, text: rewritten };
+    }
+    const builtin = await tryChromeAI(request);
+    if (builtin !== null) return { ok: true, text: builtin };
+    // Automatic free-only passes never spend BYOK quota.
+    if (request.builtinOnly) return { ok: false, error: 'no-builtin' };
   }
-  // 2) Opportunistic free on-device tier (Chrome built-in Prompt API), if available.
-  const builtin = await tryChromeAI(request);
-  if (builtin !== null) return { ok: true, text: builtin };
-  // Automatic passes only use the free on-device model — never spend BYOK quota.
-  if (request.builtinOnly) return { ok: false, error: 'no-builtin' };
-  // 2) Fall back to BYOK — stream the OpenAI-compatible SSE response.
+  // BYOK — stream the OpenAI-compatible SSE response.
   if (!hasKey(config)) return { ok: false, error: 'no-api-key' };
   try {
     const messages = buildMessages(request);

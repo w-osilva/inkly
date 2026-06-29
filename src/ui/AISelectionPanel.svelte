@@ -177,7 +177,6 @@
           {#if aiPanelState.capability === 'rewrite' || aiPanelState.capability === 'translate'}
             <button class="inkly-ai__btn" onclick={() => aiPanelState.onApply?.()}>Apply</button>
           {/if}
-          <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onCopy?.()}>Copy</button>
           <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => aiPanelState.onDismiss?.()}>Dismiss</button>
         </div>
       {/if}

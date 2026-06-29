@@ -23,4 +23,9 @@ describe('parseImprovements', () => {
     expect(parseImprovements('')).toEqual([]);
     expect(parseImprovements('[]')).toEqual([]);
   });
+
+  it('drops duplicate edits (same original + improved)', () => {
+    const raw = '[{"original":"proof","improved":"order","reason":"x"},{"original":"proof","improved":"order","reason":"y"}]';
+    expect(parseImprovements(raw)).toEqual([{ original: 'proof', improved: 'order', reason: 'x' }]);
+  });
 });

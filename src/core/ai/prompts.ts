@@ -58,7 +58,10 @@ export function buildMessages(req: AIRequest): ChatMessage[] {
       ' grammar, subject/verb and article agreement, wrong or missing words, punctuation, and clearly' +
       ' awkward phrasing.' +
       ' Make the SMALLEST edit that fixes each issue — preserve the meaning, facts, and the author\'s voice;' +
-      ' do NOT rewrite whole sentences or change the intent, and do NOT respond to the text.' +
+      ' do NOT change the intent, and do NOT respond to the text.' +
+      ' CRITICAL: each "original" must be a SHORT span — a single word or a few words — NEVER a whole' +
+      ' sentence or clause. Emit one object per issue (e.g. one for a wrong word, another for a comma),' +
+      ' not a single big rewrite.' +
       toneClause +
       ' Return ONLY a JSON array of objects {"original","improved","reason"}, where "original" is an EXACT' +
       ' substring of the input, "improved" is the corrected replacement, and "reason" is a short phrase' +
