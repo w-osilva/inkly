@@ -11,6 +11,8 @@ export interface Settings {
   uiLanguage: 'auto' | 'en' | 'pt-br';
   defaultTone: string;
   theme: ThemePref;
+  /** Auto-generate AI writing suggestions on typing pause (on-device when free, else BYOK). */
+  autoSuggest: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -21,6 +23,7 @@ export const DEFAULT_SETTINGS: Settings = {
   uiLanguage: 'auto',
   defaultTone: '',
   theme: 'auto',
+  autoSuggest: true,
 };
 
 const KEY = 'inkly:settings';
@@ -43,6 +46,7 @@ function normalize(raw: unknown): Settings {
         : 'auto',
     defaultTone: typeof o.defaultTone === 'string' ? o.defaultTone : '',
     theme: o.theme === 'light' || o.theme === 'dark' || o.theme === 'auto' ? o.theme : 'auto',
+    autoSuggest: typeof o.autoSuggest === 'boolean' ? o.autoSuggest : DEFAULT_SETTINGS.autoSuggest,
   };
 }
 

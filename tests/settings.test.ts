@@ -19,7 +19,7 @@ describe('hostOf', () => {
 });
 
 describe('isEnabledForHost', () => {
-  const base: Settings = { globalEnabled: true, siteOverrides: {}, disabledCategories: [], dictionary: [], uiLanguage: 'auto', defaultTone: '', theme: 'auto' as const };
+  const base: Settings = { globalEnabled: true, siteOverrides: {}, disabledCategories: [], dictionary: [], uiLanguage: 'auto', defaultTone: '', theme: 'auto' as const, autoSuggest: true };
   it('falls back to globalEnabled when no override', () => {
     expect(isEnabledForHost(base, 'a.com')).toBe(true);
     expect(isEnabledForHost({ ...base, globalEnabled: false }, 'a.com')).toBe(false);
@@ -35,7 +35,7 @@ describe('getSettings/setSettings', () => {
     expect(await getSettings()).toEqual(DEFAULT_SETTINGS);
   });
   it('round-trips and merges over defaults', async () => {
-    await setSettings({ globalEnabled: false, siteOverrides: { 'x.com': true }, disabledCategories: [], dictionary: [], uiLanguage: 'auto', defaultTone: '', theme: 'auto' as const });
+    await setSettings({ globalEnabled: false, siteOverrides: { 'x.com': true }, disabledCategories: [], dictionary: [], uiLanguage: 'auto', defaultTone: '', theme: 'auto' as const, autoSuggest: true });
     const s = await getSettings();
     expect(s.globalEnabled).toBe(false);
     expect(s.siteOverrides).toEqual({ 'x.com': true });
@@ -78,7 +78,7 @@ describe('settings: defaults include empty disabledCategories + dictionary', () 
 });
 
 describe('category transforms', () => {
-  const base = { globalEnabled: true, siteOverrides: {}, disabledCategories: [] as string[], dictionary: [] as string[], uiLanguage: 'auto' as const, defaultTone: '', theme: 'auto' as const };
+  const base = { globalEnabled: true, siteOverrides: {}, disabledCategories: [] as string[], dictionary: [] as string[], uiLanguage: 'auto' as const, defaultTone: '', theme: 'auto' as const, autoSuggest: true };
   it('isCategoryEnabled is true unless disabled', () => {
     expect(isCategoryEnabled(base, 'Style')).toBe(true);
     expect(isCategoryEnabled({ ...base, disabledCategories: ['Style'] }, 'Style')).toBe(false);
@@ -96,7 +96,7 @@ describe('category transforms', () => {
 });
 
 describe('dictionary transforms', () => {
-  const base = { globalEnabled: true, siteOverrides: {}, disabledCategories: [] as string[], dictionary: [] as string[], uiLanguage: 'auto' as const, defaultTone: '', theme: 'auto' as const };
+  const base = { globalEnabled: true, siteOverrides: {}, disabledCategories: [] as string[], dictionary: [] as string[], uiLanguage: 'auto' as const, defaultTone: '', theme: 'auto' as const, autoSuggest: true };
   it('addWord stores lowercased, trimmed, deduped', () => {
     let s = addWord(base, '  Inkly ');
     expect(s.dictionary).toEqual(['inkly']);
@@ -154,7 +154,7 @@ describe('theme', () => {
 });
 
 describe('effectiveLang', () => {
-  const base = { globalEnabled: true, siteOverrides: {}, disabledCategories: [], dictionary: [], defaultTone: '', theme: 'auto' as const };
+  const base = { globalEnabled: true, siteOverrides: {}, disabledCategories: [], dictionary: [], defaultTone: '', theme: 'auto' as const, autoSuggest: true };
   it('uses the explicit language when not auto', () => {
     expect(effectiveLang({ ...base, uiLanguage: 'pt-br' }, 'en-US')).toBe('pt-br');
     expect(effectiveLang({ ...base, uiLanguage: 'en' }, 'pt-BR')).toBe('en');

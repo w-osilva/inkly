@@ -34,7 +34,8 @@ const server = createServer((req, res) => {
         ]);
       } else if (isImprove) {
         // Return one applicable edit whose "original" is an exact substring of the input.
-        if (userText.includes('teh')) content = JSON.stringify([{ original: 'teh', improved: 'the', reason: 'spelling' }]);
+        if (userText.includes('proof')) content = JSON.stringify([{ original: 'proof', improved: 'try', reason: 'word choice' }]);
+        else if (userText.includes('teh')) content = JSON.stringify([{ original: 'teh', improved: 'the', reason: 'spelling' }]);
         else content = JSON.stringify([{ original: userText, improved: `IMPROVED: ${userText}`, reason: 'clarity' }]);
       } else if (isAnalyze) {
         content = `ANALYSIS: ${userText} looks fine.`;

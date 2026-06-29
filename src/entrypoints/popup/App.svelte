@@ -78,6 +78,13 @@
     await setSettings(next);
   }
 
+  async function toggleAutoSuggest() {
+    const cur = await getSettings();
+    const next = { ...cur, autoSuggest: !cur.autoSuggest };
+    settings = next;
+    await setSettings(next);
+  }
+
   async function setDefaultTone(tone: string) {
     const cur = await getSettings();
     const next = { ...cur, defaultTone: tone };
@@ -139,6 +146,10 @@
     <label class="row">
       <span>{t(lang, 'popup.globalEnable')}</span>
       <input type="checkbox" checked={settings.globalEnabled} onchange={toggleGlobal} />
+    </label>
+    <label class="row" class:disabled={!settings.globalEnabled}>
+      <span>{t(lang, 'popup.autoSuggest')}</span>
+      <input type="checkbox" checked={settings.autoSuggest} onchange={toggleAutoSuggest} />
     </label>
     {#if host}
       <label class="row" class:disabled={!settings.globalEnabled}>

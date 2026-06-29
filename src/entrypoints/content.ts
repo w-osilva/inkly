@@ -13,7 +13,7 @@ import { computeUnderlineStyles, type Rect } from '../ui/underline-layout';
 import { applyReplacement, applyRange } from '../core/apply-engine';
 import { debounce } from '../core/debounce';
 import { offsetToRange } from '../core/dom-offset';
-import type { FieldType, Suggestion } from '../core/types';
+import { type FieldType, type Suggestion, makeSuggestion } from '../core/types';
 import { mount } from 'svelte';
 import SuggestionCard from '../ui/SuggestionCard.svelte';
 import { cardState } from '../ui/card-state.svelte';
@@ -106,11 +106,13 @@ export default defineContentScript({
 
     let activeField: HTMLElement | null = null;
     let activeType: FieldType = 'unknown';
-    let current: Suggestion[] = [];
+    let current: Suggestion[] = [];      // grammar/spelling (Harper + punctuation + proofread)
+    let rendered: Suggestion[] = [];     // what's actually drawn/hit-tested: grammar + AI suggestions
     let checkSeq = 0;
     let hitRects: HitRect[] = [];
     let lang: Lang = 'en';
     let defaultTone = '';
+    let autoSuggest = true;
 
     const dismissed = new Set<string>();
     function suggestionKey(s: Suggestion): string {
@@ -143,21 +145,23 @@ export default defineContentScript({
     // field button. `current` is grammar/spelling (Harper) only.
     let aiImprovements: Improvement[] = [];
 
-    // Free on-device pass: when a built-in model exists, pre-populate improvements as the
-    // user types (no quota). With no on-device model this no-ops — the ✨ button fetches
-    // them on demand (BYOK) instead.
+    // Automatic writing suggestions on typing pause: on-device when a built-in model
+    // exists (free), otherwise the user's BYOK key. Gated by the autoSuggest setting so a
+    // cost-conscious user can turn off the BYOK passes. Results surface inline (and in the
+    // ✨ panel). Errors/rate-limits are swallowed silently — no cost surprises, no spam.
     async function runAutoImprove() {
       const field = activeField;
       const type = activeType;
-      if (!enabled || !field) return;
+      if (!enabled || !autoSuggest || !field) return;
       const text = getFieldText(field, type);
       if (text.trim().length < 12) return;
       const myCheck = checkSeq;
-      const res = await runAI({ capability: 'improve', text, options: defaultTone ? { tone: defaultTone } : {}, builtinOnly: true }, crypto.randomUUID());
-      if (!res.ok) return; // no on-device model — silent, no cost
+      const res = await runAI({ capability: 'improve', text, options: defaultTone ? { tone: defaultTone } : {} }, crypto.randomUUID());
+      if (!res.ok) return; // no on-device model AND no/failed BYOK — silent
       if (checkSeq !== myCheck || activeField !== field) return;
       aiImprovements = parseImprovements(res.text).filter((im) => text.includes(im.original));
       updateFieldButton();
+      drawUnderlines(); // surface the new suggestions inline
     }
     const scheduleAutoImprove = debounce(() => { void runAutoImprove(); }, 1500);
 
@@ -229,6 +233,7 @@ export default defineContentScript({
       }
       aiImprovements = parseImprovements(res.text).filter((im) => text.includes(im.original));
       updateFieldButton();
+      drawUnderlines(); // surface inline too
       if (aiImprovements.length === 0) {
         aiPanelState.improvements = [];
         aiPanelState.onDismiss = () => hideAIPanel();
@@ -238,14 +243,40 @@ export default defineContentScript({
       showImprovePanel();
     }
 
+    // AI writing improvements as inline suggestions: locate each in the live text and map
+    // to the subjective ('suggestion') tier so they underline distinctly from grammar.
+    function aiSuggestionList(): Suggestion[] {
+      if (!activeField || aiImprovements.length === 0) return [];
+      const text = getFieldText(activeField, activeType);
+      const out: Suggestion[] = [];
+      for (const im of aiImprovements) {
+        const offset = text.indexOf(im.original);
+        if (offset === -1) continue;
+        out.push(makeSuggestion({
+          offset,
+          length: im.original.length,
+          replacements: [im.improved],
+          message: im.reason || 'Consider rephrasing for clarity.',
+          ruleId: 'AIImprovement',
+          category: 'Style',
+          severity: 'suggestion',
+          source: 'byok',
+        }));
+      }
+      return out;
+    }
+
     function drawUnderlines() {
       if (!activeField) {
         hitRects = [];
+        rendered = [];
         return renderer.clear();
       }
+      // Grammar (Harper et al.) + AI suggestions, deduped by source priority (grammar wins).
+      rendered = mergeSuggestions([...current, ...aiSuggestionList()]);
       const containerRect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
       const nextHitRects: HitRect[] = [];
-      const styles = current.flatMap((s, index) => {
+      const styles = rendered.flatMap((s, index) => {
         const rects = getSpanRects(activeField!, activeType, s.offset, s.length);
         const first = rects[0];
         if (first) {
@@ -404,7 +435,7 @@ export default defineContentScript({
     let shownIndex = -1;
 
     function showCardFor(index: number) {
-      const s = current[index];
+      const s = rendered[index];
       const hit = hitRects.find((h) => h.index === index);
       if (!s || !hit) return;
       const CARD = { width: 300, height: 140 };
@@ -413,25 +444,31 @@ export default defineContentScript({
       cardState.severity = s.severity;
       cardState.left = pos.left;
       cardState.top = pos.top;
+      const isAI = s.ruleId === 'AIImprovement';
+      // Drop the just-acted-on suggestion from the right source list so its underline
+      // disappears immediately. Grammar lives in `current`; AI suggestions are derived
+      // from `aiImprovements`.
+      const dropSuggestion = () => {
+        if (isAI) {
+          const origAt = activeField ? getFieldText(activeField, activeType).slice(s.offset, s.offset + s.length) : '';
+          aiImprovements = aiImprovements.filter((im) => !(im.improved === s.replacements[0] && im.original === origAt));
+        } else {
+          const key = suggestionKey(s);
+          current = current.filter((c) => suggestionKey(c) !== key);
+        }
+      };
       cardState.onApply = (replacement: string) => {
-        const key = suggestionKey(s);
         if (activeField) applyReplacement(activeField, activeType, s, replacement);
-        // Drop the applied suggestion immediately so its underline disappears and the
-        // field-button count drops now — don't wait for a re-focus. The text changed,
-        // so re-check for the authoritative set (other offsets have shifted).
-        current = current.filter((c) => suggestionKey(c) !== key);
+        // Drop it now so its underline/count update immediately; the text changed, so
+        // re-check for the authoritative set (other offsets have shifted).
+        dropSuggestion();
         hideCard();
         drawUnderlines();
         if (activeField) runCheck();
       };
       cardState.onDismiss = () => {
-        const key = suggestionKey(s);
-        dismissed.add(key);
-        // Actually drop the dismissed suggestion so its underline disappears and the
-        // field-button count decrements. (Previously dismiss only hid the card; the
-        // underline used to vanish only as a side effect of the field-blur clearing
-        // everything — which no longer happens now that results persist on blur.)
-        current = current.filter((c) => suggestionKey(c) !== key);
+        if (!isAI) dismissed.add(suggestionKey(s));
+        dropSuggestion();
         hideCard();
         drawUnderlines();
       };
@@ -665,6 +702,7 @@ export default defineContentScript({
       dictionary = new Set(s.dictionary);
       lang = effectiveLang(s, navigator.language);
       defaultTone = s.defaultTone;
+      autoSuggest = s.autoSuggest;
       if (overlayHost) applyTheme(overlayHost, s.theme);
     });
     onSettingsChanged((s) => {
@@ -674,6 +712,7 @@ export default defineContentScript({
       dictionary = new Set(s.dictionary);
       lang = effectiveLang(s, navigator.language);
       defaultTone = s.defaultTone;
+      autoSuggest = s.autoSuggest;
       if (overlayHost) applyTheme(overlayHost, s.theme);
       if (cardState.visible) cardState.lang = lang;
       if (!enabled) {
@@ -698,6 +737,12 @@ export default defineContentScript({
             activeType = classifyField(focused);
             suppressNativeSpellcheck(focused);
           }
+        }
+        // Turning auto-suggestions off clears any pending inline AI suggestions now.
+        if (!autoSuggest && aiImprovements.length > 0) {
+          aiImprovements = [];
+          updateFieldButton();
+          drawUnderlines();
         }
         if (activeField) runCheck();
       }

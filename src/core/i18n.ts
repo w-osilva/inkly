@@ -4,6 +4,7 @@ type Dict = Record<string, string>;
 
 const en: Dict = {
   'popup.globalEnable': 'Enable inkly everywhere',
+  'popup.autoSuggest': 'Automatic writing suggestions (uses AI)',
   'popup.siteEnable': 'Enable on {host}',
   'popup.noSite': 'No site detected for this tab.',
   'popup.loading': 'Loading…',
@@ -83,6 +84,7 @@ const en: Dict = {
 
 const ptBr: Dict = {
   'popup.globalEnable': 'Ativar o inkly em todos os sites',
+  'popup.autoSuggest': 'Sugestões automáticas de escrita (usa IA)',
   'popup.siteEnable': 'Ativar em {host}',
   'popup.noSite': 'Nenhum site detectado nesta aba.',
   'popup.loading': 'Carregando…',
