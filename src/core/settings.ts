@@ -11,6 +11,10 @@ export interface Settings {
   dictionary: string[];
   uiLanguage: 'auto' | 'en' | 'pt-br';
   defaultTone: string;
+  /** Default rewrite style modifiers (confident/technical/persuasive/simple). */
+  defaultStyles: string[];
+  /** Default rewrite length: 'asis' | 'shorter' | 'longer'. */
+  defaultLength: string;
   theme: ThemePref;
   /** Correction tools in PRIORITY order (first wins overlaps); see core/tools.ts. */
   correctionOrder: string[];
@@ -31,6 +35,8 @@ export const DEFAULT_SETTINGS: Settings = {
   dictionary: [],
   uiLanguage: 'auto',
   defaultTone: '',
+  defaultStyles: [],
+  defaultLength: 'asis',
   theme: 'auto',
   correctionOrder: [...DEFAULT_CORRECTION_ORDER],
   correctionDisabled: [],
@@ -72,6 +78,8 @@ function normalize(raw: unknown): Settings {
         ? o.uiLanguage
         : 'auto',
     defaultTone: typeof o.defaultTone === 'string' ? o.defaultTone : '',
+    defaultStyles: strArray(o.defaultStyles),
+    defaultLength: o.defaultLength === 'shorter' || o.defaultLength === 'longer' ? o.defaultLength : 'asis',
     theme: o.theme === 'light' || o.theme === 'dark' || o.theme === 'auto' ? o.theme : 'auto',
     correctionOrder: normalizeOrder(o.correctionOrder),
     correctionDisabled,

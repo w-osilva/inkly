@@ -23,6 +23,8 @@
   const MODIFIERS = [
     { id: 'confident', label: 'Confident' },
     { id: 'technical', label: 'Technical' },
+    { id: 'persuasive', label: 'Persuasive' },
+    { id: 'simple', label: 'Simple' },
   ];
   const registerIdx = $derived(Math.max(0, REGISTER.findIndex((r) => r.id === (aiPanelState.tone || ''))));
   function setRegister(i: number) { aiPanelState.tone = REGISTER[i]?.id ?? ''; }

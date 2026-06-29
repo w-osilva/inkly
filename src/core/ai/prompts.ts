@@ -12,6 +12,8 @@ const TONE_GUIDE: Record<string, string> = {
   professional: 'professional and businesslike — courteous, clear, workplace-appropriate, not stiff',
   technical: 'precise and technical — exact terminology, unambiguous, no filler',
   concise: 'concise and tight — cut filler and redundancy, keep only what carries meaning',
+  persuasive: 'persuasive — build a clear, compelling case and emphasize the benefit',
+  simple: 'simple and clear — common everyday words and short sentences, no jargon',
 };
 
 /** Build chat messages for an AI request. M3a-1 covers 'rewrite'; others land in M3c. */

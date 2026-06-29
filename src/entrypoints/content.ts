@@ -129,6 +129,8 @@ export default defineContentScript({
     let hitRects: HitRect[] = [];
     let lang: Lang = 'en';
     let defaultTone = '';
+    let defaultStyles: string[] = [];
+    let defaultLength = 'asis';
     let correctionOrder: string[] = [...DEFAULT_CORRECTION_ORDER];
     let correctionDisabled: string[] = [];
     let selectionActionsDisabled: string[] = [];
@@ -638,8 +640,8 @@ export default defineContentScript({
       aiPanelState.top = pos.top;
       aiPanelState.anchor = rect;
       aiPanelState.tone = defaultTone;
-      aiPanelState.styles = [];
-      aiPanelState.length = 'asis';
+      aiPanelState.styles = [...defaultStyles];
+      aiPanelState.length = defaultLength;
       // Word selection → Synonyms-first; phrase/sentence → Rewrite-first.
       const kind = isSingleWord(info.text) ? 'word' : 'phrase';
       aiPanelState.selectionKind = kind;
@@ -667,8 +669,8 @@ export default defineContentScript({
       aiPanelState.top = pos.top;
       aiPanelState.anchor = rect;
       aiPanelState.tone = defaultTone;
-      aiPanelState.styles = [];
-      aiPanelState.length = 'asis';
+      aiPanelState.styles = [...defaultStyles];
+      aiPanelState.length = defaultLength;
       if (capability === 'open') {
         aiPanelState.capability = 'rewrite';
         aiPanelState.disabledActions = selectionActionsDisabled;
@@ -770,6 +772,8 @@ export default defineContentScript({
       dictionary = new Set(s.dictionary);
       lang = effectiveLang(s, navigator.language);
       defaultTone = s.defaultTone;
+      defaultStyles = s.defaultStyles;
+      defaultLength = s.defaultLength;
       correctionOrder = s.correctionOrder;
       correctionDisabled = s.correctionDisabled;
       selectionActionsDisabled = s.selectionActionsDisabled;
@@ -782,6 +786,8 @@ export default defineContentScript({
       dictionary = new Set(s.dictionary);
       lang = effectiveLang(s, navigator.language);
       defaultTone = s.defaultTone;
+      defaultStyles = s.defaultStyles;
+      defaultLength = s.defaultLength;
       correctionOrder = s.correctionOrder;
       correctionDisabled = s.correctionDisabled;
       selectionActionsDisabled = s.selectionActionsDisabled;

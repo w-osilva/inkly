@@ -92,13 +92,39 @@
     await setSettings(next);
   }
 
-  // Default rewrite register (the casual↔formal scale). Style modifiers are per-rewrite.
+  async function toggleDefaultStyle(id: string) {
+    const cur = await getSettings();
+    const has = cur.defaultStyles.includes(id);
+    const next = { ...cur, defaultStyles: has ? cur.defaultStyles.filter((s) => s !== id) : [...cur.defaultStyles, id] };
+    settings = next;
+    await setSettings(next);
+  }
+
+  async function setDefaultLength(value: string) {
+    const cur = await getSettings();
+    const next = { ...cur, defaultLength: value };
+    settings = next;
+    await setSettings(next);
+  }
+
+  // Default rewrite style: register (casual↔formal) + modifiers + length.
   const TONE_OPTIONS = [
     { id: 'casual', key: 'tone.casual' },
     { id: 'friendly', key: 'tone.friendly' },
     { id: '', key: 'tone.neutral' },
     { id: 'professional', key: 'tone.professional' },
     { id: 'formal', key: 'tone.formal' },
+  ];
+  const STYLE_OPTIONS = [
+    { id: 'confident', key: 'tone.confident' },
+    { id: 'technical', key: 'tone.technical' },
+    { id: 'persuasive', key: 'tone.persuasive' },
+    { id: 'simple', key: 'tone.simple' },
+  ];
+  const LENGTH_OPTIONS = [
+    { id: 'shorter', key: 'length.shorter' },
+    { id: 'asis', key: 'length.same' },
+    { id: 'longer', key: 'length.longer' },
   ];
 </script>
 
@@ -126,14 +152,33 @@
         <option value="dark">{t(lang, 'theme.dark')}</option>
       </select>
     </label>
-    <label class="row">
-      <span>{t(lang, 'popup.defaultTone')}</span>
-      <select value={settings.defaultTone} onchange={(e) => setDefaultTone((e.currentTarget as HTMLSelectElement).value)}>
-        {#each TONE_OPTIONS as opt}
-          <option value={opt.id}>{t(lang, opt.key)}</option>
+    <section>
+      <h2>{t(lang, 'popup.defaultStyle')}</h2>
+      <label class="row">
+        <span>{t(lang, 'popup.defaultTone')}</span>
+        <select value={settings.defaultTone} onchange={(e) => setDefaultTone((e.currentTarget as HTMLSelectElement).value)}>
+          {#each TONE_OPTIONS as opt}
+            <option value={opt.id}>{t(lang, opt.key)}</option>
+          {/each}
+        </select>
+      </label>
+      <label class="row">
+        <span>{t(lang, 'popup.defaultLength')}</span>
+        <select value={settings.defaultLength} onchange={(e) => setDefaultLength((e.currentTarget as HTMLSelectElement).value)}>
+          {#each LENGTH_OPTIONS as opt}
+            <option value={opt.id}>{t(lang, opt.key)}</option>
+          {/each}
+        </select>
+      </label>
+      <div class="mods">
+        {#each STYLE_OPTIONS as opt}
+          <label class="mod" class:on={settings.defaultStyles.includes(opt.id)}>
+            <input type="checkbox" checked={settings.defaultStyles.includes(opt.id)} onchange={() => toggleDefaultStyle(opt.id)} />
+            <span>{t(lang, opt.key)}</span>
+          </label>
         {/each}
-      </select>
-    </label>
+      </div>
+    </section>
     <label class="row">
       <span>{t(lang, 'popup.globalEnable')}</span>
       <input type="checkbox" checked={settings.globalEnabled} onchange={toggleGlobal} />
@@ -211,6 +256,10 @@
   }
   .ondevice.on, .ondevice.soon { border-color: var(--inkly-accent); }
   .ondevice.on { color: var(--inkly-text); }
+  .mods { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .mod { display: flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 8px; border: 1px solid var(--inkly-border); border-radius: 999px; cursor: pointer; }
+  .mod.on { border-color: var(--inkly-accent); color: var(--inkly-accent); }
+  .mod input { accent-color: var(--inkly-accent); }
   .cats { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; max-height: 180px; overflow: auto; }
   .cat { display: flex; align-items: center; gap: 5px; font-size: 12px; }
   .cat-tag { font-size: 10px; line-height: 1; cursor: help; flex: none; }
