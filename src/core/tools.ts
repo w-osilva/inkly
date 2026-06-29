@@ -32,7 +32,11 @@ export const BROAD_GRAMMAR_TOOLS: string[] = CORRECTION_TOOLS.filter((t) => t.br
 export const SELECTION_ACTIONS = ['rewrite', 'improve', 'synonyms', 'define', 'translate'] as const;
 export type SelectionAction = (typeof SELECTION_ACTIONS)[number];
 
-export const DEFAULT_CORRECTION_ORDER: string[] = CORRECTION_TOOLS.map((t) => t.id);
+// Default PRIORITY (first wins overlaps). LanguageTool leads: it auto-detects language
+// and is richer, so it gives the best correction worldwide (Harper is English-only and
+// would otherwise win overlaps with weaker/English-biased results). Harper stays high as
+// the instant local layer; AI suggestions sit last (subjective).
+export const DEFAULT_CORRECTION_ORDER: string[] = ['languagetool', 'harper', 'punctuation', 'proofreader', 'aiImprove'];
 
 const TOOL_BY_ID = new Map(CORRECTION_TOOLS.map((t) => [t.id, t]));
 
