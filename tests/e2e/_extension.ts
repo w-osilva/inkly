@@ -1,7 +1,9 @@
 import { test as base, chromium, type BrowserContext } from '@playwright/test';
 import path from 'node:path';
 
-const extensionPath = path.resolve('.output/chrome-mv3');
+// The e2e build (VITE_INKLY_E2E) goes to .output-e2e so it never clobbers the
+// production .output the user loads. See wxt.config.ts outDir.
+const extensionPath = path.resolve('.output-e2e/chrome-mv3');
 
 // Extensions need the FULL Chromium, not Playwright's "Chrome Headless Shell" (which
 // disables --load-extension). Default: headed (a visible window). Set INKLY_E2E_HEADLESS=1
