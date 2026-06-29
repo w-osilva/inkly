@@ -4,6 +4,8 @@
  * project's core principle); proprietary ones are marked. All are OpenAI-compatible.
  * Model lists are suggestions (editable) — free-tier model IDs change over time.
  */
+export type ProviderGroup = 'open' | 'proprietary' | 'custom';
+
 export interface AIProviderPreset {
   id: string;
   label: string;
@@ -14,12 +16,15 @@ export interface AIProviderPreset {
   keyUrl: string;
   /** Models are open-weight / the stack is open source. */
   openSource: boolean;
+  /** Grouping for the picker (open source is preferred, not exclusive). */
+  group: ProviderGroup;
   /** No API key required (e.g. a local server). A dummy key is prefilled so requests send one. */
   noKey?: boolean;
   note?: string;
 }
 
 export const AI_PROVIDERS: AIProviderPreset[] = [
+  // ---- Open source / open-weight (preferred) ----
   {
     id: 'openrouter',
     label: 'OpenRouter — free open models',
@@ -33,6 +38,7 @@ export const AI_PROVIDERS: AIProviderPreset[] = [
     ],
     keyUrl: 'https://openrouter.ai/keys',
     openSource: true,
+    group: 'open',
     note: 'One key, many open models. Free tiers are rate-limited.',
   },
   {
@@ -42,6 +48,7 @@ export const AI_PROVIDERS: AIProviderPreset[] = [
     models: ['llama-3.3-70b-versatile', 'qwen-2.5-32b', 'deepseek-r1-distill-llama-70b'],
     keyUrl: 'https://console.groq.com/keys',
     openSource: true,
+    group: 'open',
     note: 'Very fast. ~1,000 free requests/day.',
   },
   {
@@ -51,6 +58,7 @@ export const AI_PROVIDERS: AIProviderPreset[] = [
     models: ['llama-3.3-70b', 'qwen-3-32b'],
     keyUrl: 'https://cloud.cerebras.ai',
     openSource: true,
+    group: 'open',
     note: 'Generous free daily token allowance.',
   },
   {
@@ -60,18 +68,42 @@ export const AI_PROVIDERS: AIProviderPreset[] = [
     models: ['qwen2.5', 'llama3.1', 'gemma3'],
     keyUrl: '',
     openSource: true,
+    group: 'open',
     noKey: true,
     note: 'Runs on your machine. Needs Ollama running with the extension origin allowed (OLLAMA_ORIGINS).',
   },
+  // ---- Hosted proprietary (full flexibility) ----
   {
     id: 'gemini',
-    label: 'Google Gemini — best free tier (proprietary)',
+    label: 'Google Gemini',
     endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    models: ['gemini-2.5-flash', 'gemini-2.5-flash-lite'],
+    models: ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro'],
     keyUrl: 'https://aistudio.google.com/apikey',
     openSource: false,
-    note: 'Not open-source, but a generous free tier and strong at Portuguese.',
+    group: 'proprietary',
+    note: 'Generous free tier; strong at Portuguese.',
   },
+  {
+    id: 'openai',
+    label: 'OpenAI',
+    endpoint: 'https://api.openai.com/v1',
+    models: ['gpt-4o-mini', 'gpt-4o', 'o4-mini'],
+    keyUrl: 'https://platform.openai.com/api-keys',
+    openSource: false,
+    group: 'proprietary',
+    note: 'Paid. High quality, well-supported.',
+  },
+  {
+    id: 'anthropic',
+    label: 'Anthropic Claude',
+    endpoint: 'https://api.anthropic.com/v1',
+    models: ['claude-sonnet-4-5', 'claude-3-5-haiku-latest', 'claude-opus-4-1'],
+    keyUrl: 'https://console.anthropic.com/settings/keys',
+    openSource: false,
+    group: 'proprietary',
+    note: 'Paid. Uses Anthropic’s OpenAI-compatible endpoint.',
+  },
+  // ---- Anything else ----
   {
     id: 'custom',
     label: 'Custom (any OpenAI-compatible API)',
@@ -79,6 +111,7 @@ export const AI_PROVIDERS: AIProviderPreset[] = [
     models: [],
     keyUrl: '',
     openSource: false,
+    group: 'custom',
   },
 ];
 

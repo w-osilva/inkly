@@ -56,8 +56,18 @@
 
       <label>{t(lang, 'options.provider')}
         <select value={providerId} onchange={(e) => selectProvider((e.currentTarget as HTMLSelectElement).value)}>
-          {#each AI_PROVIDERS as p}
-            <option value={p.id}>{p.label}{p.openSource ? ' · open source' : ''}</option>
+          <optgroup label={t(lang, 'options.providersOpen')}>
+            {#each AI_PROVIDERS.filter((p) => p.group === 'open') as p}
+              <option value={p.id}>{p.label}</option>
+            {/each}
+          </optgroup>
+          <optgroup label={t(lang, 'options.providersProprietary')}>
+            {#each AI_PROVIDERS.filter((p) => p.group === 'proprietary') as p}
+              <option value={p.id}>{p.label}</option>
+            {/each}
+          </optgroup>
+          {#each AI_PROVIDERS.filter((p) => p.group === 'custom') as p}
+            <option value={p.id}>{p.label}</option>
           {/each}
         </select>
       </label>
