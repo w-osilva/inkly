@@ -92,10 +92,9 @@
     await setSettings(next);
   }
 
-  async function toggleDefaultStyle(id: string) {
+  async function setDefaultStyle(id: string) {
     const cur = await getSettings();
-    const has = cur.defaultStyles.includes(id);
-    const next = { ...cur, defaultStyles: has ? cur.defaultStyles.filter((s) => s !== id) : [...cur.defaultStyles, id] };
+    const next = { ...cur, defaultStyles: id ? [id] : [] };
     settings = next;
     await setSettings(next);
   }
@@ -116,6 +115,7 @@
     { id: 'formal', key: 'tone.formal' },
   ];
   const STYLE_OPTIONS = [
+    { id: '', key: 'tone.none' },
     { id: 'confident', key: 'tone.confident' },
     { id: 'technical', key: 'tone.technical' },
     { id: 'persuasive', key: 'tone.persuasive' },
@@ -170,15 +170,14 @@
           {/each}
         </select>
       </label>
-      <div class="mods-label">{t(lang, 'popup.styleMods')}</div>
-      <div class="mods">
-        {#each STYLE_OPTIONS as opt}
-          <label class="mod" class:on={settings.defaultStyles.includes(opt.id)}>
-            <input type="checkbox" checked={settings.defaultStyles.includes(opt.id)} onchange={() => toggleDefaultStyle(opt.id)} />
-            <span>{t(lang, opt.key)}</span>
-          </label>
-        {/each}
-      </div>
+      <label class="row">
+        <span>{t(lang, 'popup.styleMods')}</span>
+        <select value={settings.defaultStyles[0] ?? ''} onchange={(e) => setDefaultStyle((e.currentTarget as HTMLSelectElement).value)}>
+          {#each STYLE_OPTIONS as opt}
+            <option value={opt.id}>{t(lang, opt.key)}</option>
+          {/each}
+        </select>
+      </label>
     </section>
     <label class="row">
       <span>{t(lang, 'popup.globalEnable')}</span>
@@ -257,11 +256,6 @@
   }
   .ondevice.on, .ondevice.soon { border-color: var(--inkly-accent); }
   .ondevice.on { color: var(--inkly-text); }
-  .mods-label { margin-top: 8px; font-size: 12px; color: var(--inkly-muted); }
-  .mods { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-  .mod { display: flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 8px; border: 1px solid var(--inkly-border); border-radius: 999px; cursor: pointer; }
-  .mod.on { border-color: var(--inkly-accent); color: var(--inkly-accent); }
-  .mod input { accent-color: var(--inkly-accent); }
   .cats { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; max-height: 180px; overflow: auto; }
   .cat { display: flex; align-items: center; gap: 5px; font-size: 12px; }
   .cat-tag { font-size: 10px; line-height: 1; cursor: help; flex: none; }
