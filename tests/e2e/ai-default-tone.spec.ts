@@ -46,7 +46,7 @@ test('the tone slider sets the register (move to Formal → [formal])', async ({
   await editor.click(); await editor.type('hello world');
   await selectWorld(page);
   await page.locator('css=.inkly-ai__tab').filter({ hasText: 'Rewrite' }).click();
-  await page.locator('css=.inkly-ai__range').fill('4'); // slide to Formal (last stop)
+  await page.locator('css=.inkly-ai__range[aria-label="Tone register"]').fill('4'); // slide to Formal
   await page.locator('css=.inkly-ai__btn').filter({ hasText: 'Rewrite' }).click();
   await expect(page.locator('css=.inkly-ai__result')).toHaveText('REWRITTEN[formal]: hello world', { timeout: 10_000 });
 });

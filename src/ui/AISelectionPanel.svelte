@@ -23,7 +23,6 @@
   const MODIFIERS = [
     { id: 'confident', label: 'Confident' },
     { id: 'technical', label: 'Technical' },
-    { id: 'concise', label: 'Concise' },
   ];
   const registerIdx = $derived(Math.max(0, REGISTER.findIndex((r) => r.id === (aiPanelState.tone || ''))));
   function setRegister(i: number) { aiPanelState.tone = REGISTER[i]?.id ?? ''; }
@@ -32,11 +31,14 @@
       ? aiPanelState.styles.filter((s) => s !== id)
       : [...aiPanelState.styles, id];
   }
+  // Length scale (shorter ↔ longer); 'asis' is the middle. Slider index maps here.
   const LENGTHS = [
-    { id: 'asis', label: 'Same length' },
     { id: 'shorter', label: 'Shorter' },
+    { id: 'asis', label: 'Same length' },
     { id: 'longer', label: 'Longer' },
   ];
+  const lengthIdx = $derived(Math.max(0, LENGTHS.findIndex((l) => l.id === (aiPanelState.length || 'asis'))));
+  function setLength(i: number) { aiPanelState.length = LENGTHS[i]?.id ?? 'asis'; }
 
   // Actions reorder by selection kind: a single word leads with Synonyms; a phrase/
   // sentence leads with Rewrite. The primary (first) button is the accent-filled one.
@@ -144,12 +146,13 @@
           >{m.label}</button>
         {/each}
       </div>
-      <label class="inkly-ai__seg" for="inkly-length">Length</label>
-      <select id="inkly-length" class="inkly-ai__select" bind:value={aiPanelState.length}>
-        {#each LENGTHS as l}
-          <option value={l.id}>{l.label}</option>
-        {/each}
-      </select>
+      <div class="inkly-ai__seg">Length — <strong>{LENGTHS[lengthIdx].label}</strong></div>
+      <input
+        class="inkly-ai__range" type="range" min="0" max={LENGTHS.length - 1} step="1"
+        value={lengthIdx} aria-label="Length"
+        oninput={(e) => setLength(+(e.currentTarget as HTMLInputElement).value)}
+      />
+      <div class="inkly-ai__range-ends"><span>{LENGTHS[0].label}</span><span>{LENGTHS[LENGTHS.length - 1].label}</span></div>
       <div class="inkly-ai__row">
         <button class="inkly-ai__btn" onclick={() => aiPanelState.onAction?.('rewrite')}>Rewrite</button>
         <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => (aiPanelState.phase = 'actions')}>Back</button>
@@ -305,13 +308,6 @@
     display: block; margin: 2px 0 5px; font-size: 10.5px; font-weight: 700;
     letter-spacing: 0.04em; text-transform: uppercase; color: var(--inkly-muted);
   }
-  .inkly-ai__select {
-    width: 100%; margin-bottom: 10px; padding: 7px 9px; cursor: pointer;
-    background: var(--inkly-ghost-bg); color: var(--inkly-text);
-    border: 1px solid var(--inkly-ghost-border); border-radius: 8px;
-    font: 500 12.5px var(--inkly-font); appearance: none;
-  }
-  .inkly-ai__select:focus-visible { outline: 2px solid var(--inkly-accent); outline-offset: 1px; }
   .inkly-ai__seg strong { color: var(--inkly-accent); text-transform: none; letter-spacing: 0; }
   .inkly-ai__range { width: 100%; margin: 0 0 2px; accent-color: var(--inkly-accent); cursor: pointer; }
   .inkly-ai__range-ends {
