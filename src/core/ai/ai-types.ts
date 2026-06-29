@@ -3,8 +3,10 @@ export type AICapability = 'rewrite' | 'translate' | 'synonyms' | 'analyze' | 'i
 export interface AIConfig {
   provider: 'openai-compatible';
   endpoint: string; // base URL, e.g. https://api.openai.com/v1
-  apiKey: string;
+  apiKey: string;   // the active provider's key (what requests use)
   model: string;    // e.g. gpt-4o-mini
+  /** Per-provider keys (providerId → apiKey) so switching providers keeps each key. */
+  keys?: Record<string, string>;
 }
 
 export interface AIRequest {

@@ -10,6 +10,7 @@ export const DEFAULT_AI_CONFIG: AIConfig = {
   endpoint: 'https://openrouter.ai/api/v1',
   apiKey: '',
   model: 'openai/gpt-oss-120b:free',
+  keys: {},
 };
 
 function normalize(raw: unknown): AIConfig {
@@ -17,11 +18,18 @@ function normalize(raw: unknown): AIConfig {
   const str = (v: unknown, d: string) => (typeof v === 'string' ? v : d);
   // Fall back to the prefilled default only when the field was never set (undefined),
   // so a user can still deliberately clear endpoint/model to an empty string.
+  const keys: Record<string, string> = {};
+  if (o.keys && typeof o.keys === 'object' && !Array.isArray(o.keys)) {
+    for (const [k, v] of Object.entries(o.keys as Record<string, unknown>)) {
+      if (typeof v === 'string') keys[k] = v;
+    }
+  }
   return {
     provider: 'openai-compatible',
     endpoint: str(o.endpoint, DEFAULT_AI_CONFIG.endpoint),
     apiKey: str(o.apiKey, ''),
     model: str(o.model, DEFAULT_AI_CONFIG.model),
+    keys,
   };
 }
 

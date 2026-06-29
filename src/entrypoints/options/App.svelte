@@ -44,32 +44,41 @@
     : null,
   );
 
+  // Per-provider keys, so switching providers keeps each one's saved key.
+  let keys = $state<Record<string, string>>({});
+
   onMount(async () => {
     const [cfg, settings, detected] = await Promise.all([getAIConfig(), getSettings(), detectBuiltins()]);
     endpoint = cfg.endpoint;
     apiKey = cfg.apiKey;
     model = cfg.model;
     providerId = providerForEndpoint(cfg.endpoint);
+    keys = { ...(cfg.keys ?? {}) };
+    // Migrate: seed the active provider's key from the legacy single key if unset.
+    if (cfg.apiKey && !keys[providerId]) keys[providerId] = cfg.apiKey;
     lang = effectiveLang(settings, navigator.language);
     builtins = detected;
     loaded = true;
   });
 
-  // Picking a preset fills the endpoint + a default model (both still editable). Custom
-  // clears nothing so the user types their own. A keyless provider gets a dummy key so
-  // the request still sends an Authorization header.
+  // Picking a preset fills the endpoint + a default model (both still editable) and swaps
+  // in that provider's saved key. The key being left is stashed first so it isn't lost.
+  // A keyless provider (Ollama) gets a dummy key so the request still sends a header.
   function selectProvider(id: string) {
+    keys = { ...keys, [providerId]: apiKey };
     providerId = id;
     const p = getProvider(id);
     if (id !== 'custom') {
       endpoint = p.endpoint;
       if (!p.models.includes(model)) model = p.models[0] ?? model;
-      if (p.noKey && !apiKey) apiKey = 'ollama';
     }
+    apiKey = p.noKey ? keys[id] || 'ollama' : keys[id] ?? '';
   }
 
   async function save() {
-    await setAIConfig({ provider: 'openai-compatible', endpoint, apiKey, model });
+    const nextKeys = { ...keys, [providerId]: apiKey };
+    await setAIConfig({ provider: 'openai-compatible', endpoint, apiKey, model, keys: nextKeys });
+    keys = nextKeys;
     savedFlag = true;
     setTimeout(() => (savedFlag = false), 1500);
   }

@@ -19,6 +19,12 @@ describe('AI config (storage.local)', () => {
     await fakeBrowser.storage.local.set({ 'inkly:ai': 'garbage' });
     expect(await getAIConfig()).toEqual(DEFAULT_AI_CONFIG);
   });
+  it('round-trips per-provider keys and drops non-string entries', async () => {
+    await setAIConfig({ provider: 'openai-compatible', endpoint: 'https://x/v1', apiKey: 'g', model: 'm', keys: { groq: 'g', openai: 'o' } });
+    expect((await getAIConfig()).keys).toEqual({ groq: 'g', openai: 'o' });
+    await fakeBrowser.storage.local.set({ 'inkly:ai': { endpoint: 'https://x/v1', apiKey: 'g', model: 'm', keys: { groq: 'g', bad: 5 } } });
+    expect((await getAIConfig()).keys).toEqual({ groq: 'g' });
+  });
   it('hasKey reflects whether endpoint+apiKey+model are all set', async () => {
     expect(hasKey(DEFAULT_AI_CONFIG)).toBe(false);
     expect(hasKey({ provider: 'openai-compatible', endpoint: 'https://x/v1', apiKey: 'k', model: 'm' })).toBe(true);
