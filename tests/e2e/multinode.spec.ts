@@ -7,8 +7,7 @@ async function hoverUnderline(page: import('@playwright/test').Page) {
   await expect(async () => {
     const box = await underline.boundingBox();
     if (!box) throw new Error('no box');
-    await page.mouse.move(box.x + box.width / 2, box.y - 4);
-    await page.mouse.move(box.x + box.width / 2 + 1, box.y - 4);
+    await page.mouse.click(box.x + box.width / 2, box.y - 4);
     await expect(page.locator('css=.inkly-card')).toBeVisible({ timeout: 1500 });
   }).toPass({ timeout: 15_000 });
 }

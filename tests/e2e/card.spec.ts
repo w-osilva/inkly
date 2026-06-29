@@ -21,8 +21,7 @@ async function hoverUntilCard(page: import('@playwright/test').Page) {
     const x = box.x + box.width / 2;
     const y = box.y - 4; // nudge up from the strip into the text rect
     // Two moves: the first may land mid-rAF; the nudge guarantees a fresh mousemove.
-    await page.mouse.move(x, y);
-    await page.mouse.move(x + 1, y);
+    await page.mouse.click(x, y);
     await expect(card).toBeVisible({ timeout: 1_000 });
   }).toPass({ timeout: 10_000 });
 }

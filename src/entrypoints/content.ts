@@ -327,13 +327,9 @@ export default defineContentScript({
       rafId = requestAnimationFrame(() => { rafId = 0; drawUnderlines(); });
     }
 
-    const HOVER_DELAY = 150;
-    // Generous grace so moving the mouse from the underline across the gap to the
-    // card doesn't dismiss it (Grammarly waits ~1s). The card's own mouseenter sets
-    // cardState.hovered, which cancels the hide entirely once reached.
-    const HIDE_GRACE = 700;
-    let hoverTimer = 0, hideTimer = 0, shownIndex = -1, pendingHoverIndex = -1;
-    let mouseMoveScheduled = false, lastX = 0, lastY = 0;
+    // The correction card opens on a click on an underlined word (not hover), so it
+    // never competes with text selection. `shownIndex` tracks which card is open.
+    let shownIndex = -1;
 
     function showCardFor(index: number) {
       const s = current[index];
@@ -390,15 +386,7 @@ export default defineContentScript({
       if (activeField) renderer.highlight(getSpanRects(activeField, activeType, s.offset, s.length), s.severity);
     }
 
-    function clearHoverTimers() {
-      if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = 0; }
-      if (hideTimer) { clearTimeout(hideTimer); hideTimer = 0; }
-      mouseMoveScheduled = false;
-      pendingHoverIndex = -1;
-    }
-
     function hideCard() {
-      clearHoverTimers();
       cardState.visible = false;
       cardState.suggestion = null;
       cardState.onApply = null;
@@ -610,7 +598,6 @@ export default defineContentScript({
       if (cardState.visible) cardState.lang = lang;
       if (!enabled) {
         runCheck.cancel();
-        clearHoverTimers();
         hideCard();
         hideAIPanel();
         current = [];
@@ -635,34 +622,19 @@ export default defineContentScript({
       }
     });
 
-    function onMouseMove(e: MouseEvent) {
-      if (!enabled) return;
-      lastX = e.clientX; lastY = e.clientY;
-      if (mouseMoveScheduled) return;
-      mouseMoveScheduled = true;
-      requestAnimationFrame(() => {
-        mouseMoveScheduled = false;
-        const idx = findHitIndex(lastX, lastY, hitRects);
-        if (idx !== -1) {
-          if (hideTimer) { clearTimeout(hideTimer); hideTimer = 0; }
-          if (idx !== shownIndex && idx !== pendingHoverIndex) {
-            if (hoverTimer) clearTimeout(hoverTimer);
-            pendingHoverIndex = idx;
-            hoverTimer = window.setTimeout(() => {
-              hoverTimer = 0;
-              pendingHoverIndex = -1;
-              showCardFor(idx);
-            }, HOVER_DELAY);
-          }
-        } else {
-          if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = 0; pendingHoverIndex = -1; }
-          if (cardState.visible && !hideTimer) {
-            hideTimer = window.setTimeout(() => { hideTimer = 0; if (!cardState.hovered) hideCard(); }, HIDE_GRACE);
-          }
-        }
-      });
-    }
-    ctx.addEventListener(document, 'mousemove', onMouseMove);
+    // Click on an underlined word → open its correction card. A click that's part of
+    // selecting text (non-collapsed selection) is left to the AI toolbox path. Clicks
+    // inside our overlay (card/panel buttons) and clicks off any underline are ignored
+    // here; clicking elsewhere closes an open card.
+    ctx.addEventListener(document, 'click', (e) => {
+      if (!enabled || !activeField) return;
+      const me = e as MouseEvent;
+      if (overlayHost && me.composedPath().includes(overlayHost)) return; // our own UI
+      if (getSelectionInfo(activeField, activeType)) return; // a selection → toolbox
+      const idx = findHitIndex(me.clientX, me.clientY, hitRects);
+      if (idx !== -1) showCardFor(idx);
+      else if (cardState.visible) hideCard();
+    });
 
     let selScheduled = false;
     function onSelectionMaybe() {
@@ -678,7 +650,6 @@ export default defineContentScript({
       const t = e.target as Element;
       if (enabled && t instanceof HTMLElement && isEditableField(t)) {
         runCheck.cancel();
-        clearHoverTimers();
         hideCard();
         // Switching to a different field: drop the previous field's persisted
         // underlines/button immediately so they don't linger at stale positions
@@ -726,7 +697,6 @@ export default defineContentScript({
       // handled separately by the pointerdown dismissal.
       const keepAIPanel = aiPanelState.phase !== 'hidden' && (related === null || intoOverlay);
       runCheck.cancel();
-      clearHoverTimers();
       hideCard();
       if (!keepAIPanel) hideAIPanel();
       // Persist the underlines and the field button after blur — Grammarly/LanguageTool

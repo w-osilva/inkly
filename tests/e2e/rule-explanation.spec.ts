@@ -26,8 +26,7 @@ async function hoverUntilCard(page: import('@playwright/test').Page) {
     if (!box) throw new Error('no underline bounding box');
     const x = box.x + box.width / 2;
     const y = box.y - 4;
-    await page.mouse.move(x, y);
-    await page.mouse.move(x + 1, y);
+    await page.mouse.click(x, y);
     await expect(card).toBeVisible({ timeout: 1_000 });
   }).toPass({ timeout: 10_000 });
 }
