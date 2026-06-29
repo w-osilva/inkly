@@ -20,6 +20,16 @@ export interface AIProviderPreset {
   group: ProviderGroup;
   /** No API key required (e.g. a local server). A dummy key is prefilled so requests send one. */
   noKey?: boolean;
+  /**
+   * Data-handling posture, surfaced as a privacy badge in the options:
+   * 'local' = runs on the user's machine; 'no-train' = API states it won't train on
+   * submitted data; 'trains' = the free tier may train on prompts; 'unknown' = depends
+   * on the user's endpoint. This reflects the *default* preset models (the open presets
+   * default to free model IDs).
+   */
+  privacy: 'local' | 'no-train' | 'trains' | 'unknown';
+  /** Highlight as the recommended choice for serious / privacy-sensitive use. */
+  recommended?: boolean;
   note?: string;
 }
 
@@ -39,6 +49,7 @@ export const AI_PROVIDERS: AIProviderPreset[] = [
     keyUrl: 'https://openrouter.ai/keys',
     openSource: true,
     group: 'open',
+    privacy: 'trains',
     note: 'One key, many open models. Free tiers are rate-limited.',
   },
   {
@@ -49,7 +60,9 @@ export const AI_PROVIDERS: AIProviderPreset[] = [
     keyUrl: 'https://console.groq.com/keys',
     openSource: true,
     group: 'open',
-    note: 'Very fast. ~1,000 free requests/day.',
+    privacy: 'no-train',
+    recommended: true,
+    note: 'Very fast, low latency. ~1,000 free requests/day; the API does not train on your prompts.',
   },
   {
     id: 'cerebras',
@@ -59,7 +72,8 @@ export const AI_PROVIDERS: AIProviderPreset[] = [
     keyUrl: 'https://cloud.cerebras.ai',
     openSource: true,
     group: 'open',
-    note: 'Generous free daily token allowance.',
+    privacy: 'no-train',
+    note: 'Generous free daily token allowance. Best for batch/long documents.',
   },
   {
     id: 'ollama',
@@ -69,6 +83,7 @@ export const AI_PROVIDERS: AIProviderPreset[] = [
     keyUrl: '',
     openSource: true,
     group: 'open',
+    privacy: 'local',
     noKey: true,
     note: 'Runs on your machine. Needs Ollama running with the extension origin allowed (OLLAMA_ORIGINS).',
   },
@@ -81,7 +96,8 @@ export const AI_PROVIDERS: AIProviderPreset[] = [
     keyUrl: 'https://aistudio.google.com/apikey',
     openSource: false,
     group: 'proprietary',
-    note: 'Generous free tier; strong at Portuguese.',
+    privacy: 'trains',
+    note: 'Generous free tier (which may train on your data); strong at Portuguese.',
   },
   {
     id: 'openai',
@@ -91,7 +107,8 @@ export const AI_PROVIDERS: AIProviderPreset[] = [
     keyUrl: 'https://platform.openai.com/api-keys',
     openSource: false,
     group: 'proprietary',
-    note: 'Paid. High quality, well-supported.',
+    privacy: 'no-train',
+    note: 'Paid. High quality; the API does not train on your data.',
   },
   {
     id: 'anthropic',
@@ -101,7 +118,8 @@ export const AI_PROVIDERS: AIProviderPreset[] = [
     keyUrl: 'https://console.anthropic.com/settings/keys',
     openSource: false,
     group: 'proprietary',
-    note: 'Paid. Uses Anthropic’s OpenAI-compatible endpoint.',
+    privacy: 'no-train',
+    note: 'Paid. Does not train on your data. Uses Anthropic’s OpenAI-compatible endpoint.',
   },
   // ---- Anything else ----
   {
@@ -112,6 +130,7 @@ export const AI_PROVIDERS: AIProviderPreset[] = [
     keyUrl: '',
     openSource: false,
     group: 'custom',
+    privacy: 'unknown',
   },
 ];
 

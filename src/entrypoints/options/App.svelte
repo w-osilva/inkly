@@ -5,6 +5,7 @@
   import { getSettings, effectiveLang } from '../../core/settings';
   import { t, type Lang } from '../../core/i18n';
   import { AI_PROVIDERS, getProvider, providerForEndpoint } from '../../core/ai/providers';
+  import { builtinAvailability, type BuiltinStatus } from '../../core/ai/chrome-ai';
 
   let providerId = $state('openrouter');
   let endpoint = $state('');
@@ -13,17 +14,25 @@
   let lang = $state<Lang>('en');
   let loaded = $state(false);
   let savedFlag = $state(false);
+  let builtin = $state<BuiltinStatus>('unavailable');
 
   const provider = $derived(getProvider(providerId));
   const config = $derived({ provider: 'openai-compatible', endpoint, apiKey, model } as AIConfig);
+  const privacyKey = $derived(
+    provider.privacy === 'local' ? 'options.privacyLocal'
+    : provider.privacy === 'no-train' ? 'options.privacyNoTrain'
+    : provider.privacy === 'trains' ? 'options.privacyTrains'
+    : null,
+  );
 
   onMount(async () => {
-    const [cfg, settings] = await Promise.all([getAIConfig(), getSettings()]);
+    const [cfg, settings, status] = await Promise.all([getAIConfig(), getSettings(), builtinAvailability()]);
     endpoint = cfg.endpoint;
     apiKey = cfg.apiKey;
     model = cfg.model;
     providerId = providerForEndpoint(cfg.endpoint);
     lang = effectiveLang(settings, navigator.language);
+    builtin = status;
     loaded = true;
   });
 
@@ -54,16 +63,23 @@
       <h2>{t(lang, 'options.aiHeading')}</h2>
       <p class="hint">{t(lang, 'options.aiHint')}</p>
 
+      <div class="builtin" class:on={builtin === 'available'} class:soon={builtin === 'downloadable'}>
+        {#if builtin === 'available'}{t(lang, 'options.builtinAvailable')}
+        {:else if builtin === 'downloadable'}{t(lang, 'options.builtinDownloadable')}
+        {:else}{t(lang, 'options.builtinUnavailable')}{/if}
+      </div>
+      <p class="hint">{t(lang, 'options.builtinNote')}</p>
+
       <label>{t(lang, 'options.provider')}
         <select value={providerId} onchange={(e) => selectProvider((e.currentTarget as HTMLSelectElement).value)}>
           <optgroup label={t(lang, 'options.providersOpen')}>
             {#each AI_PROVIDERS.filter((p) => p.group === 'open') as p}
-              <option value={p.id}>{p.label}</option>
+              <option value={p.id}>{p.label}{p.recommended ? ` — ${t(lang, 'options.recommended')}` : ''}</option>
             {/each}
           </optgroup>
           <optgroup label={t(lang, 'options.providersProprietary')}>
             {#each AI_PROVIDERS.filter((p) => p.group === 'proprietary') as p}
-              <option value={p.id}>{p.label}</option>
+              <option value={p.id}>{p.label}{p.recommended ? ` — ${t(lang, 'options.recommended')}` : ''}</option>
             {/each}
           </optgroup>
           {#each AI_PROVIDERS.filter((p) => p.group === 'custom') as p}
@@ -71,6 +87,10 @@
           {/each}
         </select>
       </label>
+      <div class="badges">
+        {#if privacyKey}<span class="badge badge--{provider.privacy}">{t(lang, privacyKey)}</span>{/if}
+        {#if provider.recommended}<span class="badge badge--rec">★ {t(lang, 'options.recommended')}</span>{/if}
+      </div>
       {#if provider.note}<p class="hint">{provider.note}</p>{/if}
 
       {#if providerId === 'custom'}
@@ -124,6 +144,21 @@
   input:focus, select:focus { outline: none; border-color: var(--inkly-accent); }
   .key-link { display: inline-block; margin-top: 2px; color: var(--inkly-accent); font-size: 13px; text-decoration: none; }
   .key-link:hover { text-decoration: underline; }
+  .builtin {
+    margin: 8px 0 4px; padding: 8px 10px; font-size: 13px; line-height: 1.4;
+    border-radius: var(--inkly-radius-sm); border: 1px solid var(--inkly-border);
+    background: var(--inkly-bg-subtle, rgba(127,127,127,0.08)); color: var(--inkly-muted);
+  }
+  .builtin.on { border-color: var(--inkly-accent); color: var(--inkly-text); }
+  .builtin.soon { border-color: var(--inkly-accent); }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
+  .badge {
+    font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+    border: 1px solid var(--inkly-border); color: var(--inkly-muted);
+  }
+  .badge--local, .badge--no-train { color: var(--inkly-accent); border-color: var(--inkly-accent); }
+  .badge--trains { color: var(--inkly-sev-correct); border-color: var(--inkly-sev-correct); }
+  .badge--rec { color: var(--inkly-accent-contrast); background: var(--inkly-accent); border-color: var(--inkly-accent); }
   .row { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
   button {
     border: 1px solid var(--inkly-accent); background: var(--inkly-accent);

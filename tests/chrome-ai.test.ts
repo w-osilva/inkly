@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { tryChromeAI } from '../src/core/ai/chrome-ai';
+import { tryChromeAI, builtinAvailability } from '../src/core/ai/chrome-ai';
 
 function fakeGlobal(opts: { availability: string; prompt?: (t: string) => Promise<string> }) {
   return {
@@ -38,5 +38,28 @@ describe('tryChromeAI', () => {
     const out = await tryChromeAI({ capability: 'rewrite', text: 'fix me' }, fakeGlobal({ availability: 'available', prompt }));
     expect(out).toBe('R: fix me');
     expect(prompt).toHaveBeenCalledWith('fix me');
+  });
+});
+
+describe('builtinAvailability', () => {
+  const g = (availability: string) =>
+    ({ LanguageModel: { availability: async () => availability } }) as unknown as typeof globalThis;
+
+  it('maps ready states to "available"', async () => {
+    expect(await builtinAvailability(g('available'))).toBe('available');
+    expect(await builtinAvailability(g('readily'))).toBe('available');
+  });
+  it('maps download states to "downloadable"', async () => {
+    expect(await builtinAvailability(g('downloadable'))).toBe('downloadable');
+    expect(await builtinAvailability(g('downloading'))).toBe('downloadable');
+    expect(await builtinAvailability(g('after-download'))).toBe('downloadable');
+  });
+  it('maps anything else and a missing global to "unavailable"', async () => {
+    expect(await builtinAvailability(g('unavailable'))).toBe('unavailable');
+    expect(await builtinAvailability({} as typeof globalThis)).toBe('unavailable');
+  });
+  it('never throws when the API throws', async () => {
+    const bad = { LanguageModel: { availability: async () => { throw new Error('x'); } } } as unknown as typeof globalThis;
+    expect(await builtinAvailability(bad)).toBe('unavailable');
   });
 });
