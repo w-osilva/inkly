@@ -12,6 +12,7 @@ export type FieldType =
 export type SuggestionSource =
   | 'harper'
   | 'inkly' // built-in deterministic rules (e.g. punctuation) that complement Harper
+  | 'chrome-proofread' // on-device Chromium Proofreader API (objective corrections w/ offsets)
   | 'chrome-ai'
   | 'byok'
   | 'languagetool'
@@ -51,6 +52,7 @@ export const SOURCE_PRIORITY: Record<SuggestionSource, number> = {
   harper: 4,
   inkly: 4,
   languagetool: 3,
+  'chrome-proofread': 3, // on-device, objective — but Harper (offline baseline) wins overlaps
   'chrome-ai': 2,
   byok: 2,
   stub: 1,

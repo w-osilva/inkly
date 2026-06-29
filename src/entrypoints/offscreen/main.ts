@@ -6,7 +6,7 @@ import { buildHttpRequest } from '../../core/ai/openai-provider';
 import { splitSSE, deltaFromEvent } from '../../core/ai/sse';
 import type { AIConfig, AIRequest, AIResponse } from '../../core/ai/ai-types';
 import { tryChromeAI } from '../../core/ai/chrome-ai';
-import { tryChromeRewrite } from '../../core/ai/builtin-apis';
+import { tryChromeRewrite, tryChromeProofread } from '../../core/ai/builtin-apis';
 import { tryChromeTranslate } from '../../core/ai/chrome-translator';
 import { lookupDefinition } from '../../core/ai/dictionary';
 
@@ -115,8 +115,11 @@ browser.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse: (r: 
   const m = msg as Partial<OffscreenLintRequest> & { type?: string };
   if (m?.target !== 'offscreen') return undefined; // not ours
   if (m.type === 'harper:lint') {
-    lint((m as Partial<OffscreenLintRequest>).text ?? '')
-      .then((lints) => sendResponse({ ok: true, lints }))
+    const text = (m as Partial<OffscreenLintRequest>).text ?? '';
+    // Harper (always) + the on-device Proofreader API (only where it exists & is ready)
+    // run in parallel; the client merges `extra` with the Harper lints by source priority.
+    Promise.all([lint(text), tryChromeProofread(text).catch(() => [])])
+      .then(([lints, extra]) => sendResponse({ ok: true, lints, extra }))
       .catch((err) => sendResponse({ ok: false, error: String((err as Error)?.stack ?? err) }));
     return true;
   }

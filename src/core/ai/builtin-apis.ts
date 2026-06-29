@@ -1,4 +1,5 @@
 import type { AIRequest } from './ai-types';
+import { type Suggestion, makeSuggestion } from '../types';
 
 /**
  * Chromium's on-device "Writing Assistance" APIs (Gemini Nano): Rewriter, Writer,
@@ -99,5 +100,74 @@ export async function tryChromeRewrite(req: AIRequest, g: typeof globalThis = gl
     }
   } catch {
     return null;
+  }
+}
+
+// Proofreader correction `type` → inkly category. Objective error types map to
+// correctness categories (red); anything unknown lands on Grammar.
+function proofreadCategory(type?: string): string {
+  switch (type) {
+    case 'spelling': return 'Spelling';
+    case 'punctuation': return 'Punctuation';
+    case 'capitalization': return 'Capitalization';
+    default: return 'Grammar'; // grammar | preposition | missing-words | unknown
+  }
+}
+
+interface ProofreadCorrection {
+  startIndex?: number; endIndex?: number; // current spec
+  start?: number; end?: number;           // tolerate older drafts
+  correction?: string; type?: string; explanation?: string;
+}
+interface ProofreaderLike {
+  availability: () => Promise<string>;
+  create: (opts?: unknown) => Promise<{
+    proofread: (text: string) => Promise<{ correctedInput?: string; corrections?: ProofreadCorrection[] }>;
+    destroy?: () => void;
+  }>;
+}
+
+/** Map a raw Proofreader result to inkly suggestions (pure — unit-tested). */
+export function mapProofread(result: { corrections?: ProofreadCorrection[] } | null): Suggestion[] {
+  const out: Suggestion[] = [];
+  for (const c of result?.corrections ?? []) {
+    const offset = c.startIndex ?? c.start;
+    const end = c.endIndex ?? c.end;
+    if (typeof offset !== 'number' || typeof end !== 'number' || end < offset) continue;
+    out.push(makeSuggestion({
+      offset,
+      length: end - offset,
+      replacements: [c.correction ?? ''],
+      message: c.explanation ?? 'On-device proofreader suggestion.',
+      ruleId: `Proofread:${c.type ?? 'grammar'}`,
+      category: proofreadCategory(c.type),
+      source: 'chrome-proofread',
+    }));
+  }
+  return out;
+}
+
+/**
+ * On-device proofreading via the Chromium Proofreader API. Returns mapped suggestions
+ * (offset/length/replacement, like Harper's) so they merge into the grammar pipeline;
+ * [] when the API is absent, not ready, or anything throws. Origin-trial — isolated here.
+ */
+export async function tryChromeProofread(text: string, g: typeof globalThis = globalThis): Promise<Suggestion[]> {
+  const P = (g as unknown as { Proofreader?: ProofreaderLike }).Proofreader;
+  if (!P?.availability || !text.trim()) return [];
+  try {
+    if (normalize(await P.availability()) !== 'available') return []; // don't trigger downloads
+    const pf = await P.create({
+      expectedInputLanguages: ['en'],
+      includeCorrectionTypes: true,
+      includeCorrectionExplanations: true,
+    });
+    try {
+      return mapProofread(await pf.proofread(text));
+    } finally {
+      pf.destroy?.();
+    }
+  } catch {
+    return [];
   }
 }

@@ -23,6 +23,8 @@ export class HarperProvider implements Provider {
       return [];
     }
     if (!res || res.ok !== true) return [];
-    return res.lints.map(plainLintToSuggestion);
+    // Harper lints + any on-device extras (e.g. Proofreader); mergeSuggestions in the
+    // content pipeline resolves overlaps by source priority (Harper wins).
+    return [...res.lints.map(plainLintToSuggestion), ...(res.extra ?? [])];
   }
 }
