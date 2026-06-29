@@ -1,6 +1,6 @@
 import type { LintRequest, LintResponse } from '../core/providers/harper-messages';
 import { getAIConfig } from '../core/ai/ai-config';
-import { getSettings } from '../core/settings';
+import { getSettings, isToolEnabled } from '../core/settings';
 import { checkLanguageTool } from '../core/providers/languagetool';
 
 const OFFSCREEN_URL = 'offscreen.html';
@@ -81,7 +81,7 @@ export default defineBackground(() => {
       const lt = getSettings().then((s) => {
         // Under e2e, only call a local (mock) LanguageTool — never the real public API.
         const e2eOk = !import.meta.env.VITE_INKLY_E2E || /localhost|127\.0\.0\.1/.test(s.languageToolEndpoint);
-        return s.languageToolEnabled && e2eOk ? checkLanguageTool(text, s.languageToolEndpoint) : [];
+        return isToolEnabled(s, 'languagetool') && e2eOk ? checkLanguageTool(text, s.languageToolEndpoint) : [];
       });
       Promise.all([harper, lt])
         .then(([res, ltExtra]) => {

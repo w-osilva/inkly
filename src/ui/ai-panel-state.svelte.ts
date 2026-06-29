@@ -21,6 +21,8 @@ export interface AIPanelState {
   capability: AICapability;
   /** 'word' = a single token selected (Synonyms-first); 'phrase' = multi-word (Rewrite-first). */
   selectionKind: 'word' | 'phrase';
+  /** Selection-action ids the user disabled — hidden from the toolbar tabs. */
+  disabledActions: string[];
   onApply: (() => void) | null;
   onCopy: (() => void) | null;
   onDismiss: (() => void) | null;
@@ -47,6 +49,7 @@ export const aiPanelState = $state<AIPanelState>({
   onApplyImprovement: null,
   capability: 'rewrite',
   selectionKind: 'phrase',
+  disabledActions: [],
   onApply: null,
   onCopy: null,
   onDismiss: null,

@@ -1,5 +1,6 @@
 import { browser } from 'wxt/browser';
 import { type Lang, detectLang } from './i18n';
+import { DEFAULT_CORRECTION_ORDER, normalizeOrder } from './tools';
 
 export type ThemePref = 'auto' | 'light' | 'dark';
 
@@ -11,10 +12,12 @@ export interface Settings {
   uiLanguage: 'auto' | 'en' | 'pt-br';
   defaultTone: string;
   theme: ThemePref;
-  /** Auto-generate AI writing suggestions on typing pause (on-device when free, else BYOK). */
-  autoSuggest: boolean;
-  /** Send text to a LanguageTool server for richer grammar/punctuation (opt-in). */
-  languageToolEnabled: boolean;
+  /** Correction tools in PRIORITY order (first wins overlaps); see core/tools.ts. */
+  correctionOrder: string[];
+  /** Correction tool ids the user turned off (default: all on). */
+  correctionDisabled: string[];
+  /** Selection-toolbar action ids the user turned off (default: all on). */
+  selectionActionsDisabled: string[];
   /** LanguageTool API base (…/v2). Public API by default; point to a self-hosted server for privacy. */
   languageToolEndpoint: string;
 }
@@ -29,17 +32,33 @@ export const DEFAULT_SETTINGS: Settings = {
   uiLanguage: 'auto',
   defaultTone: '',
   theme: 'auto',
-  autoSuggest: true,
-  languageToolEnabled: true,
+  correctionOrder: [...DEFAULT_CORRECTION_ORDER],
+  correctionDisabled: [],
+  selectionActionsDisabled: [],
   languageToolEndpoint: DEFAULT_LT_ENDPOINT,
 };
 
 const KEY = 'inkly:settings';
 
+/** Is a correction tool active? (default on unless the user disabled it.) */
+export function isToolEnabled(s: Settings, toolId: string): boolean {
+  return !s.correctionDisabled.includes(toolId);
+}
+/** Is a selection action shown in the toolbar? (default on unless disabled.) */
+export function isActionEnabled(s: Settings, action: string): boolean {
+  return !s.selectionActionsDisabled.includes(action);
+}
+
 function normalize(raw: unknown): Settings {
   const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
   const strArray = (v: unknown): string[] =>
     Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  // Migrate the legacy flags into the unified disabled-list when the new field is absent.
+  let correctionDisabled = strArray(o.correctionDisabled);
+  if (o.correctionDisabled === undefined) {
+    if (o.autoSuggest === false) correctionDisabled.push('aiImprove');
+    if (o.languageToolEnabled === false) correctionDisabled.push('languagetool');
+  }
   return {
     globalEnabled: typeof o.globalEnabled === 'boolean' ? o.globalEnabled : DEFAULT_SETTINGS.globalEnabled,
     siteOverrides:
@@ -54,8 +73,9 @@ function normalize(raw: unknown): Settings {
         : 'auto',
     defaultTone: typeof o.defaultTone === 'string' ? o.defaultTone : '',
     theme: o.theme === 'light' || o.theme === 'dark' || o.theme === 'auto' ? o.theme : 'auto',
-    autoSuggest: typeof o.autoSuggest === 'boolean' ? o.autoSuggest : DEFAULT_SETTINGS.autoSuggest,
-    languageToolEnabled: typeof o.languageToolEnabled === 'boolean' ? o.languageToolEnabled : DEFAULT_SETTINGS.languageToolEnabled,
+    correctionOrder: normalizeOrder(o.correctionOrder),
+    correctionDisabled,
+    selectionActionsDisabled: strArray(o.selectionActionsDisabled),
     languageToolEndpoint: typeof o.languageToolEndpoint === 'string' && o.languageToolEndpoint ? o.languageToolEndpoint : DEFAULT_LT_ENDPOINT,
   };
 }

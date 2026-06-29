@@ -6,6 +6,7 @@
   import { t, type Lang } from '../../core/i18n';
   import { AI_PROVIDERS, getProvider, providerForEndpoint } from '../../core/ai/providers';
   import { detectBuiltins, type BuiltinStatus, type BuiltinCapability } from '../../core/ai/builtin-apis';
+  import { CORRECTION_TOOLS, SELECTION_ACTIONS } from '../../core/tools';
 
   // Friendly names for the on-device Writing Assistance capabilities, in display order.
   const BUILTIN_LABELS: Record<BuiltinCapability, string> = {
@@ -47,8 +48,11 @@
   // Per-provider keys, so switching providers keeps each one's saved key.
   let keys = $state<Record<string, string>>({});
 
-  // LanguageTool (opt-in): richer grammar/punctuation via an open-source server.
-  let ltEnabled = $state(false);
+  // Tools: correction engines (order = priority) + selection actions + LT endpoint.
+  const TOOL_SCOPE = Object.fromEntries(CORRECTION_TOOLS.map((t) => [t.id, t.scope])) as Record<string, string>;
+  let order = $state<string[]>([]);
+  let disabled = $state<string[]>([]);
+  let actionsDisabled = $state<string[]>([]);
   let ltEndpoint = $state(DEFAULT_LT_ENDPOINT);
 
   onMount(async () => {
@@ -60,20 +64,44 @@
     keys = { ...(cfg.keys ?? {}) };
     // Migrate: seed the active provider's key from the legacy single key if unset.
     if (cfg.apiKey && !keys[providerId]) keys[providerId] = cfg.apiKey;
-    ltEnabled = settings.languageToolEnabled;
+    order = [...settings.correctionOrder];
+    disabled = [...settings.correctionDisabled];
+    actionsDisabled = [...settings.selectionActionsDisabled];
     ltEndpoint = settings.languageToolEndpoint;
     lang = effectiveLang(settings, navigator.language);
     builtins = detected;
     loaded = true;
   });
 
-  async function saveLanguageTool() {
+  async function persistTools() {
     const cur = await getSettings();
-    await setSettings({ ...cur, languageToolEnabled: ltEnabled, languageToolEndpoint: ltEndpoint.trim() || DEFAULT_LT_ENDPOINT });
+    // Spread to plain arrays: Svelte $state proxies serialize to objects through
+    // chrome.storage, which would break Array.isArray on read.
+    await setSettings({
+      ...cur,
+      correctionOrder: [...order],
+      correctionDisabled: [...disabled],
+      selectionActionsDisabled: [...actionsDisabled],
+      languageToolEndpoint: ltEndpoint.trim() || DEFAULT_LT_ENDPOINT,
+    });
   }
-  function toggleLanguageTool() {
-    ltEnabled = !ltEnabled;
-    void saveLanguageTool();
+  const toolOn = (id: string) => !disabled.includes(id);
+  function toggleTool(id: string) {
+    disabled = toolOn(id) ? [...disabled, id] : disabled.filter((x) => x !== id);
+    void persistTools();
+  }
+  function toggleAction(id: string) {
+    actionsDisabled = actionsDisabled.includes(id) ? actionsDisabled.filter((x) => x !== id) : [...actionsDisabled, id];
+    void persistTools();
+  }
+  // Reorder = repriority: earlier in the list wins overlaps.
+  function moveTool(i: number, dir: -1 | 1) {
+    const j = i + dir;
+    if (j < 0 || j >= order.length) return;
+    const next = [...order];
+    [next[i], next[j]] = [next[j], next[i]];
+    order = next;
+    void persistTools();
   }
 
   // Picking a preset fills the endpoint + a default model (both still editable) and swaps
@@ -170,18 +198,41 @@
     </section>
 
     <section>
-      <h2>{t(lang, 'options.ltHeading')}</h2>
-      <p class="hint">{t(lang, 'options.ltHint')}</p>
-      <label class="lt-toggle">
-        <input type="checkbox" checked={ltEnabled} onchange={toggleLanguageTool} />
-        <span>{t(lang, 'options.ltEnable')}</span>
-      </label>
-      {#if ltEnabled}
-        <label>{t(lang, 'options.ltServer')}
-          <input type="url" bind:value={ltEndpoint} onblur={saveLanguageTool} placeholder={DEFAULT_LT_ENDPOINT} />
+      <h2>{t(lang, 'tools.heading')}</h2>
+
+      <h3 class="tools-group">{t(lang, 'tools.correctionGroup')}</h3>
+      <p class="hint">{t(lang, 'tools.priorityHint')}</p>
+      <ul class="tools">
+        {#each order as id, i (id)}
+          <li class="tool" class:off={!toolOn(id)}>
+            <span class="tool-rank">{i + 1}</span>
+            <span class="tool-reorder">
+              <button class="tool-move" aria-label={t(lang, 'tools.moveUp')} disabled={i === 0} onclick={() => moveTool(i, -1)}>▲</button>
+              <button class="tool-move" aria-label={t(lang, 'tools.moveDown')} disabled={i === order.length - 1} onclick={() => moveTool(i, 1)}>▼</button>
+            </span>
+            <span class="tool-name">{t(lang, `tool.${id}`)}</span>
+            <span class="badge badge--{TOOL_SCOPE[id]}">{t(lang, `tools.scope.${TOOL_SCOPE[id]}`)}</span>
+            <label class="switch"><input type="checkbox" checked={toolOn(id)} onchange={() => toggleTool(id)} /></label>
+          </li>
+        {/each}
+      </ul>
+      {#if toolOn('languagetool')}
+        <label class="lt-server">{t(lang, 'options.ltServer')}
+          <input type="url" bind:value={ltEndpoint} onblur={persistTools} placeholder={DEFAULT_LT_ENDPOINT} />
         </label>
         <p class="hint">{t(lang, 'options.ltPrivacy')}</p>
       {/if}
+
+      <h3 class="tools-group">{t(lang, 'tools.actionsGroup')}</h3>
+      <p class="hint">{t(lang, 'tools.actionsHint')}</p>
+      <div class="actions">
+        {#each SELECTION_ACTIONS as a}
+          <label class="action" class:off={actionsDisabled.includes(a)}>
+            <input type="checkbox" checked={!actionsDisabled.includes(a)} onchange={() => toggleAction(a)} />
+            <span>{t(lang, `tool.action.${a}`)}</span>
+          </label>
+        {/each}
+      </div>
     </section>
   {/if}
 </main>
@@ -205,9 +256,6 @@
   input:focus, select:focus { outline: none; border-color: var(--inkly-accent); }
   .key-link { display: inline-block; margin-top: 2px; color: var(--inkly-accent); font-size: 13px; text-decoration: none; }
   .key-link:hover { text-decoration: underline; }
-  .lt-toggle { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
-  .lt-toggle input { width: auto; margin: 0; }
-  .lt-toggle span { font-weight: 600; }
   .builtin {
     margin: 8px 0 4px; padding: 8px 10px; font-size: 13px; line-height: 1.4;
     border-radius: var(--inkly-radius-sm); border: 1px solid var(--inkly-border);
@@ -222,8 +270,32 @@
     border: 1px solid var(--inkly-border); color: var(--inkly-muted);
   }
   .badge--local, .badge--no-train { color: var(--inkly-accent); border-color: var(--inkly-accent); }
-  .badge--trains { color: var(--inkly-sev-correct); border-color: var(--inkly-sev-correct); }
+  .badge--server, .badge--trains { color: var(--inkly-sev-correct); border-color: var(--inkly-sev-correct); }
+  .badge--mixed { color: var(--inkly-sev-clarity, #e0a30c); border-color: var(--inkly-sev-clarity, #e0a30c); }
   .badge--rec { color: var(--inkly-accent-contrast); background: var(--inkly-accent); border-color: var(--inkly-accent); }
+  /* Tools page */
+  h3.tools-group { font-size: 13px; margin: 16px 0 2px; font-weight: 700; }
+  .tools { list-style: none; margin: 6px 0; padding: 0; }
+  .tool {
+    display: flex; align-items: center; gap: 8px; padding: 6px 0;
+    border-bottom: 1px solid var(--inkly-border);
+  }
+  .tool.off { opacity: 0.55; }
+  .tool-rank { width: 16px; color: var(--inkly-muted); font-size: 12px; text-align: center; }
+  .tool-reorder { display: flex; flex-direction: column; line-height: 0.8; }
+  .tool-move {
+    border: 0; background: none; cursor: pointer; color: var(--inkly-muted);
+    font-size: 9px; padding: 1px 3px; width: auto;
+  }
+  .tool-move:hover:not(:disabled) { color: var(--inkly-accent); }
+  .tool-move:disabled { opacity: 0.3; cursor: default; }
+  .tool-name { flex: 1; }
+  .switch input { width: auto; margin: 0; }
+  .lt-server { display: block; margin: 8px 0; }
+  .actions { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 4px 0; }
+  .action { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .action input { width: auto; margin: 0; }
+  .action.off { opacity: 0.55; }
   .row { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
   button {
     border: 1px solid var(--inkly-accent); background: var(--inkly-accent);

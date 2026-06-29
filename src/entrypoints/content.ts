@@ -7,6 +7,7 @@ import { classifyField, isEditableField } from '../core/field-detector';
 import { getFieldText } from '../core/text-model';
 import { mergeSuggestions } from '../core/orchestrator';
 import { checkPunctuation } from '../core/punctuation';
+import { priorityFromOrder, toolIdForSource, DEFAULT_CORRECTION_ORDER } from '../core/tools';
 import { HarperProvider } from '../core/providers/harper-provider';
 import { OverlayRenderer } from '../ui/overlay-renderer';
 import { computeUnderlineStyles, type Rect } from '../ui/underline-layout';
@@ -112,7 +113,16 @@ export default defineContentScript({
     let hitRects: HitRect[] = [];
     let lang: Lang = 'en';
     let defaultTone = '';
-    let autoSuggest = true;
+    let correctionOrder: string[] = [...DEFAULT_CORRECTION_ORDER];
+    let correctionDisabled: string[] = [];
+    let selectionActionsDisabled: string[] = [];
+    const aiImproveEnabled = () => !correctionDisabled.includes('aiImprove');
+    // Keep only suggestions whose tool is enabled; rank overlaps by the user's tool order.
+    const toolOn = (s: Suggestion) => {
+      const id = toolIdForSource(s.source);
+      return !id || !correctionDisabled.includes(id);
+    };
+    const priority = () => priorityFromOrder(correctionOrder);
 
     const dismissed = new Set<string>();
     function suggestionKey(s: Suggestion): string {
@@ -127,8 +137,10 @@ export default defineContentScript({
       const text = getFieldText(field, type);
       const raw = await provider.check(text, { fieldType: type, language: 'en' });
       if (seq !== checkSeq || activeField !== field) return; // stale: focus/newer check
-      // Merge Harper's grammar/spelling with our deterministic punctuation rules.
-      current = mergeSuggestions([...raw, ...checkPunctuation(text)]);
+      // Harper/LanguageTool/Proofreader (raw) + our punctuation rules — each kept only if
+      // its tool is enabled, then merged by the user's priority order.
+      const punct = correctionDisabled.includes('punctuation') ? [] : checkPunctuation(text);
+      current = mergeSuggestions([...raw, ...punct].filter(toolOn), priority());
       current = current.filter((s) => !dismissed.has(suggestionKey(s)));
       current = current.filter(
         (s) => !isSuppressed(s, text.slice(s.offset, s.offset + s.length), disabledCategories, dictionary),
@@ -159,7 +171,7 @@ export default defineContentScript({
     async function runAutoImprove() {
       const field = activeField;
       const type = activeType;
-      if (!enabled || !autoSuggest || !field) return;
+      if (!enabled || !aiImproveEnabled() || !field) return;
       const text = getFieldText(field, type);
       if (text.trim().length < 12) return;
       const myCheck = checkSeq;
@@ -268,7 +280,7 @@ export default defineContentScript({
     // AI writing improvements as inline suggestions: locate each in the live text and map
     // to the subjective ('suggestion') tier so they underline distinctly from grammar.
     function aiSuggestionList(): Suggestion[] {
-      if (!activeField || aiImprovements.length === 0) return [];
+      if (!activeField || !aiImproveEnabled() || aiImprovements.length === 0) return [];
       const text = getFieldText(activeField, activeType);
       const out: Suggestion[] = [];
       for (const im of aiImprovements) {
@@ -294,8 +306,8 @@ export default defineContentScript({
         rendered = [];
         return renderer.clear();
       }
-      // Grammar (Harper et al.) + AI suggestions, deduped by source priority (grammar wins).
-      rendered = mergeSuggestions([...current, ...aiSuggestionList()]);
+      // Grammar (Harper et al.) + AI suggestions, deduped by the user's tool priority.
+      rendered = mergeSuggestions([...current, ...aiSuggestionList()], priority());
       const containerRect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
       const nextHitRects: HitRect[] = [];
       const styles = rendered.flatMap((s, index) => {
@@ -601,6 +613,7 @@ export default defineContentScript({
       // Word selection → Synonyms-first; phrase/sentence → Rewrite-first.
       const kind = isSingleWord(info.text) ? 'word' : 'phrase';
       aiPanelState.selectionKind = kind;
+      aiPanelState.disabledActions = selectionActionsDisabled;
       aiPanelState.capability = kind === 'word' ? 'synonyms' : 'rewrite';
       aiPanelState.phase = 'actions';
       aiPanelState.onAction = (cap) => void doAction(cap);
@@ -626,6 +639,7 @@ export default defineContentScript({
       aiPanelState.length = 'asis';
       if (capability === 'open') {
         aiPanelState.capability = 'rewrite';
+        aiPanelState.disabledActions = selectionActionsDisabled;
         aiPanelState.phase = 'actions';
         aiPanelState.onAction = (cap) => void doAction(cap);
       } else {
@@ -724,7 +738,9 @@ export default defineContentScript({
       dictionary = new Set(s.dictionary);
       lang = effectiveLang(s, navigator.language);
       defaultTone = s.defaultTone;
-      autoSuggest = s.autoSuggest;
+      correctionOrder = s.correctionOrder;
+      correctionDisabled = s.correctionDisabled;
+      selectionActionsDisabled = s.selectionActionsDisabled;
       if (overlayHost) applyTheme(overlayHost, s.theme);
     });
     onSettingsChanged((s) => {
@@ -734,7 +750,9 @@ export default defineContentScript({
       dictionary = new Set(s.dictionary);
       lang = effectiveLang(s, navigator.language);
       defaultTone = s.defaultTone;
-      autoSuggest = s.autoSuggest;
+      correctionOrder = s.correctionOrder;
+      correctionDisabled = s.correctionDisabled;
+      selectionActionsDisabled = s.selectionActionsDisabled;
       if (overlayHost) applyTheme(overlayHost, s.theme);
       if (cardState.visible) cardState.lang = lang;
       if (!enabled) {
@@ -760,8 +778,8 @@ export default defineContentScript({
             suppressNativeSpellcheck(focused);
           }
         }
-        // Turning auto-suggestions off clears any pending inline AI suggestions now.
-        if (!autoSuggest && aiImprovements.length > 0) {
+        // Turning the AI-improve tool off clears any pending inline AI suggestions now.
+        if (!aiImproveEnabled() && aiImprovements.length > 0) {
           aiImprovements = [];
           updateFieldButton();
           drawUnderlines();

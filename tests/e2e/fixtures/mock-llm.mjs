@@ -9,12 +9,20 @@ const server = createServer((req, res) => {
     req.on('data', (c) => (body += c));
     req.on('end', () => {
       const text = new URLSearchParams(body).get('text') ?? '';
-      const offset = text.indexOf('really');
-      const matches = offset === -1 ? [] : [{
-        offset, length: 6, message: 'Consider a stronger word',
+      const matches = [];
+      const reallyAt = text.indexOf('really');
+      if (reallyAt !== -1) matches.push({
+        offset: reallyAt, length: 6, message: 'Consider a stronger word',
         replacements: [{ value: 'very' }],
         rule: { id: 'REALLY', issueType: 'style', category: { name: 'Style' } },
-      }];
+      });
+      // Overlaps Harper's "teh"→"the" so e2e can prove priority order picks the winner.
+      const tehAt = text.indexOf('teh');
+      if (tehAt !== -1) matches.push({
+        offset: tehAt, length: 3, message: 'Spelling',
+        replacements: [{ value: 'THE' }],
+        rule: { id: 'TEH', issueType: 'misspelling', category: { name: 'Spelling' } },
+      });
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ matches }));
     });

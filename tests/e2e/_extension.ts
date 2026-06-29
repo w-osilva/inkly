@@ -3,18 +3,20 @@ import path from 'node:path';
 
 const extensionPath = path.resolve('.output/chrome-mv3');
 
-// NOTE: Playwright's bundled Chromium ships as "Chrome Headless Shell" which does
-// NOT support --load-extension (extensions are disabled in that binary). Only the
-// full Chromium/Chrome binary supports extensions in headless mode via --headless=new.
-// We therefore run headed (headless:false). On a CI machine without a display, wrap
-// the test run with `xvfb-run` or set DISPLAY before running `npm run test:e2e`.
+// Extensions need the FULL Chromium, not Playwright's "Chrome Headless Shell" (which
+// disables --load-extension). Default: headed (a visible window). Set INKLY_E2E_HEADLESS=1
+// to run windowless via `channel: 'chromium'` + the new headless mode, which keeps full
+// extension support — handy on WSL/WSLg where the headed window steals focus.
+const headless = !!process.env.INKLY_E2E_HEADLESS;
 export const test = base.extend<{ context: BrowserContext }>({
   context: async ({}, use) => {
     const context = await chromium.launchPersistentContext('', {
-      headless: false,
+      channel: headless ? 'chromium' : undefined,
+      headless,
       args: [
         `--disable-extensions-except=${extensionPath}`,
         `--load-extension=${extensionPath}`,
+        ...(headless ? ['--headless=new'] : []),
       ],
     });
     await use(context);

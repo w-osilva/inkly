@@ -106,7 +106,7 @@
     <div class="inkly-ai__body" bind:this={bodyEl} style="max-height:{bodyMax}px">
     {#if aiPanelState.phase === 'actions'}
       <div class="inkly-ai__tabs">
-        {#each ACTIONS[aiPanelState.selectionKind] as a, i}
+        {#each ACTIONS[aiPanelState.selectionKind].filter((a) => !aiPanelState.disabledActions.includes(a.cap)) as a, i}
           <button
             class="inkly-ai__tab"
             class:inkly-ai__tab--primary={i === 0}

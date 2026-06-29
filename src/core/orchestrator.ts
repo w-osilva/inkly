@@ -1,4 +1,4 @@
-import { Suggestion, SOURCE_PRIORITY } from './types';
+import { Suggestion, SuggestionSource, SOURCE_PRIORITY } from './types';
 
 function overlaps(a: Suggestion, b: Suggestion): boolean {
   const aEnd = a.offset + a.length;
@@ -7,13 +7,19 @@ function overlaps(a: Suggestion, b: Suggestion): boolean {
 }
 
 /**
- * Produce a non-overlapping, offset-sorted list. When two suggestions overlap,
- * the higher SOURCE_PRIORITY wins; ties go to the earlier offset.
+ * Produce a non-overlapping, offset-sorted list. When two suggestions overlap, the higher
+ * priority wins; ties go to the earlier offset. Priority defaults to the static
+ * SOURCE_PRIORITY, but callers can pass an override map (e.g. the user's reorderable tool
+ * priority) — any source missing from the override falls back to SOURCE_PRIORITY.
  */
-export function mergeSuggestions(suggestions: Suggestion[]): Suggestion[] {
+export function mergeSuggestions(
+  suggestions: Suggestion[],
+  priorityOverride?: Partial<Record<SuggestionSource, number>>,
+): Suggestion[] {
+  const rank = (s: SuggestionSource) => priorityOverride?.[s] ?? SOURCE_PRIORITY[s];
   const sorted = [...suggestions].sort((a, b) => {
     if (a.offset !== b.offset) return a.offset - b.offset;
-    return SOURCE_PRIORITY[b.source] - SOURCE_PRIORITY[a.source];
+    return rank(b.source) - rank(a.source);
   });
 
   const kept: Suggestion[] = [];
@@ -23,7 +29,7 @@ export function mergeSuggestions(suggestions: Suggestion[]): Suggestion[] {
       kept.push(candidate);
       continue;
     }
-    if (conflicts.every((c) => SOURCE_PRIORITY[candidate.source] > SOURCE_PRIORITY[c.source])) {
+    if (conflicts.every((c) => rank(candidate.source) > rank(c.source))) {
       for (const c of conflicts) kept.splice(kept.indexOf(c), 1);
       kept.push(candidate);
     }

@@ -19,7 +19,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build:e2e-fixtures": "node scripts/build-e2e-fixtures.mjs",
-    "test:e2e": "npm run build:e2e-fixtures && VITE_INKLY_E2E=true wxt build && playwright test"
+    "test:e2e": "npm run build:e2e-fixtures && VITE_INKLY_E2E=true wxt build && playwright test",
+    "test:e2e:headless": "INKLY_E2E_HEADLESS=1 npm run test:e2e"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
