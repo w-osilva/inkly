@@ -59,6 +59,21 @@ test('options ▲ moves a tool up in correctionOrder', async ({ context }) => {
   }).toPass({ timeout: 5_000 });
 });
 
+// The redundancy note shows only when 2+ broad grammar engines are enabled.
+test('overlap note appears with multiple grammar engines, gone with one', async ({ context }) => {
+  const sw = await seed(context, {}); // harper + languagetool + proofreader all on
+  const extId = new URL(sw.url()).host;
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${extId}/options.html`);
+  await expect(page.locator('css=.overlap-note')).toBeVisible({ timeout: 5_000 });
+
+  await seed(context, { correctionDisabled: ['languagetool', 'proofreader'] }); // only Harper
+  const page2 = await context.newPage();
+  await page2.goto(`chrome-extension://${extId}/options.html`);
+  await expect(page2.locator('css=li.tool')).toHaveCount(5); // page loaded
+  await expect(page2.locator('css=.overlap-note')).toHaveCount(0);
+});
+
 // A disabled selection action doesn't appear in the toolbar.
 test('disabled action is hidden from the selection toolbar', async ({ context }) => {
   await seed(context, { selectionActionsDisabled: ['define'] });

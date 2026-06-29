@@ -13,15 +13,20 @@ export interface CorrectionTool {
   id: string;
   sources: SuggestionSource[];
   scope: ToolScope;
+  /** Broad grammar/spelling engine — these overlap each other (Harper/LanguageTool/Proofreader). */
+  broadGrammar?: boolean;
 }
 
 export const CORRECTION_TOOLS: CorrectionTool[] = [
-  { id: 'harper', sources: ['harper'], scope: 'local' },
+  { id: 'harper', sources: ['harper'], scope: 'local', broadGrammar: true },
   { id: 'punctuation', sources: ['inkly'], scope: 'local' },
-  { id: 'languagetool', sources: ['languagetool'], scope: 'server' },
-  { id: 'proofreader', sources: ['chrome-proofread'], scope: 'local' },
+  { id: 'languagetool', sources: ['languagetool'], scope: 'server', broadGrammar: true },
+  { id: 'proofreader', sources: ['chrome-proofread'], scope: 'local', broadGrammar: true },
   { id: 'aiImprove', sources: ['byok', 'chrome-ai'], scope: 'mixed' },
 ];
+
+/** Ids of the broad grammar engines that overlap one another. */
+export const BROAD_GRAMMAR_TOOLS: string[] = CORRECTION_TOOLS.filter((t) => t.broadGrammar).map((t) => t.id);
 
 /** Selection-toolbar actions, in default display order. */
 export const SELECTION_ACTIONS = ['rewrite', 'improve', 'synonyms', 'define', 'translate'] as const;

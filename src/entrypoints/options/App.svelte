@@ -6,7 +6,7 @@
   import { t, type Lang } from '../../core/i18n';
   import { AI_PROVIDERS, getProvider, providerForEndpoint } from '../../core/ai/providers';
   import { detectBuiltins, type BuiltinStatus, type BuiltinCapability } from '../../core/ai/builtin-apis';
-  import { CORRECTION_TOOLS, SELECTION_ACTIONS } from '../../core/tools';
+  import { CORRECTION_TOOLS, SELECTION_ACTIONS, BROAD_GRAMMAR_TOOLS } from '../../core/tools';
 
   // Friendly names for the on-device Writing Assistance capabilities, in display order.
   const BUILTIN_LABELS: Record<BuiltinCapability, string> = {
@@ -54,6 +54,8 @@
   let disabled = $state<string[]>([]);
   let actionsDisabled = $state<string[]>([]);
   let ltEndpoint = $state(DEFAULT_LT_ENDPOINT);
+  // Enabled broad grammar engines (in priority order) — 2+ means redundant overlap.
+  const overlappingOn = $derived(order.filter((id) => BROAD_GRAMMAR_TOOLS.includes(id) && !disabled.includes(id)));
 
   onMount(async () => {
     const [cfg, settings, detected] = await Promise.all([getAIConfig(), getSettings(), detectBuiltins()]);
@@ -151,6 +153,14 @@
           </li>
         {/each}
       </ul>
+      {#if overlappingOn.length >= 2}
+        <p class="overlap-note">
+          {t(lang, 'tools.overlapNote', {
+            tools: overlappingOn.map((id) => t(lang, `tool.${id}`).split(/ [—(]/)[0]).join(', '),
+            winner: t(lang, `tool.${overlappingOn[0]}`).split(/ [—(]/)[0],
+          })}
+        </p>
+      {/if}
       {#if toolOn('languagetool')}
         <label class="lt-server">{t(lang, 'options.ltServer')}
           <input type="url" bind:value={ltEndpoint} onblur={persistTools} placeholder={DEFAULT_LT_ENDPOINT} />
@@ -294,6 +304,12 @@
   .tool-main { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .tool-name { display: flex; align-items: center; gap: 6px; font-weight: 600; }
   .tool-desc { font-size: 12px; color: var(--inkly-muted); line-height: 1.35; }
+  .overlap-note {
+    margin: 8px 0; padding: 8px 10px; font-size: 12.5px; line-height: 1.4;
+    border-radius: var(--inkly-radius-sm);
+    border: 1px solid var(--inkly-sev-clarity, #e0a30c);
+    color: var(--inkly-text); background: var(--inkly-bg-subtle, rgba(224,163,12,0.08));
+  }
   .switch input { width: auto; margin: 0; }
   .lt-server { display: block; margin: 8px 0; }
   .actions { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 4px 0; }
