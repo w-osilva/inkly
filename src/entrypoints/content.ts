@@ -8,6 +8,7 @@ import { getFieldText } from '../core/text-model';
 import { mergeSuggestions } from '../core/orchestrator';
 import { checkPunctuation } from '../core/punctuation';
 import { priorityFromOrder, toolIdForSource, DEFAULT_CORRECTION_ORDER } from '../core/tools';
+import { isEnglishLang, fieldLangTag } from '../core/lang-detect';
 import { HarperProvider } from '../core/providers/harper-provider';
 import { OverlayRenderer } from '../ui/overlay-renderer';
 import { computeUnderlineStyles, type Rect } from '../ui/underline-layout';
@@ -156,9 +157,13 @@ export default defineContentScript({
       const raw = await provider.check(text, { fieldType: type, language: 'en' });
       if (seq !== checkSeq || activeField !== field) return; // stale: focus/newer check
       // Harper/LanguageTool/Proofreader (raw) + our punctuation rules — each kept only if
-      // its tool is enabled, then merged by the user's priority order.
+      // its tool is enabled, then merged by the user's priority order. On non-English
+      // fields, drop the English-only engines (Harper, Proofreader) so they don't flag
+      // correct words; LanguageTool (auto-detect) covers the language instead.
       const punct = correctionDisabled.includes('punctuation') ? [] : checkPunctuation(text);
-      current = mergeSuggestions([...raw, ...punct].filter(toolOn), priority());
+      const englishField = isEnglishLang(fieldLangTag(field));
+      const langOk = (s: Suggestion) => englishField || (s.source !== 'harper' && s.source !== 'chrome-proofread');
+      current = mergeSuggestions([...raw, ...punct].filter(toolOn).filter(langOk), priority());
       current = current.filter((s) => !dismissed.has(suggestionKey(s)));
       current = current.filter(
         (s) => !isSuppressed(s, text.slice(s.offset, s.offset + s.length), disabledCategories, dictionary),

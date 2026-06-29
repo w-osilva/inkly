@@ -9,7 +9,7 @@ export interface Settings {
   siteOverrides: Record<string, boolean>; // host (incl. port) -> enabled
   disabledCategories: string[];
   dictionary: string[];
-  uiLanguage: 'auto' | 'en' | 'pt-br';
+  uiLanguage: 'auto' | 'en' | 'pt-br' | 'es' | 'fr' | 'de';
   defaultTone: string;
   /** Default rewrite style modifiers (confident/technical/persuasive/simple). */
   defaultStyles: string[];
@@ -74,7 +74,8 @@ function normalize(raw: unknown): Settings {
     disabledCategories: strArray(o.disabledCategories),
     dictionary: strArray(o.dictionary),
     uiLanguage:
-      o.uiLanguage === 'en' || o.uiLanguage === 'pt-br' || o.uiLanguage === 'auto'
+      o.uiLanguage === 'en' || o.uiLanguage === 'pt-br' || o.uiLanguage === 'es'
+      || o.uiLanguage === 'fr' || o.uiLanguage === 'de' || o.uiLanguage === 'auto'
         ? o.uiLanguage
         : 'auto',
     defaultTone: typeof o.defaultTone === 'string' ? o.defaultTone : '',
