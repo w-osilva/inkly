@@ -4,18 +4,38 @@
   import { getSettings, setSettings, hostOf, isEnabledForHost, isCategoryEnabled, toggleCategory, removeWord, DEFAULT_SETTINGS, effectiveLang, type Settings, type ThemePref } from '../../core/settings';
   import { LINT_CATEGORIES } from '../../core/lint-categories';
   import { t, categoryLabel } from '../../core/i18n';
+  import { detectBuiltins, type BuiltinStatus, type BuiltinCapability } from '../../core/ai/builtin-apis';
+
+  // Which engines back each category beyond Harper's always-on baseline: `builtin` = our
+  // deterministic rules (always on); `proofread` = the on-device Proofreader API (only when
+  // available). Drives the per-category badges.
+  const CATEGORY_ENGINES: Record<string, { builtin?: boolean; proofread?: boolean }> = {
+    Punctuation: { builtin: true, proofread: true },
+    Spelling: { proofread: true },
+    Capitalization: { proofread: true },
+    Grammar: { proofread: true },
+  };
 
   let settings = $state<Settings>({ ...DEFAULT_SETTINGS });
   let host = $state('');
   let loaded = $state(false);
+  let builtins = $state<Record<BuiltinCapability, BuiltinStatus> | null>(null);
 
   const siteEnabled = $derived(isEnabledForHost(settings, host));
   const lang = $derived(effectiveLang(settings, navigator.language));
+  const proofreadOn = $derived(builtins?.proofreader === 'available');
+  const onDevice = $derived<BuiltinStatus>(
+    !builtins ? 'unavailable'
+    : Object.values(builtins).includes('available') ? 'available'
+    : Object.values(builtins).includes('downloadable') ? 'downloadable'
+    : 'unavailable',
+  );
 
   onMount(async () => {
     const tabs = await browser.tabs.query({ active: true, currentWindow: true });
     host = hostOf(tabs[0]?.url ?? '');
     settings = await getSettings();
+    builtins = await detectBuiltins();
     loaded = true;
   });
 
@@ -87,6 +107,11 @@
 <main>
   <h1>inkly</h1>
   {#if loaded}
+    <div class="ondevice" class:on={onDevice === 'available'} class:soon={onDevice === 'downloadable'}>
+      {#if onDevice === 'available'}{t(lang, 'popup.onDeviceOn')}
+      {:else if onDevice === 'downloadable'}{t(lang, 'popup.onDeviceSoon')}
+      {:else}{t(lang, 'popup.onDeviceOff')}{/if}
+    </div>
     <label class="row">
       <span>{t(lang, 'popup.language')}</span>
       <select value={settings.uiLanguage} onchange={(e) => setLanguage((e.currentTarget as HTMLSelectElement).value as 'auto' | 'en' | 'pt-br')}>
@@ -134,6 +159,12 @@
               onchange={(e) => setCategory(cat, (e.currentTarget as HTMLInputElement).checked)}
             />
             <span>{categoryLabel(lang, cat)}</span>
+            {#if CATEGORY_ENGINES[cat]?.builtin}
+              <span class="cat-tag cat-tag--builtin" title={t(lang, 'popup.engineBuiltin')}>⊕</span>
+            {/if}
+            {#if CATEGORY_ENGINES[cat]?.proofread && proofreadOn}
+              <span class="cat-tag cat-tag--ai" title={t(lang, 'popup.engineAI')}>✨</span>
+            {/if}
           </label>
         {/each}
       </div>
@@ -175,8 +206,18 @@
     border: 1px solid var(--inkly-border); background: var(--inkly-bg); color: var(--inkly-text);
   }
   input[type='checkbox'] { accent-color: var(--inkly-accent); }
+  .ondevice {
+    margin: 0 0 10px; padding: 6px 9px; font-size: 12px; line-height: 1.35;
+    border-radius: var(--inkly-radius-sm); border: 1px solid var(--inkly-border);
+    background: var(--inkly-bg-subtle, rgba(127,127,127,0.08)); color: var(--inkly-muted);
+  }
+  .ondevice.on, .ondevice.soon { border-color: var(--inkly-accent); }
+  .ondevice.on { color: var(--inkly-text); }
   .cats { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; max-height: 180px; overflow: auto; }
-  .cat { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .cat { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+  .cat-tag { font-size: 10px; line-height: 1; cursor: help; flex: none; }
+  .cat-tag--builtin { color: var(--inkly-muted); }
+  .cat-tag--ai { color: var(--inkly-accent); }
   .dict { list-style: none; margin: 0; padding: 0; }
   .dict li { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; font-size: 13px; }
   .dict button { border: 0; background: none; cursor: pointer; color: var(--inkly-muted); font-size: 15px; }
