@@ -8,7 +8,7 @@ test('field button opens the review panel; navigate + accept', async ({ context 
   await editor.type('i woud like an pizza');
 
   // Field button appears once Harper (cold WASM) has produced issues.
-  const btn = page.locator('css=.inkly-fb');
+  const btn = page.locator('css=.inkly-fb__btn--grammar');
   await expect(btn).toBeVisible({ timeout: 30_000 });
 
   await btn.click();

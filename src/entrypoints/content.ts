@@ -6,6 +6,7 @@ import '../ui/tokens.css';
 import { classifyField, isEditableField } from '../core/field-detector';
 import { getFieldText } from '../core/text-model';
 import { mergeSuggestions } from '../core/orchestrator';
+import { checkPunctuation } from '../core/punctuation';
 import { HarperProvider } from '../core/providers/harper-provider';
 import { OverlayRenderer } from '../ui/overlay-renderer';
 import { computeUnderlineStyles, type Rect } from '../ui/underline-layout';
@@ -124,7 +125,8 @@ export default defineContentScript({
       const text = getFieldText(field, type);
       const raw = await provider.check(text, { fieldType: type, language: 'en' });
       if (seq !== checkSeq || activeField !== field) return; // stale: focus/newer check
-      current = mergeSuggestions(raw);
+      // Merge Harper's grammar/spelling with our deterministic punctuation rules.
+      current = mergeSuggestions([...raw, ...checkPunctuation(text)]);
       current = current.filter((s) => !dismissed.has(suggestionKey(s)));
       current = current.filter(
         (s) => !isSuppressed(s, text.slice(s.offset, s.offset + s.length), disabledCategories, dictionary),

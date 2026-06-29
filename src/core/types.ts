@@ -11,6 +11,7 @@ export type FieldType =
 
 export type SuggestionSource =
   | 'harper'
+  | 'inkly' // built-in deterministic rules (e.g. punctuation) that complement Harper
   | 'chrome-ai'
   | 'byok'
   | 'languagetool'
@@ -48,6 +49,7 @@ export function severityFor(category: string, source: SuggestionSource): Severit
 /** Higher = wins when two suggestions overlap. Deterministic engines beat AI. */
 export const SOURCE_PRIORITY: Record<SuggestionSource, number> = {
   harper: 4,
+  inkly: 4,
   languagetool: 3,
   'chrome-ai': 2,
   byok: 2,

@@ -23,6 +23,9 @@ export const RULE_DESCRIPTIONS_PT: Record<string, string> = {
   SpelledNumbers: 'A maioria dos guias de estilo recomenda escrever por extenso números menores que dez.',
   OxfordComma: 'Verifica a vírgula de Oxford antes de "and"/"or"/"nor" em listas de três ou mais itens.',
   WasComprisedOf: 'Reescreve a expressão "was comprised of" para uma forma mais aceita.',
+  RepeatedPunctuation: 'Evite repetir o mesmo sinal de pontuação (ex.: "!!!" → "!").',
+  SpaceBeforePunctuation: 'Remova o espaço antes do sinal de pontuação.',
+  SpaceAfterPunctuation: 'Adicione um espaço após o sinal de pontuação.',
 };
 
 /**
