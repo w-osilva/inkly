@@ -10,6 +10,8 @@ test('the options page saves the BYOK config to storage.local', async ({ context
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extId}/options.html`);
 
+  // A custom endpoint requires the "Custom" provider preset.
+  await page.locator('select').selectOption('custom');
   await page.locator('input[type="url"]').fill('https://api.example.com/v1');
   await page.locator('input[type="text"]').fill('gpt-test');
   await page.locator('input[type="password"]').fill('sk-secret');

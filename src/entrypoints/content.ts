@@ -468,7 +468,6 @@ export default defineContentScript({
 
     let aiSelection: SelectionInfo | null = null;
     let rewriteSeq = 0;
-    let lastAutoSynKey = ''; // selection a free auto-synonyms lookup was last run for
     let activeStreamId: string | null = null;
 
     function hideAIPanel() {
@@ -492,7 +491,6 @@ export default defineContentScript({
       aiPanelState.onApplyImprovement = null;
       aiSelection = null;
       activeStreamId = null;
-      lastAutoSynKey = '';
     }
 
     // The user explicitly closed the panel (× or click-outside): remember which
@@ -520,7 +518,6 @@ export default defineContentScript({
       const info = getSelectionInfo(activeField, activeType);
       if (!info) {
         closedSelKey = ''; // selection gone → allow a fresh panel next time
-        lastAutoSynKey = '';
         // hide only if idle (not loading/result) and not hovering the panel
         if ((aiPanelState.phase === 'actions') && !aiPanelState.hovered) hideAIPanel();
         return;
@@ -543,26 +540,6 @@ export default defineContentScript({
       aiPanelState.phase = 'actions';
       aiPanelState.onAction = (cap) => void doAction(cap);
       aiPanelState.onClose = userDismissAIPanel;
-      // Free on-device tier: for a single word, fetch synonyms immediately (no click).
-      // If there's no built-in model it stays at the action buttons (on-demand, no quota).
-      if (kind === 'word') {
-        const k = `${info.start}:${info.end}`;
-        if (k !== lastAutoSynKey) { lastAutoSynKey = k; void tryAutoSynonyms(info, activeField, activeType); }
-      }
-    }
-
-    // Show synonyms straight away ONLY if the free on-device model answers; otherwise
-    // leave the Synonyms button for an explicit (BYOK) click. Never spends quota.
-    async function tryAutoSynonyms(sel: SelectionInfo, field: HTMLElement, type: FieldType) {
-      const gen = ++rewriteSeq;
-      const res = await runAI({ capability: 'synonyms', text: sel.text, builtinOnly: true }, crypto.randomUUID());
-      if (!res.ok) return;
-      if (gen !== rewriteSeq || aiPanelState.phase !== 'actions') return; // user moved on
-      aiPanelState.capability = 'synonyms';
-      aiPanelState.result = res.text;
-      aiPanelState.onPickSynonym = (w: string) => { applyRange(field, type, sel.start, sel.end, w); hideAIPanel(); };
-      aiPanelState.onDismiss = () => hideAIPanel();
-      aiPanelState.phase = 'result';
     }
 
     function triggerAI(capability: AICapability | 'open') {
