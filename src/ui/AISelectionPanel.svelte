@@ -20,11 +20,6 @@
     { id: 'technical', label: 'Technical' },
     { id: 'concise', label: 'Concise' },
   ];
-  const LENGTHS = [
-    { id: 'shorter', label: 'Shorter' },
-    { id: 'asis', label: 'As is' },
-    { id: 'longer', label: 'Longer' },
-  ];
 
   // Actions reorder by selection kind: a single word leads with Synonyms; a phrase/
   // sentence leads with Rewrite. The primary (first) button is the accent-filled one.
@@ -70,26 +65,12 @@
         {/each}
       </div>
     {:else if aiPanelState.phase === 'rewrite-config'}
-      <p class="inkly-ai__seg">Tone</p>
-      <div class="inkly-ai__chips" role="group" aria-label="Tone">
+      <label class="inkly-ai__seg" for="inkly-tone">Tone</label>
+      <select id="inkly-tone" class="inkly-ai__select" bind:value={aiPanelState.tone}>
         {#each TONES as t}
-          <button
-            class="inkly-ai__chip"
-            class:inkly-ai__chip--active={aiPanelState.tone === t.id}
-            onclick={() => (aiPanelState.tone = t.id)}
-          >{t.label}</button>
+          <option value={t.id}>{t.label}</option>
         {/each}
-      </div>
-      <p class="inkly-ai__seg">Length</p>
-      <div class="inkly-ai__chips" role="group" aria-label="Length">
-        {#each LENGTHS as l}
-          <button
-            class="inkly-ai__chip"
-            class:inkly-ai__chip--active={aiPanelState.length === l.id}
-            onclick={() => (aiPanelState.length = l.id)}
-          >{l.label}</button>
-        {/each}
-      </div>
+      </select>
       <div class="inkly-ai__row">
         <button class="inkly-ai__btn" onclick={() => aiPanelState.onAction?.('rewrite')}>Rewrite</button>
         <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => (aiPanelState.phase = 'actions')}>Back</button>
@@ -234,13 +215,17 @@
     padding: 3px 11px; cursor: pointer; font: 600 11.5px var(--inkly-font);
   }
   .inkly-ai__chip:hover { border-color: var(--inkly-accent); color: var(--inkly-accent); }
-  .inkly-ai__chip--active {
-    background: var(--inkly-accent); color: var(--inkly-accent-contrast); border-color: var(--inkly-accent);
-  }
   .inkly-ai__seg {
-    margin: 2px 0 5px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em;
-    text-transform: uppercase; color: var(--inkly-muted);
+    display: block; margin: 2px 0 5px; font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.04em; text-transform: uppercase; color: var(--inkly-muted);
   }
+  .inkly-ai__select {
+    width: 100%; margin-bottom: 10px; padding: 7px 9px; cursor: pointer;
+    background: var(--inkly-ghost-bg); color: var(--inkly-text);
+    border: 1px solid var(--inkly-ghost-border); border-radius: 8px;
+    font: 500 12.5px var(--inkly-font); appearance: none;
+  }
+  .inkly-ai__select:focus-visible { outline: 2px solid var(--inkly-accent); outline-offset: 1px; }
   /* Secondary actions (in the synonyms result): light text buttons, same family. */
   .inkly-ai__subactions { display: flex; flex-wrap: wrap; gap: 2px; margin: 2px 0 9px; }
   .inkly-ai__mini {
