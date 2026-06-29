@@ -41,7 +41,7 @@ const server = createServer((req, res) => {
         systemText = parsed.messages?.find((m) => m.role === 'system')?.content ?? '';
         stream = parsed.stream === true;
       } catch { /* ignore */ }
-      const toneMatch = systemText.match(/use a (\w+) tone/i);
+      const toneMatch = systemText.match(/in a (\w+) tone/i);
       const tag = toneMatch ? `[${toneMatch[1].toLowerCase()}]` : '';
       const translateMatch = systemText.match(/translate the user'?s text into (\w+)/i);
       const isSynonyms = /thesaurus|synonyms/i.test(systemText);

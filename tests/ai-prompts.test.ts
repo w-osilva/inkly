@@ -13,6 +13,13 @@ describe('buildMessages', () => {
     const msgs = buildMessages({ capability: 'rewrite', text: 'hey', options: { tone: 'formal' } });
     expect(msgs[0].content.toLowerCase()).toContain('formal');
   });
+  it('different tones give concretely different guidance (not just the label)', () => {
+    const tech = buildMessages({ capability: 'rewrite', text: 'x', options: { tone: 'technical' } })[0].content;
+    const casual = buildMessages({ capability: 'rewrite', text: 'x', options: { tone: 'casual' } })[0].content;
+    expect(tech).not.toBe(casual);
+    expect(tech.toLowerCase()).toContain('terminology'); // technical guidance
+    expect(casual.toLowerCase()).toContain('relaxed');    // casual guidance
+  });
   it('rewrite is strict: preserves meaning and does not respond to the text', () => {
     const msgs = buildMessages({ capability: 'rewrite', text: 'I would like a pizza' });
     const sys = msgs[0].content.toLowerCase();
