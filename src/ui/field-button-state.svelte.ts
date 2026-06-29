@@ -9,8 +9,11 @@ export interface FieldButtonState {
   visible: boolean;
   left: number;
   top: number;
+  /** Grammar/spelling issue count (Harper). */
   count: number;
-  /** Highest-priority severity among current issues — drives the badge color. */
+  /** AI writing-improvement count (shown as a separate indigo badge). */
+  improveCount: number;
+  /** Highest-priority severity among grammar issues — drives the main badge color. */
   severity: Severity;
   onOpen: (() => void) | null;
 }
@@ -20,6 +23,7 @@ export const fieldButtonState = $state<FieldButtonState>({
   left: 0,
   top: 0,
   count: 0,
+  improveCount: 0,
   severity: 'correctness',
   onOpen: null,
 });

@@ -12,7 +12,10 @@
   >
     <span class="inkly-fb__mark" aria-hidden="true"><InklyMark size={15} /></span>
     {#if fieldButtonState.count > 0}
-      <span class="inkly-fb__badge" data-sev={fieldButtonState.severity}>{fieldButtonState.count}</span>
+      <span class="inkly-fb__badge inkly-fb__badge--err" data-sev={fieldButtonState.severity}>{fieldButtonState.count}</span>
+    {/if}
+    {#if fieldButtonState.improveCount > 0}
+      <span class="inkly-fb__badge inkly-fb__badge--imp">{fieldButtonState.improveCount}</span>
     {/if}
   </button>
 {/if}
@@ -44,20 +47,22 @@
   }
   .inkly-fb__badge {
     position: absolute;
-    top: -5px;
-    right: -5px;
-    min-width: 16px;
-    height: 16px;
+    min-width: 15px;
+    height: 15px;
     padding: 0 4px;
     border-radius: 999px;
-    background: var(--inkly-sev-correct, #e5484d);
     color: #fff;
-    font: 700 10px/16px var(--inkly-font, system-ui, sans-serif);
+    font: 700 9.5px/15px var(--inkly-font, system-ui, sans-serif);
     text-align: center;
     box-sizing: border-box;
+    border: 1.5px solid var(--inkly-bg, #fff);
   }
-  .inkly-fb__badge[data-sev='clarity'] { background: var(--inkly-sev-clarity, #e0a30c); }
-  .inkly-fb__badge[data-sev='suggestion'] { background: var(--inkly-sev-suggest, #6366f1); }
+  /* Grammar/spelling count — top-right, severity-colored. */
+  .inkly-fb__badge--err { top: -5px; right: -5px; background: var(--inkly-sev-correct, #e5484d); }
+  .inkly-fb__badge--err[data-sev='clarity'] { background: var(--inkly-sev-clarity, #e0a30c); }
+  .inkly-fb__badge--err[data-sev='suggestion'] { background: var(--inkly-sev-suggest, #6366f1); }
+  /* AI improvements count — bottom-right, indigo. */
+  .inkly-fb__badge--imp { bottom: -5px; right: -5px; background: var(--inkly-accent, #6366f1); }
   @media (prefers-reduced-motion: reduce) {
     .inkly-fb { transition: none; }
   }
