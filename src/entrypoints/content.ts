@@ -257,21 +257,45 @@ export default defineContentScript({
       return imps.filter((im) => !flagged.some((f) => f.includes(im.original) || im.original.includes(f)));
     }
 
+    // ---- AI consumption guards (the AI tier is the only paid/throttled call) ----
+    let aiUnavailable = false;   // no on-device model AND no key → stop auto passes this session
+    let lastImproveText = '';    // text of the last AI pass → don't re-call for identical text
+
+    // Total characters that sit OUTSIDE any sentence with a hard (correctness) error. The AI's
+    // findings inside those sentences are filtered by the quality funnel, so if there's no
+    // meaningful clean text the call would be wasted — skip it.
+    function cleanContentLength(text: string): number {
+      const ranges = ruleSuggestions
+        .filter((s) => s.severity === 'correctness')
+        .map((s) => expandToSentence(text, s.offset, s.offset + s.length))
+        .sort((a, b) => a.start - b.start);
+      let dirty = 0, cursor = -1;
+      for (const r of ranges) {
+        const start = Math.max(r.start, cursor);
+        if (r.end > start) { dirty += r.end - start; cursor = Math.max(cursor, r.end); }
+      }
+      return text.trim().length - dirty;
+    }
+
     async function runAutoImprove() {
       const field = activeField;
       const type = activeType;
-      if (!enabled || !aiImproveEnabled() || suppressAutoImprove || !field) return;
-      // AI runs ALONGSIDE the review (Harper/LanguageTool/punctuation). We hand it the spans
-      // already flagged so it doesn't re-suggest them, and drop any overlap as a safety net —
-      // so both layers run continuously without double-notifying the same text.
+      if (!enabled || !aiImproveEnabled() || suppressAutoImprove || !field || aiUnavailable) return;
       const text = getFieldText(field, type);
       if (text.trim().length < 12) return;
+      if (text === lastImproveText) return;          // nothing changed since the last AI pass
+      if (cleanContentLength(text) < 12) return;      // everything is in error-sentences → funnel would drop it all
+      lastImproveText = text;
       const myCheck = checkSeq;
       improveInFlight++;
       setImproveLoading();
       try {
         const res = await runAI({ capability: 'improve', text, options: improveOptions(text) }, crypto.randomUUID());
-        if (!res.ok) return; // no on-device model AND no/failed BYOK — silent
+        if (!res.ok) {
+          // No on-device model AND no/failed key → stop hammering for this field session.
+          if (res.error === 'no-builtin' || res.error === 'no-api-key') aiUnavailable = true;
+          return;
+        }
         if (checkSeq !== myCheck || activeField !== field) return;
         aiImprovements = dropFlagged(text, parseImprovements(res.text).filter((im) => text.includes(im.original)));
         recomputeCurrent(); // fold the AI findings into the single unified suggestion set
@@ -280,7 +304,8 @@ export default defineContentScript({
         setImproveLoading();
       }
     }
-    const scheduleAutoImprove = debounce(() => { void runAutoImprove(); }, 1500);
+    // 2s pause-after-typing: long enough to coalesce a burst of keystrokes into one AI call.
+    const scheduleAutoImprove = debounce(() => { void runAutoImprove(); }, 2000);
 
     // AI writing improvements as inline suggestions: locate each in the live text and map
     // to the subjective ('suggestion') tier so they underline distinctly from grammar.
@@ -789,6 +814,7 @@ export default defineContentScript({
     onSettingsChanged((s) => {
       const next = isEnabledForHost(s, host);
       enabled = next;
+      aiUnavailable = false; // settings changed — the user may have just enabled/configured AI
       disabledCategories = new Set(s.disabledCategories);
       dictionary = new Set(s.dictionary);
       lang = effectiveLang(s, navigator.language);
@@ -896,6 +922,8 @@ export default defineContentScript({
       renderer.clear();
       fieldButtonState.visible = false;
       hideReview();
+      aiUnavailable = false; // give a fresh field one chance to reach the AI again
+      lastImproveText = '';
       activeField = t;
       activeType = classifyField(t);
       suppressNativeSpellcheck(t);
