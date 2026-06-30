@@ -55,6 +55,7 @@
   let actionsDisabled = $state<string[]>([]);
   let ltEndpoint = $state(DEFAULT_LT_ENDPOINT);
   let ltPicky = $state(false);
+  let autoAi = $state(false);
   // Enabled broad grammar engines (in priority order) — 2+ means redundant overlap.
   const overlappingOn = $derived(order.filter((id) => BROAD_GRAMMAR_TOOLS.includes(id) && !disabled.includes(id)));
 
@@ -72,6 +73,7 @@
     actionsDisabled = [...settings.selectionActionsDisabled];
     ltEndpoint = settings.languageToolEndpoint;
     ltPicky = settings.languageToolPicky;
+    autoAi = settings.autoAiCheck;
     lang = effectiveLang(settings, navigator.language);
     builtins = detected;
     loaded = true;
@@ -88,6 +90,7 @@
       selectionActionsDisabled: [...actionsDisabled],
       languageToolEndpoint: ltEndpoint.trim() || DEFAULT_LT_ENDPOINT,
       languageToolPicky: ltPicky,
+      autoAiCheck: autoAi,
     });
   }
   const toolOn = (id: string) => !disabled.includes(id);
@@ -159,6 +162,12 @@
                 <input type="url" bind:value={ltEndpoint} onblur={persistTools} placeholder={DEFAULT_LT_ENDPOINT} aria-label={t(lang, 'options.ltServer')} />
                 <p class="hint">{t(lang, 'options.ltPrivacy')}</p>
                 <label class="lt-picky"><input type="checkbox" checked={ltPicky} onchange={() => { ltPicky = !ltPicky; void persistTools(); }} /> {t(lang, 'options.ltPicky')}</label>
+              </div>
+            {/if}
+            {#if id === 'aiImprove' && toolOn(id)}
+              <div class="tool-sub">
+                <label class="lt-picky"><input type="checkbox" checked={autoAi} onchange={() => { autoAi = !autoAi; void persistTools(); }} /> {t(lang, 'options.autoAi')}</label>
+                <p class="hint">{t(lang, 'options.autoAiHint')}</p>
               </div>
             {/if}
           </li>

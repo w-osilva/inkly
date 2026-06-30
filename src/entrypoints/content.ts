@@ -138,6 +138,7 @@ export default defineContentScript({
     let correctionOrder: string[] = [...DEFAULT_CORRECTION_ORDER];
     let correctionDisabled: string[] = [];
     let selectionActionsDisabled: string[] = [];
+    let autoAiCheck = false; // re-check automatically with AI (opt-in); on-demand Improve always works
     const aiImproveEnabled = () => !correctionDisabled.includes('aiImprove');
     // Keep only suggestions whose tool is enabled; rank overlaps by the user's tool order.
     const toolOn = (s: Suggestion) => {
@@ -233,13 +234,16 @@ export default defineContentScript({
     // against the original to recover precise, targeted edits. Sentence-level correction has far
     // higher recall on small local models than "extract JSON edits". Each edit becomes a
     // Suggestion that supersedes the rules' atomic fix where they overlap.
-    async function runAutoImprove() {
+    // `auto` = the background pass (gated by the opt-in setting + dedupe); on-demand Improve
+    // passes auto:false and always runs.
+    async function runCorrect({ auto }: { auto: boolean }) {
       const field = activeField;
       const type = activeType;
-      if (!enabled || !aiImproveEnabled() || suppressAutoImprove || !field || aiUnavailable) return;
+      if (!enabled || !aiImproveEnabled() || !field || aiUnavailable) return;
+      if (auto && (suppressAutoImprove || !autoAiCheck)) return;
       const text = getFieldText(field, type);
       if (text.trim().length < 12) return;
-      if (text === lastImproveText) return; // nothing changed since the last AI pass
+      if (auto && text === lastImproveText) return; // nothing changed since the last auto pass
       lastImproveText = text;
       const myCheck = checkSeq;
       improveInFlight++;
@@ -288,7 +292,17 @@ export default defineContentScript({
       }
     }
     // 2s pause-after-typing: long enough to coalesce a burst of keystrokes into one AI call.
-    const scheduleAutoImprove = debounce(() => { void runAutoImprove(); }, 2000);
+    // No-op unless the user opted into autoAiCheck (guarded inside runCorrect).
+    const scheduleAutoImprove = debounce(() => { void runCorrect({ auto: true }); }, 2000);
+
+    // On-demand "Improve" (the ✨ in the field widget): analyse the field with AI now and show
+    // the result — the corrections inline, or an "all clear" if nothing came back.
+    async function openImprove() {
+      if (!activeField || !aiImproveEnabled()) return;
+      aiUnavailable = false; // explicit action → always give the provider a fresh try
+      await runCorrect({ auto: false });
+      await openReview();
+    }
 
     // Re-promote our top-layer overlay to the FRONT of the top layer. Page top-layer
     // elements (e.g. a docs "Copy" popover) shown after us would otherwise sit in front;
@@ -362,6 +376,7 @@ export default defineContentScript({
       // Bottom-right for tall fields; vertically centered for short ones (inputs).
       const top = r.height < SIZE + INSET * 2 ? r.top + (r.height - SIZE) / 2 : r.bottom - SIZE - INSET;
       fieldButtonState.left = Math.max(8, r.right - GROUP_W - INSET);
+      fieldButtonState.right = Math.max(8, window.innerWidth - (r.right - INSET));
       fieldButtonState.top = top;
       fieldButtonState.count = current.length; // unified: rules + AI verification tier
       fieldButtonState.severity = current.reduce(
@@ -369,6 +384,7 @@ export default defineContentScript({
         'suggestion' as Suggestion['severity'],
       );
       fieldButtonState.onOpen = openReview;
+      fieldButtonState.onImprove = aiImproveEnabled() ? openImprove : null;
       fieldButtonState.visible = true;
     }
 
@@ -785,6 +801,7 @@ export default defineContentScript({
       defaultLength = s.defaultLength;
       correctionOrder = s.correctionOrder;
       correctionDisabled = s.correctionDisabled;
+      autoAiCheck = s.autoAiCheck;
       selectionActionsDisabled = s.selectionActionsDisabled;
       if (overlayHost) applyTheme(overlayHost, s.theme);
     });
@@ -800,6 +817,7 @@ export default defineContentScript({
       defaultLength = s.defaultLength;
       correctionOrder = s.correctionOrder;
       correctionDisabled = s.correctionDisabled;
+      autoAiCheck = s.autoAiCheck;
       selectionActionsDisabled = s.selectionActionsDisabled;
       if (overlayHost) applyTheme(overlayHost, s.theme);
       if (cardState.visible) cardState.lang = lang;

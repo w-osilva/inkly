@@ -9,7 +9,7 @@ test('clicking the widget with no suggestions shows an all-clear message', async
   await editor.click();
   await editor.type('The cat sat on the mat.'); // clean — no rule errors
 
-  const widget = page.locator('css=.inkly-fb__btn');
+  const widget = page.locator('css=.inkly-fb__main');
   await expect(widget).toBeVisible({ timeout: 30_000 });
   // No issue badge on clean text.
   await expect(page.locator('css=.inkly-fb__badge')).toHaveCount(0);

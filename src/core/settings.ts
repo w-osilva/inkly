@@ -26,6 +26,9 @@ export interface Settings {
   languageToolEndpoint: string;
   /** Run LanguageTool at level=picky — more advanced style/wordiness checks (free; can be noisier). */
   languageToolPicky: boolean;
+  /** Re-check automatically with AI on a typing pause. Off by default — AI correction quality
+   * depends heavily on the model, so it's opt-in; the on-demand "Improve" button always works. */
+  autoAiCheck: boolean;
 }
 
 export const DEFAULT_LT_ENDPOINT = 'https://api.languagetool.org/v2';
@@ -47,6 +50,7 @@ export const DEFAULT_SETTINGS: Settings = {
   // On by default: picky unlocks LanguageTool's advanced punctuation/style rules (e.g.
   // missing end-of-paragraph period) — the coverage users expect, free via the public API.
   languageToolPicky: true,
+  autoAiCheck: false,
 };
 
 const KEY = 'inkly:settings';
@@ -91,6 +95,7 @@ function normalize(raw: unknown): Settings {
     selectionActionsDisabled: strArray(o.selectionActionsDisabled),
     languageToolEndpoint: typeof o.languageToolEndpoint === 'string' && o.languageToolEndpoint ? o.languageToolEndpoint : DEFAULT_LT_ENDPOINT,
     languageToolPicky: typeof o.languageToolPicky === 'boolean' ? o.languageToolPicky : DEFAULT_SETTINGS.languageToolPicky,
+    autoAiCheck: typeof o.autoAiCheck === 'boolean' ? o.autoAiCheck : DEFAULT_SETTINGS.autoAiCheck,
   };
 }
 

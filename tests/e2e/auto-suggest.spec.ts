@@ -10,7 +10,7 @@ async function configure(context: import('@playwright/test').BrowserContext, aut
     // correction comes from the AI verify tier (correct→diff), not LT.
     const correctionDisabled = auto ? ['languagetool'] : ['languagetool', 'aiImprove'];
     await chrome.storage.local.set({ 'inkly:ai': { provider: 'openai-compatible', endpoint: 'http://localhost:5199/v1', apiKey: 'k', model: 'm' } });
-    await chrome.storage.sync.set({ 'inkly:settings': { globalEnabled: true, siteOverrides: {}, disabledCategories: [], dictionary: [], uiLanguage: 'auto', defaultTone: '', theme: 'auto', correctionDisabled } });
+    await chrome.storage.sync.set({ 'inkly:settings': { globalEnabled: true, siteOverrides: {}, disabledCategories: [], dictionary: [], uiLanguage: 'auto', defaultTone: '', theme: 'auto', correctionDisabled, autoAiCheck: true } });
   }, autoSuggest);
 }
 
