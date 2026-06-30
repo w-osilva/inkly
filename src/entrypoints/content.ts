@@ -37,7 +37,7 @@ import { ruleExplanation } from '../core/rule-descriptions';
 import { getSelectionInfo, type SelectionInfo } from '../core/selection';
 import { expandToSentence, isSingleWord } from '../core/sentence';
 import { parseImprovements } from '../core/ai/parse-improvements';
-import { diffEdits, preservesEntities } from '../core/ai/diff-edits';
+import { diffEdits, preservesContent, createsRepeat } from '../core/ai/diff-edits';
 import { stripThinking } from '../core/ai/strip-thinking';
 import { textareaSpanRects } from '../ui/textarea-rects';
 
@@ -264,7 +264,8 @@ export default defineContentScript({
             .sort((a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity])[0];
         aiSuggestions = diffEdits(text, corrected)
           .filter((e) => !appliedText.has(text.slice(e.offset, e.offset + e.length)))
-          .filter((e) => preservesEntities(text, e)) // never silently drop a name/number the user wrote
+          .filter((e) => preservesContent(text, e)) // don't drop names/numbers/content words
+          .filter((e) => !createsRepeat(text, e))    // don't introduce a doubled word
           .map((e) => {
             const hit = ruleHit(e);
             return makeSuggestion({

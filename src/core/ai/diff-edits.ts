@@ -73,13 +73,73 @@ export function diffEdits(original: string, corrected: string): Edit[] {
   return edits;
 }
 
+// Function/auxiliary words a correction may legitimately delete (e.g. "I was have been" →
+// "I was", "very nice" → "nice"). Anything else of 3+ letters is treated as content.
+const DROPPABLE = new Set([
+  'a', 'an', 'the', 'of', 'to', 'in', 'on', 'at', 'by', 'for', 'and', 'or', 'but', 'as', 'so',
+  'is', 'are', 'was', 'were', 'be', 'been', 'being', 'am', 'have', 'has', 'had', 'do', 'does',
+  'did', 'will', 'would', 'shall', 'should', 'can', 'could', 'may', 'might', 'must',
+  'that', 'this', 'very', 'really', 'just', 'quite', 'rather', 'then', 'also',
+]);
+
+const words = (s: string): string[] => s.match(/[\p{L}\d][\p{L}\d'’-]*/gu) ?? [];
+const isEntity = (w: string): boolean => /^\p{Lu}/u.test(w) || /\d/.test(w); // proper noun or number
+
+// Bounded Levenshtein (we only care about ≤ 2).
+function lev(a: string, b: string): number {
+  if (Math.abs(a.length - b.length) > 2) return 3;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[b.length];
+}
+// A removed word was *corrected* (not dropped) if some added word is close to it ("waz"→"was").
+function similar(a: string, b: string): boolean {
+  const x = a.toLowerCase(), y = b.toLowerCase();
+  if (x === y) return true;
+  const d = lev(x, y);
+  return d <= 1 || (d <= 2 && Math.min(x.length, y.length) >= 4);
+}
+
 /**
- * Guard against a weak model destroying meaning: reject an edit that drops a proper noun or a
- * number the user wrote (e.g. "…went to Greece" → "…went to"). An entity is "kept" only if it
- * still appears in the replacement. Lowercase words and function words are fair game.
+ * Guard against a weak model destroying meaning. Substitutions and insertions are safe; a net
+ * DELETION is only allowed when every dropped word is a function/auxiliary word. This rejects
+ * "…went to Greece" → "…went to" (drops a name) and "I would like as car" → "I would like a"
+ * (drops the noun "car"), while allowing "I was have been" → "I was" and "very nice" → "nice".
  */
-export function preservesEntities(original: string, e: Edit): boolean {
-  const removed = original.slice(e.offset, e.offset + e.length);
-  const entities = removed.match(/\b[A-Z][\w']*|\d[\d.,]*/g) ?? [];
-  return entities.every((t) => e.replacement.includes(t));
+export function preservesContent(original: string, e: Edit): boolean {
+  const removed = words(original.slice(e.offset, e.offset + e.length));
+  const added = words(e.replacement);
+  if (added.length >= removed.length) {
+    // No net loss → only block swapping a proper noun / number for something else.
+    return removed.every((w) => !isEntity(w) || added.includes(w));
+  }
+  const addedSet = new Set(added.map((w) => w.toLowerCase()));
+  for (const w of removed) {
+    if (addedSet.has(w.toLowerCase())) continue;                // word survives verbatim
+    if (isEntity(w)) return false;                              // names/numbers must be kept exactly
+    if (added.some((x) => similar(x, w))) continue;             // corrected ("waz"→"was"), not dropped
+    if (w.length >= 3 && !DROPPABLE.has(w.toLowerCase())) return false; // a content word was dropped
+  }
+  return true;
+}
+
+const REPEAT = /\b([\p{L}\d][\p{L}\d'’-]*)\s+\1\b/giu;
+const repeatedWords = (s: string): Set<string> =>
+  new Set([...s.matchAll(REPEAT)].map((m) => m[1].toLowerCase()));
+
+/**
+ * Reject an edit that introduces a doubled word the original didn't have ("…as car" → "…as
+ * car car") — another way a weak model mangles text that the diff would faithfully render.
+ */
+export function createsRepeat(original: string, e: Edit): boolean {
+  const result = original.slice(0, e.offset) + e.replacement + original.slice(e.offset + e.length);
+  const before = repeatedWords(original);
+  for (const w of repeatedWords(result)) if (!before.has(w)) return true;
+  return false;
 }

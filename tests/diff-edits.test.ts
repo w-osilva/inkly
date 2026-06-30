@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { diffEdits, preservesEntities } from '../src/core/ai/diff-edits';
+import { diffEdits, preservesContent, createsRepeat } from '../src/core/ai/diff-edits';
 
 const apply = (s: string, edits: ReturnType<typeof diffEdits>) => {
   // apply right-to-left so earlier offsets stay valid
@@ -65,29 +65,44 @@ describe('diffEdits', () => {
     expect(edits).toHaveLength(1);
     expect(apply(a, edits)).toBe(b); // "Greece." — never "GreeceGreece."
     // the edit replaces "Greece" with "Greece.", so the entity is preserved
-    expect(preservesEntities(a, edits[0])).toBe(true);
+    expect(preservesContent(a, edits[0])).toBe(true);
   });
 });
 
-describe('preservesEntities', () => {
+describe('preservesContent', () => {
   const a = 'I had been in Santos before I went to Greece';
   it('rejects an edit that deletes a proper noun', () => {
-    // model "correction" drops "Greece"
-    const edit = diffEdits(a, 'I had been in Santos before I went to')[0];
-    expect(preservesEntities(a, edit)).toBe(false);
+    expect(preservesContent(a, diffEdits(a, 'I had been in Santos before I went to')[0])).toBe(false);
   });
-  it('rejects an edit that swaps a proper noun for another', () => {
-    const edit = diffEdits(a, 'I had been in Santos before I went to Italy')[0];
-    expect(preservesEntities(a, edit)).toBe(false);
+  it('rejects swapping a proper noun for another', () => {
+    expect(preservesContent(a, diffEdits(a, 'I had been in Santos before I went to Italy')[0])).toBe(false);
   });
   it('rejects dropping a number', () => {
     const src = 'I paid 250 dollars';
-    const edit = diffEdits(src, 'I paid dollars')[0];
-    expect(preservesEntities(src, edit)).toBe(false);
+    expect(preservesContent(src, diffEdits(src, 'I paid dollars')[0])).toBe(false);
   });
-  it('allows fixes that touch only lowercase/function words', () => {
+  it('rejects dropping a common content word', () => {
+    const src = 'I would like as car';
+    expect(preservesContent(src, diffEdits(src, 'I would like a')[0])).toBe(false); // drops "car"
+  });
+  it('allows deleting only function/auxiliary words', () => {
     const src = 'I was have been in Greece';
-    const edit = diffEdits(src, 'I was in Greece')[0]; // drops "have been" (no entities)
-    expect(preservesEntities(src, edit)).toBe(true);
+    expect(preservesContent(src, diffEdits(src, 'I was in Greece')[0])).toBe(true); // drops "have been"
+  });
+  it('allows a same-length substitution of a content word', () => {
+    const src = 'He runned fast';
+    expect(preservesContent(src, diffEdits(src, 'He ran fast')[0])).toBe(true); // runned → ran
+  });
+});
+
+describe('createsRepeat', () => {
+  it('rejects an edit that introduces a doubled word', () => {
+    const src = 'I would like as car';
+    const edit = diffEdits(src, 'I would like as car car')[0];
+    expect(createsRepeat(src, edit)).toBe(true);
+  });
+  it('allows an edit with no new repetition', () => {
+    const src = 'I teh cat';
+    expect(createsRepeat(src, diffEdits(src, 'I the cat')[0])).toBe(false);
   });
 });
