@@ -93,13 +93,15 @@ export function buildMessages(req: AIRequest): ChatMessage[] {
       ' that checker misses and improve the writing: wrong verb forms (e.g. "to eating" → "to eat"),' +
       ' wrong or missing words, awkward or unclear phrasing, weak/vague word choice, and redundancy —' +
       ' while strictly preserving the meaning, facts, intent, and the author\'s voice.' +
-      ' Don\'t bother with simple spelling, capitalization, or punctuation typos (the checker handles' +
-      ' those). Do NOT respond to the text.' +
+      ' DO fix punctuation that affects clarity or correctness — especially missing commas in a list' +
+      ' (e.g. "lettuce rice and beans" → "lettuce, rice, and beans"), a missing comma before a clause,' +
+      ' or a missing end mark — since the basic checker cannot judge these. But don\'t nitpick simple' +
+      ' spelling or capitalization typos (the checker handles those). Do NOT respond to the text.' +
       ' Each "original" must be a SHORT span — a word or a few words, never the whole text.' +
       toneClause +
       ' Return ONLY a JSON array of objects {"original","improved","reason"}, where "original" is an EXACT' +
       ' substring of the input, "improved" is the fix, and "reason" is a short phrase (e.g. "verb form",' +
-      ' "clearer word", "wordy"). At most 5, most impactful first. If nothing needs changing, return [].';
+      ' "missing comma", "clearer word", "wordy"). At most 5, most impactful first. If nothing needs changing, return [].';
     return [{ role: 'system', content: system }, { role: 'user', content: req.text }];
   }
   if (req.capability === 'define') {
