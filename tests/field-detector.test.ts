@@ -37,4 +37,18 @@ describe('classifyField', () => {
     expect(isEditableField(el('<input type="password" />'))).toBe(false);
     expect(isEditableField(el('<input type="checkbox" />'))).toBe(false);
   });
+
+  it('non-prose inputs (search/email/url/tel/number) are skipped', () => {
+    for (const type of ['search', 'email', 'url', 'tel', 'number']) {
+      expect(isEditableField(el(`<input type="${type}" />`))).toBe(false);
+    }
+  });
+
+  it('autocomplete/combobox text inputs (a "search select") are skipped', () => {
+    expect(isEditableField(el('<input type="text" role="combobox" />'))).toBe(false);
+    expect(isEditableField(el('<input type="text" role="searchbox" />'))).toBe(false);
+    expect(isEditableField(el('<input type="text" aria-autocomplete="list" />'))).toBe(false);
+    // a plain text input is still prose
+    expect(isEditableField(el('<input type="text" />'))).toBe(true);
+  });
 });
