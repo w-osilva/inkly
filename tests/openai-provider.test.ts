@@ -23,6 +23,15 @@ describe('buildHttpRequest', () => {
     const r = buildHttpRequest({ ...config, endpoint: 'https://api.x.com/v1/' }, messages);
     expect(r.url).toBe('https://api.x.com/v1/chat/completions');
   });
+  it('appends /no_think to the system message for qwen3 models (disables slow reasoning)', () => {
+    const body = JSON.parse(buildHttpRequest({ ...config, model: 'qwen3:8b' }, messages).body);
+    expect(body.messages[0].content).toBe('sys /no_think');
+    expect(body.messages[1]).toEqual({ role: 'user', content: 'hi' }); // user message untouched
+  });
+  it('leaves non-qwen3 models untouched', () => {
+    const body = JSON.parse(buildHttpRequest({ ...config, model: 'qwen2.5' }, messages).body);
+    expect(body.messages).toEqual(messages);
+  });
 });
 
 describe('parseChatCompletion', () => {

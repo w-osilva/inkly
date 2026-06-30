@@ -15,8 +15,19 @@ export function buildHttpRequest(config: AIConfig, messages: ChatMessage[], stre
       'Content-Type': 'application/json',
       Authorization: `Bearer ${config.apiKey}`,
     },
-    body: JSON.stringify({ model: config.model, messages, stream }),
+    body: JSON.stringify({ model: config.model, messages: withThinkingOff(config.model, messages), stream }),
   };
+}
+
+/**
+ * Qwen3 turns on a slow chain-of-thought by default. Inkly's tasks (rewrite, synonyms,
+ * improve, …) never need reasoning, so opt out via Qwen3's `/no_think` soft switch appended
+ * to the system message — a big latency win, especially on local Ollama. Other models don't
+ * recognise the token, so we only touch qwen3 to avoid leaking literal text into their prompt.
+ */
+function withThinkingOff(model: string, messages: ChatMessage[]): ChatMessage[] {
+  if (!/qwen3/i.test(model) || messages[0]?.role !== 'system') return messages;
+  return messages.map((m, i) => (i === 0 ? { ...m, content: `${m.content} /no_think` } : m));
 }
 
 /** Extract the assistant text from an OpenAI-compatible chat-completion response. */
