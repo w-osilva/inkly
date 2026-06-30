@@ -34,6 +34,10 @@ describe('parseSynonymGroups', () => {
     // No chip should be a JSON fragment like `[` or `{"sense`.
     for (const g of groups) for (const w of g.words) expect(w).not.toMatch(/[[\]{}"]/);
   });
+  it('strips a reasoning <think> block before the JSON (Qwen3)', () => {
+    const raw = '<think>The word means happy here.</think>[{"sense":"glad","synonyms":["cheerful","content"]}]';
+    expect(parseSynonymGroups(raw)).toEqual([{ sense: 'glad', words: ['cheerful', 'content'] }]);
+  });
   it('returns [] for empty input', () => {
     expect(parseSynonymGroups('')).toEqual([]);
   });

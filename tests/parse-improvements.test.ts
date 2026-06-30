@@ -28,4 +28,9 @@ describe('parseImprovements', () => {
     const raw = '[{"original":"proof","improved":"order","reason":"x"},{"original":"proof","improved":"order","reason":"y"}]';
     expect(parseImprovements(raw)).toEqual([{ original: 'proof', improved: 'order', reason: 'x' }]);
   });
+
+  it('strips a reasoning <think> block whose text contains brackets (Qwen3)', () => {
+    const raw = '<think>I could return [nothing] but here goes</think>[{"original":"teh","improved":"the","reason":"typo"}]';
+    expect(parseImprovements(raw)).toEqual([{ original: 'teh', improved: 'the', reason: 'typo' }]);
+  });
 });

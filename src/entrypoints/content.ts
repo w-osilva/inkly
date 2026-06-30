@@ -37,6 +37,7 @@ import { ruleExplanation } from '../core/rule-descriptions';
 import { getSelectionInfo, type SelectionInfo } from '../core/selection';
 import { expandToSentence, isSingleWord } from '../core/sentence';
 import { parseImprovements, type Improvement } from '../core/ai/parse-improvements';
+import { stripThinking } from '../core/ai/strip-thinking';
 import { textareaSpanRects } from '../ui/textarea-rects';
 
 const provider = new HarperProvider();
@@ -770,6 +771,9 @@ export default defineContentScript({
       // Guard: if the panel was dismissed/hidden meanwhile, or a newer call started, drop the result.
       if (gen !== rewriteSeq || aiPanelState.phase !== 'loading') return;
       activeStreamId = null;
+      // Drop any reasoning-model <think> block before display/apply (e.g. Qwen3 in Ollama),
+      // so it never lands in the document or the result panel.
+      if (res.ok) res.text = stripThinking(res.text);
       if (res.ok) {
         if (capability === 'improve') {
           // Parse the model's edit list into applicable items; each Apply finds its

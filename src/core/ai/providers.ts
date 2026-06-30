@@ -82,13 +82,13 @@ export const AI_PROVIDERS: AIProviderPreset[] = [
     id: 'ollama',
     label: 'Ollama (local) — fully open & offline',
     endpoint: 'http://localhost:11434/v1',
-    models: ['qwen2.5', 'llama3.1', 'gemma3'],
+    models: ['qwen2.5', 'qwen3', 'llama3.1', 'gemma3'],
     keyUrl: '',
     openSource: true,
     group: 'open',
     privacy: 'local',
     noKey: true,
-    note: 'Runs on your machine. Needs Ollama running with the extension origin allowed (OLLAMA_ORIGINS).',
+    note: 'Runs on your machine. Needs Ollama running with the extension origin allowed (OLLAMA_ORIGINS). qwen2.5 is the simplest pick; qwen3 is newer (its reasoning <think> output is handled).',
   },
   // ---- Hosted proprietary (full flexibility) ----
   {

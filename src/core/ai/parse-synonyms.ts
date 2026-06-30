@@ -1,3 +1,5 @@
+import { stripThinking } from './strip-thinking';
+
 export interface SynonymGroup {
   /** A short sense/definition for this group (empty for a flat fallback). */
   sense: string;
@@ -40,7 +42,7 @@ function normalizeGroups(parsed: unknown): SynonymGroup[] {
  * JSON fragments as chips.
  */
 export function parseSynonymGroups(raw: string): SynonymGroup[] {
-  let text = (raw ?? '').trim();
+  let text = stripThinking(raw ?? '');
   const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fence) text = fence[1].trim();
 
