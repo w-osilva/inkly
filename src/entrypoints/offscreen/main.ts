@@ -9,6 +9,7 @@ import { tryChromeAI } from '../../core/ai/chrome-ai';
 import { tryChromeRewrite, tryChromeProofread } from '../../core/ai/builtin-apis';
 import { tryChromeTranslate } from '../../core/ai/chrome-translator';
 import { lookupDefinition } from '../../core/ai/dictionary';
+import { lookupSynonyms } from '../../core/ai/thesaurus';
 
 let linter: Linter | null = null;
 let setupPromise: Promise<void> | null = null;
@@ -68,6 +69,13 @@ async function runAI(request: AIRequest, config: AIConfig, streamId: string): Pr
   if (request.capability === 'define' && !import.meta.env.VITE_INKLY_E2E) {
     const def = await lookupDefinition(request.text, request.options?.defineCode || 'en');
     if (def !== null) return { ok: true, text: def };
+  }
+  // Synonyms prefer the free, key-less Datamuse thesaurus; only fall back to AI (context-
+  // aware, sense-grouped, multilingual) when it returns nothing — e.g. a phrase or a
+  // non-English word. Skipped under e2e (the mock LLM gives deterministic results).
+  if (request.capability === 'synonyms' && !import.meta.env.VITE_INKLY_E2E) {
+    const syns = await lookupSynonyms(request.text);
+    if (syns !== null) return { ok: true, text: syns };
   }
   // On-device (Gemini Nano) is the FREE fallback for users without a key. When the user
   // has configured a BYOK provider they chose it on purpose (e.g. Groq — fast, higher
