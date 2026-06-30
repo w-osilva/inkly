@@ -37,15 +37,21 @@ Most writing assistants make you choose: **powerful** (Grammarly — closed, pai
   | **Proofreader** | on-device AI proofreading | 🔒 where the browser ships it |
   | **AI suggestions** | what rules can't catch — word choice, clarity, awkward phrasing | 🔒/☁ your provider |
 - **Reorderable priority:** when two engines flag the same span, the one you rank higher wins. Toggle any off.
-- **Picky mode** (one click): unlocks LanguageTool's advanced style/wordiness checks (the kind LanguageTool gates behind Premium) — free, via the public API.
+- **Picky mode** (on by default): runs LanguageTool's advanced style/wordiness checks — the kind it gates behind Premium — free, via the public API. Toggle it off if it feels too strict.
 
-### 🤖 AI, on your terms (select text → act)
-- **Rewrite** with a **tone slider** (Casual ↔ Formal), optional **style** (Confident · Technical · Simple), and **length** (shorter ↔ longer).
-- **Improve** — inline suggestions for clarity & word choice that rules miss (e.g. *"to eating"* → *"to eat"*), shown right under the text.
-- **Synonyms** (AI: context-aware, grouped by sense → free thesaurus fallback when AI is unavailable), **Define** (free dictionary API → AI fallback, in your language), **Translate** (into your UI language).
-- Streaming responses. Invoke via the selection toolbar, **Alt+I**, or the right-click menu.
+### 🤖 AI (optional — your provider, automatic *and* on demand)
+When you've set up a provider (your own key, Chrome's built-in AI, or local Ollama), AI works two ways:
+
+- **Automatically, as a verification layer.** A background pass catches what the rules can't — wrong verb forms (e.g. *"to eating"* → *"to eat"*), awkward phrasing, weak word choice — and its findings join the **same** underlines and the **same** count as the rules. It's fed the errors already found, so it complements them instead of repeating, and it holds back on a sentence that still has a basic error (so you don't get conflicting fixes at once).
+- **On demand — select text, then act:**
+  - **Rewrite** with a **tone slider** (Casual ↔ Formal), optional **style** (Confident · Technical · Simple), and **length** (shorter ↔ longer).
+  - **Improve** the selection, **Synonyms** (context-aware → free thesaurus fallback), **Define** (free dictionary API → AI fallback, in your language), **Translate** (into your UI language).
+  - Invoke from the selection toolbar, with **Alt+I**, or the right-click menu.
+
+Every fix applies with one click and is **undoable with Ctrl+Z**. The panel shows the finished result — no half-written text flashing by.
+
 - **Bring your own provider** — any OpenAI-compatible API: OpenAI, **Groq**, OpenRouter, Anthropic, Gemini, **Ollama** (local). Keys are stored per-provider, locally, and sent only to the endpoint you chose. Privacy labels (`no-train` / `local`) help you pick.
-- Uses Chrome's **built-in on-device AI** (Gemini Nano / Rewriter / Proofreader) automatically when available — free and private.
+- Uses Chrome's **built-in on-device AI** (Gemini Nano / Rewriter / Proofreader) automatically when the browser offers it — free and private.
 
 ### 🛡️ Privacy & freedom, concretely
 - Grammar/spelling stay on-device. The provider you configure is used **only** when you click an AI action (or for opt-in LanguageTool).
@@ -61,7 +67,7 @@ Most writing assistants make you choose: **powerful** (Grammarly — closed, pai
 | Open-source | ✅ (MIT; Harper fully open) | ⚠️ open-core (Premium closed) | ❌ |
 | Works offline | ✅ (Harper) | self-hosted only | ❌ |
 | Privacy / no account | ✅ | partial | ❌ |
-| AI rewrite/paraphrase | ✅ your key (unlimited) | Premium | ✅ (paid) |
+| AI rewrite/paraphrase | ✅ your key or local | Premium | ✅ (paid) |
 | Price | **free** (AI = your key) | freemium | freemium/paid |
 | Raw engine maturity | young | mature | most mature |
 | Configurable engines & priority | ✅ | ❌ | ❌ |
@@ -70,7 +76,7 @@ Inkly stands on LanguageTool's shoulders for raw rules and complements them with
 
 ## Install
 
-Requires Node 18+ and npm.
+Requires Node 20+ and npm.
 
 ```bash
 npm install
