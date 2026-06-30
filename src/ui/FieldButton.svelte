@@ -2,46 +2,25 @@
   import { fieldButtonState as s } from './field-button-state.svelte';
   import InklyMark from './InklyMark.svelte';
 
-  // A single Inkly capsule. The main segment carries the grammar count and opens the review;
-  // the ✨ segment carries its OWN improvement count (and stays visible whenever there are
-  // improvements or a pass is running); the ⦸ disable tucks away until hover/focus.
-  function primary() {
-    if (s.count > 0) s.onOpen?.();
-    else if (s.improveCount > 0) s.onOpenImprove?.();
-    else s.onOpen?.();
-  }
+  // A single Inkly capsule. The main segment carries the unified suggestion count and opens
+  // the review; the ⦸ disable tucks away until hover/focus.
 </script>
 
 {#if s.visible}
   <div class="inkly-fb" style="right:{s.right}px; top:{s.top}px;">
     <div class="inkly-fb__pill">
-      <!-- Main segment (right): brand + grammar count; opens the review. -->
+      <!-- Main segment (right): brand + unified count; opens the review. Spinner ring while
+           the AI verification tier is in flight. -->
       <button
         class="inkly-fb__seg inkly-fb__main"
         aria-label={`inkly${s.count > 0 ? `: ${s.count} suggestion${s.count === 1 ? '' : 's'}` : ''} — review`}
-        title="inkly — review suggestions"
-        onclick={primary}
+        title={s.improveLoading ? 'inkly — checking…' : 'inkly — review suggestions'}
+        onclick={() => s.onOpen?.()}
       >
         <span class="inkly-fb__mark"><InklyMark size={15} /></span>
+        {#if s.improveLoading}<span class="inkly-fb__ring" aria-hidden="true"></span>{/if}
         {#if s.count > 0}
           <span class="inkly-fb__badge" data-sev={s.severity}>{s.count}</span>
-        {/if}
-      </button>
-
-      <!-- Improve: its own indigo counter; pinned visible when there's something to show. -->
-      <button
-        class="inkly-fb__seg inkly-fb__collapse"
-        class:inkly-fb__collapse--pinned={s.improveCount > 0 || s.improveLoading}
-        class:inkly-fb__seg--active={s.improveCount > 0}
-        data-act="improve"
-        title={s.improveLoading ? 'Analyzing…' : `Improve writing${s.improveCount > 0 ? ` (${s.improveCount})` : ''}`}
-        aria-label={`Improve writing${s.improveCount > 0 ? ` (${s.improveCount})` : ''}`}
-        onclick={() => s.onOpenImprove?.()}
-      >
-        <span class="inkly-fb__sparkle">✨</span>
-        {#if s.improveLoading}<span class="inkly-fb__ring" aria-hidden="true"></span>{/if}
-        {#if s.improveCount > 0}
-          <span class="inkly-fb__badge--imp">{s.improveCount}</span>
         {/if}
       </button>
 
@@ -100,11 +79,6 @@
   .inkly-fb__seg--muted { color: var(--inkly-muted, #6b7280); }
   .inkly-fb__seg--end { margin-right: 2px; }
   .inkly-fb__mark { display: inline-flex; color: var(--inkly-accent, #6366f1); }
-  /* ✨ stays muted at rest so the brand mark leads; colours up when the pill is engaged. */
-  .inkly-fb__sparkle { line-height: 1; filter: grayscale(1); opacity: 0.75; transition: filter 0.12s ease, opacity 0.12s ease; }
-  .inkly-fb__pill:hover .inkly-fb__sparkle,
-  .inkly-fb__pill:focus-within .inkly-fb__sparkle,
-  .inkly-fb__seg--active .inkly-fb__sparkle { filter: none; opacity: 1; } /* coloured when there are improvements */
   .inkly-fb__ring {
     position: absolute;
     inset: 0;
@@ -115,8 +89,7 @@
   }
   @keyframes inkly-fb-spin { to { transform: rotate(360deg); } }
 
-  .inkly-fb__badge,
-  .inkly-fb__badge--imp {
+  .inkly-fb__badge {
     position: absolute;
     top: -6px;
     right: -6px;
@@ -133,22 +106,19 @@
   }
   .inkly-fb__badge[data-sev='clarity'] { background: var(--inkly-sev-clarity, #e0a30c); }
   .inkly-fb__badge[data-sev='suggestion'] { background: var(--inkly-accent, #6366f1); }
-  .inkly-fb__badge--imp { background: var(--inkly-accent, #6366f1); }
 
-  /* Collapsible segment: hidden until the pill is hovered/focused, unless pinned. */
+  /* Collapsible segment (disable): hidden until the pill is hovered/focused. */
   .inkly-fb__collapse {
     max-width: 0;
     overflow: hidden;
     opacity: 0;
-    /* Closing direction: wait before collapsing, so the mouse can reach the icons. */
+    /* Closing direction: wait before collapsing, so the mouse can reach the icon. */
     transition: max-width 0.16s ease 0.45s, opacity 0.16s ease 0.45s;
   }
   .inkly-fb__pill:hover .inkly-fb__collapse,
-  .inkly-fb__pill:focus-within .inkly-fb__collapse,
-  .inkly-fb__collapse--pinned {
+  .inkly-fb__pill:focus-within .inkly-fb__collapse {
     max-width: 22px;
     opacity: 1;
-    overflow: visible; /* once open, let the improvement badge poke out (it was being clipped) */
     /* Opening direction: reveal immediately (no delay). */
     transition: max-width 0.16s ease, opacity 0.16s ease;
   }

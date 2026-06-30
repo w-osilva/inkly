@@ -125,8 +125,9 @@ export default defineContentScript({
 
     let activeField: HTMLElement | null = null;
     let activeType: FieldType = 'unknown';
-    let current: Suggestion[] = [];      // grammar/spelling (Harper + punctuation + proofread)
-    let rendered: Suggestion[] = [];     // what's actually drawn/hit-tested: grammar + AI suggestions
+    let ruleSuggestions: Suggestion[] = []; // tier 1: deterministic (Harper + punctuation + LT + proofread)
+    let current: Suggestion[] = [];      // unified, filtered set: rules + AI verification tier
+    let rendered: Suggestion[] = [];     // what's actually drawn/hit-tested (== current after merge)
     let checkSeq = 0;
     let hitRects: HitRect[] = [];
     let lang: Lang = 'en';
@@ -181,22 +182,33 @@ export default defineContentScript({
       const punct = correctionDisabled.includes('punctuation') ? [] : checkPunctuation(text);
       const englishField = isEnglishLang(fieldLangTag(field));
       const langOk = (s: Suggestion) => englishField || (s.source !== 'harper' && s.source !== 'chrome-proofread');
-      current = mergeSuggestions([...raw, ...punct].filter(toolOn).filter(langOk), priority());
-      current = current.filter((s) => !dismissed.has(suggestionKey(s)));
-      current = current.filter(
-        (s) => !isSuppressed(s, text.slice(s.offset, s.offset + s.length), disabledCategories, dictionary),
-      );
-      // Don't re-flag text we just applied (stops accept → re-suggest flip-flop).
-      current = current.filter((s) => !appliedText.has(text.slice(s.offset, s.offset + s.length)));
-      // Drop improvements whose target no longer exists (applied or edited away) so the
-      // ✨ count/panel don't keep marking already-fixed text.
+      // Tier 1 (deterministic). The AI verification tier (runAutoImprove) always runs next and
+      // folds its findings into the same `current` set via recomputeCurrent().
+      ruleSuggestions = [...raw, ...punct].filter(toolOn).filter(langOk);
+      // Drop AI findings whose target no longer exists (applied/edited away).
       aiImprovements = aiImprovements.filter((im) => text.includes(im.original) && !appliedText.has(im.original));
-      if (cardState.visible) hideCard();
-      drawUnderlines();
-      if (reviewState.visible) renderReviewItem();
+      recomputeCurrent();
       scheduleAutoImprove();
     }
     const runCheck = debounce(runCheckNow, 400);
+
+    // The single source of truth for the field's suggestions: deterministic rules + the AI
+    // verification tier, merged by priority (rules win overlaps, so the AI complements rather
+    // than duplicates) and filtered for dismissed/suppressed/just-applied text. Everything —
+    // the underlines, the review panel and the widget count — reads from `current`.
+    function recomputeCurrent() {
+      if (!activeField) { current = []; drawUnderlines(); return; }
+      const text = getFieldText(activeField, activeType);
+      const merged = mergeSuggestions([...ruleSuggestions, ...aiSuggestionList()], priority());
+      current = merged
+        .filter((s) => !dismissed.has(suggestionKey(s)))
+        .filter((s) => !isSuppressed(s, text.slice(s.offset, s.offset + s.length), disabledCategories, dictionary))
+        .filter((s) => !appliedText.has(text.slice(s.offset, s.offset + s.length)));
+      if (cardState.visible) hideCard();
+      drawUnderlines();
+      if (reviewState.visible) renderReviewItem();
+      updateFieldButton();
+    }
 
     // AI writing improvements live in their OWN list (not in `current`), so grammar
     // underlines and the grammar review stay clean. They surface via a separate ✨
@@ -253,106 +265,13 @@ export default defineContentScript({
         if (!res.ok) return; // no on-device model AND no/failed BYOK — silent
         if (checkSeq !== myCheck || activeField !== field) return;
         aiImprovements = dropFlagged(text, parseImprovements(res.text).filter((im) => text.includes(im.original)));
-        updateFieldButton();
-        drawUnderlines(); // surface the new suggestions inline
+        recomputeCurrent(); // fold the AI findings into the single unified suggestion set
       } finally {
         improveInFlight--;
         setImproveLoading();
       }
     }
     const scheduleAutoImprove = debounce(() => { void runAutoImprove(); }, 1500);
-
-    // ✨ button: show the improvements we have, or fetch them on demand (built-in→BYOK).
-    function openImprovePanel() {
-      if (aiImprovements.length > 0) showImprovePanel();
-      else void runFieldImprove();
-    }
-
-    function positionImprovePanel() {
-      const W = 300, H = 160, GAP = 8;
-      let left = fieldButtonState.left + 28 - W; // right-align near the widget
-      let top = fieldButtonState.top - H - GAP;
-      if (top < 8) top = fieldButtonState.top + 32 + GAP;
-      if (left < 8) left = 8;
-      aiPanelState.left = left;
-      aiPanelState.top = top;
-      // Anchor to the field-button widget so the panel can re-fit after measuring.
-      aiPanelState.anchor = { left: fieldButtonState.left, top: fieldButtonState.top, width: 28, height: 28 };
-    }
-
-    function improvementsToState() {
-      const text = activeField ? getFieldText(activeField, activeType) : '';
-      return aiImprovements
-        .filter((im) => text.includes(im.original) && !appliedText.has(im.original))
-        .map((im) => ({ from: im.original, to: im.improved, reason: im.reason }));
-    }
-
-    function showImprovePanel() {
-      if (!activeField) return;
-      raiseOverlay();
-      hideCard();
-      hideReview();
-      positionImprovePanel();
-      aiPanelState.capability = 'improve';
-      aiPanelState.onClose = userDismissAIPanel;
-      aiPanelState.improvements = improvementsToState();
-      aiPanelState.onApplyImprovement = (i: number) => {
-        const im = aiImprovements[i];
-        if (im && activeField) {
-          const full = getFieldText(activeField, activeType);
-          const off = full.indexOf(im.original);
-          if (off !== -1) applyEdit(() => applyRange(activeField!, activeType, off, off + im.original.length, im.improved));
-        }
-        if (im) appliedText.add(im.improved); // leave the applied result alone
-        suppressAutoImprove = true; // don't auto-suggest more until the user types again
-        aiImprovements = aiImprovements.filter((_, idx) => idx !== i);
-        aiPanelState.improvements = improvementsToState();
-        updateFieldButton();
-        if (activeField) runCheck();
-        if (aiImprovements.length === 0) hideAIPanel();
-      };
-      aiPanelState.onDismiss = () => hideAIPanel();
-      aiPanelState.phase = 'result';
-    }
-
-    async function runFieldImprove() {
-      const field = activeField;
-      const type = activeType;
-      if (!field) return;
-      const text = getFieldText(field, type);
-      if (!text.trim()) return;
-      positionImprovePanel();
-      aiPanelState.capability = 'improve';
-      aiPanelState.onClose = userDismissAIPanel;
-      aiPanelState.phase = 'loading';
-      const gen = ++rewriteSeq;
-      improveInFlight++;
-      setImproveLoading();
-      let res;
-      try {
-        res = await runAI({ capability: 'improve', text, options: improveOptions(text) }, crypto.randomUUID());
-      } finally {
-        improveInFlight--;
-        setImproveLoading();
-      }
-      if (gen !== rewriteSeq || aiPanelState.phase !== 'loading') return;
-      if (!res.ok) {
-        aiPanelState.error = res.error;
-        aiPanelState.phase = 'error';
-        aiPanelState.onDismiss = () => hideAIPanel();
-        return;
-      }
-      aiImprovements = dropFlagged(text, parseImprovements(res.text).filter((im) => text.includes(im.original)));
-      updateFieldButton();
-      drawUnderlines(); // surface inline too
-      if (aiImprovements.length === 0) {
-        aiPanelState.improvements = [];
-        aiPanelState.onDismiss = () => hideAIPanel();
-        aiPanelState.phase = 'result'; // shows "Looks good — no changes to suggest."
-        return;
-      }
-      showImprovePanel();
-    }
 
     // AI writing improvements as inline suggestions: locate each in the live text and map
     // to the subjective ('suggestion') tier so they underline distinctly from grammar.
@@ -393,8 +312,8 @@ export default defineContentScript({
         rendered = [];
         return renderer.clear();
       }
-      // Grammar (Harper et al.) + AI suggestions, deduped by the user's tool priority.
-      rendered = mergeSuggestions([...current, ...aiSuggestionList()], priority());
+      // `current` is already the unified, merged, filtered set (rules + AI verification tier).
+      rendered = current;
       const containerRect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
       const nextHitRects: HitRect[] = [];
       const styles = rendered.flatMap((s, index) => {
@@ -441,11 +360,8 @@ export default defineContentScript({
       if (r.width === 0 && r.height === 0) { fieldButtonState.visible = false; return; }
       const fieldText = getFieldText(activeField, activeType);
       const hasText = fieldText.trim().length > 0;
-      // Only improvements whose target still exists (and weren't just applied) count.
-      const liveImprovements = aiImprovements.filter((im) => fieldText.includes(im.original) && !appliedText.has(im.original));
-      // Show the widget whenever there's text to act on (so the ✨ improve button is
-      // always reachable), or there are grammar issues / improvements pending.
-      if (!hasText && current.length === 0 && liveImprovements.length === 0) {
+      // Show the widget whenever there's text to act on, or there are suggestions to review.
+      if (!hasText && current.length === 0) {
         fieldButtonState.visible = false;
         return;
       }
@@ -455,14 +371,12 @@ export default defineContentScript({
       fieldButtonState.left = Math.max(8, r.right - GROUP_W - INSET);
       fieldButtonState.right = Math.max(8, window.innerWidth - (r.right - INSET));
       fieldButtonState.top = top;
-      fieldButtonState.count = current.length; // grammar/spelling (Harper) only
-      fieldButtonState.improveCount = liveImprovements.length;
+      fieldButtonState.count = current.length; // unified: rules + AI verification tier
       fieldButtonState.severity = current.reduce(
         (acc, s) => (SEVERITY_RANK[s.severity] > SEVERITY_RANK[acc] ? s.severity : acc),
         'suggestion' as Suggestion['severity'],
       );
       fieldButtonState.onOpen = openReview;
-      fieldButtonState.onOpenImprove = openImprovePanel;
       fieldButtonState.onDisableSite = disableForSite;
       fieldButtonState.visible = true;
     }
@@ -891,6 +805,7 @@ export default defineContentScript({
         hideCard();
         hideAIPanel();
         current = [];
+        ruleSuggestions = [];
         hitRects = [];
         aiImprovements = [];
         renderer.clear();
@@ -975,6 +890,7 @@ export default defineContentScript({
       runCheck.cancel();
       hideCard();
       current = [];
+      ruleSuggestions = [];
       hitRects = [];
       aiImprovements = [];
       renderer.clear();
