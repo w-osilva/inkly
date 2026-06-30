@@ -8,9 +8,6 @@ import type { Severity } from '../core/types';
 export interface FieldButtonState {
   visible: boolean;
   left: number;
-  /** Distance from the viewport's right edge to the widget's right edge (px). The widget is
-   * right-anchored so its hover pill can expand leftwards without shifting or clipping. */
-  right: number;
   top: number;
   /** Unified suggestion count (rules + AI verification tier). */
   count: number;
@@ -18,20 +15,16 @@ export interface FieldButtonState {
   improveLoading: boolean;
   /** Highest-priority severity among grammar issues — drives the main badge color. */
   severity: Severity;
-  /** Open the grammar review. */
+  /** Open the suggestions review. */
   onOpen: (() => void) | null;
-  /** Turn inkly off for the current site (from the widget menu). */
-  onDisableSite: (() => void) | null;
 }
 
 export const fieldButtonState = $state<FieldButtonState>({
   visible: false,
   left: 0,
-  right: 0,
   top: 0,
   count: 0,
   improveLoading: false,
   severity: 'correctness',
   onOpen: null,
-  onDisableSite: null,
 });

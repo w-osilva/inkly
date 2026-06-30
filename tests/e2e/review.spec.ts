@@ -9,7 +9,7 @@ test('field button opens the review panel; navigate + accept', async ({ context 
 
   // Widget appears once Harper (cold WASM) has produced issues; its main button opens
   // the review (the primary action).
-  const btn = page.locator('css=.inkly-fb__main');
+  const btn = page.locator('css=.inkly-fb__btn');
   await expect(btn).toBeVisible({ timeout: 30_000 });
 
   await btn.click();

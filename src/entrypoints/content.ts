@@ -199,7 +199,16 @@ export default defineContentScript({
     function recomputeCurrent() {
       if (!activeField) { current = []; drawUnderlines(); return; }
       const text = getFieldText(activeField, activeType);
-      const merged = mergeSuggestions([...ruleSuggestions, ...aiSuggestionList()], priority());
+      // Quality funnel: don't let the AI pile uncertain edits onto a sentence that still has a
+      // hard (correctness) error — the result is conflicting junk. The rule fix owns that
+      // sentence; once it's applied the AI re-runs and refines the now-clean sentence. AI still
+      // contributes freely to sentences with no hard error.
+      const dirty = ruleSuggestions
+        .filter((s) => s.severity === 'correctness')
+        .map((s) => expandToSentence(text, s.offset, s.offset + s.length));
+      const inDirtySentence = (s: Suggestion) => dirty.some((d) => s.offset >= d.start && s.offset < d.end);
+      const ai = aiSuggestionList().filter((s) => !inDirtySentence(s));
+      const merged = mergeSuggestions([...ruleSuggestions, ...ai], priority());
       current = merged
         .filter((s) => !dismissed.has(suggestionKey(s)))
         .filter((s) => !isSuppressed(s, text.slice(s.offset, s.offset + s.length), disabledCategories, dictionary))
@@ -369,7 +378,6 @@ export default defineContentScript({
       // Bottom-right for tall fields; vertically centered for short ones (inputs).
       const top = r.height < SIZE + INSET * 2 ? r.top + (r.height - SIZE) / 2 : r.bottom - SIZE - INSET;
       fieldButtonState.left = Math.max(8, r.right - GROUP_W - INSET);
-      fieldButtonState.right = Math.max(8, window.innerWidth - (r.right - INSET));
       fieldButtonState.top = top;
       fieldButtonState.count = current.length; // unified: rules + AI verification tier
       fieldButtonState.severity = current.reduce(
@@ -377,15 +385,7 @@ export default defineContentScript({
         'suggestion' as Suggestion['severity'],
       );
       fieldButtonState.onOpen = openReview;
-      fieldButtonState.onDisableSite = disableForSite;
       fieldButtonState.visible = true;
-    }
-
-    // Turn inkly off for this host from the widget menu. Persisting the override fires the
-    // storage listener above, which flips `enabled` and tears the in-page UI down.
-    async function disableForSite() {
-      const cur = await getSettings();
-      await setSettings({ ...cur, siteOverrides: { ...cur.siteOverrides, [host]: false } });
     }
 
     // ---- Review panel: step through the field's issues with Accept/Dismiss + prev/next ----
