@@ -19,10 +19,10 @@ test('the widget menu runs improvements and applies one', async ({ context }) =>
   await editor.type('hello world');
 
   // Focus the widget to reveal its action pill, then the Improve icon.
-  const widget = page.locator('css=.inkly-fb__btn');
+  const widget = page.locator('css=.inkly-fb__main');
   await expect(widget).toBeVisible({ timeout: 30_000 });
   await widget.focus();
-  await page.locator('css=.inkly-fb__act[data-act="improve"]').click();
+  await page.locator('css=.inkly-fb__seg[data-act="improve"]').click();
 
   // On-demand improve lists applicable edits; Apply replaces the text.
   const apply = page.locator('css=.inkly-ai__imp .inkly-ai__chip');
@@ -39,8 +39,8 @@ test('applying one improvement keeps the others in the panel', async ({ context 
   await editor.click();
   await editor.type('i wanna proof a pizza'); // mock returns two edits
 
-  await page.locator('css=.inkly-fb__btn').focus();
-  await page.locator('css=.inkly-fb__act[data-act="improve"]').click();
+  await page.locator('css=.inkly-fb__main').focus();
+  await page.locator('css=.inkly-fb__seg[data-act="improve"]').click();
   const items = page.locator('css=.inkly-ai__imp');
   await expect(items).toHaveCount(2, { timeout: 10_000 });
   await page.locator('css=.inkly-ai__imp .inkly-ai__chip').first().click(); // apply one

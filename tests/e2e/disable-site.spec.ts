@@ -10,12 +10,12 @@ test('widget menu disables inkly for the site', async ({ context }) => {
   await editor.click();
   await editor.type('teh cat');
 
-  const widget = page.locator('css=.inkly-fb__btn');
+  const widget = page.locator('css=.inkly-fb__main');
   await expect(widget).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('css=div.inkly-underline').first()).toBeVisible({ timeout: 5_000 });
 
   await widget.focus();
-  await page.locator('css=.inkly-fb__act[data-act="disable"]').click();
+  await page.locator('css=.inkly-fb__seg[data-act="disable"]').click();
 
   // UI is torn down: the widget and underlines disappear.
   await expect(widget).toHaveCount(0, { timeout: 5_000 });

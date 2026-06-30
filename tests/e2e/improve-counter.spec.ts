@@ -28,8 +28,8 @@ for (const f of [
     const grammar = page.locator('css=.inkly-fb__badge');
     await expect(grammar).toHaveText('1', { timeout: 30_000 });
 
-    await page.locator('css=.inkly-fb__btn').focus();
-    await page.locator('css=.inkly-fb__act[data-act="improve"]').click();
+    await page.locator('css=.inkly-fb__main').focus();
+    await page.locator('css=.inkly-fb__seg[data-act="improve"]').click();
     const apply = page.locator('css=.inkly-ai__imp .inkly-ai__chip');
     await expect(apply.first()).toBeVisible({ timeout: 10_000 });
     await apply.first().click(); // mock corrects "teh" → "the", clearing the only error
