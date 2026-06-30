@@ -887,6 +887,23 @@ export default defineContentScript({
       else if (cardState.visible) hideCard();
     });
 
+    // Hand cursor over a marked word, so it reads as clickable. We toggle the field's own
+    // cursor (the underline overlay is pointer-events:none); restored when not over a mark.
+    let cursorOnHit = false;
+    function setHitCursor(on: boolean) {
+      if (on === cursorOnHit || !activeField) return;
+      cursorOnHit = on;
+      if (on) activeField.style.setProperty('cursor', 'pointer');
+      else activeField.style.removeProperty('cursor');
+    }
+    ctx.addEventListener(document, 'mousemove', (e) => {
+      if (!enabled || !activeField) return;
+      const me = e as MouseEvent;
+      const overMark = !getSelectionInfo(activeField, activeType)
+        && findHitIndex(me.clientX, me.clientY, hitRects) !== -1;
+      setHitCursor(overMark);
+    });
+
     let selScheduled = false;
     function onSelectionMaybe() {
       if (!enabled) return;
@@ -908,6 +925,7 @@ export default defineContentScript({
         return;
       }
       // A different field → adopt it; drop the previous field's persisted marks.
+      setHitCursor(false); // clear the hand cursor from the field we're leaving
       runCheck.cancel();
       hideCard();
       current = [];
