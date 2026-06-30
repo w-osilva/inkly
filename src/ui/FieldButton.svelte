@@ -32,6 +32,7 @@
       <button
         class="inkly-fb__seg inkly-fb__collapse"
         class:inkly-fb__collapse--pinned={s.improveCount > 0 || s.improveLoading}
+        class:inkly-fb__seg--active={s.improveCount > 0}
         data-act="improve"
         title={s.improveLoading ? 'Analyzing…' : `Improve writing${s.improveCount > 0 ? ` (${s.improveCount})` : ''}`}
         aria-label={`Improve writing${s.improveCount > 0 ? ` (${s.improveCount})` : ''}`}
@@ -102,7 +103,8 @@
   /* ✨ stays muted at rest so the brand mark leads; colours up when the pill is engaged. */
   .inkly-fb__sparkle { line-height: 1; filter: grayscale(1); opacity: 0.75; transition: filter 0.12s ease, opacity 0.12s ease; }
   .inkly-fb__pill:hover .inkly-fb__sparkle,
-  .inkly-fb__pill:focus-within .inkly-fb__sparkle { filter: none; opacity: 1; }
+  .inkly-fb__pill:focus-within .inkly-fb__sparkle,
+  .inkly-fb__seg--active .inkly-fb__sparkle { filter: none; opacity: 1; } /* coloured when there are improvements */
   .inkly-fb__ring {
     position: absolute;
     inset: 0;
