@@ -23,10 +23,20 @@ describe('checkPunctuation', () => {
     expect(s[0].replacements).toEqual([', t']);
   });
 
+  it('flags a missing space after a sentence-ending period', () => {
+    const s = ruleAt('I went home.Then I slept.', 'SpaceAfterPeriod');
+    expect(s).toHaveLength(1);
+    // The rule covers only ".Th" (period + the word's first two letters) and inserts the
+    // space; applying it yields "home. Then".
+    expect(s[0].replacements).toEqual(['. Th']);
+    expect('I went home.Then I slept.'.slice(s[0].offset, s[0].offset + s[0].length)).toBe('.Th');
+  });
+
   it('does NOT flag decimals, abbreviations, or ellipsis', () => {
     expect(checkPunctuation('It costs 3,000 and pi is 3.14.')).toEqual([]);
     expect(checkPunctuation('See e.g. the U.S.A. example.')).toEqual([]);
     expect(checkPunctuation('Wait... what?')).toEqual([]);
+    expect(checkPunctuation('Ellipsis glued...Word stays safe? no')).toEqual([]);
   });
 
   it('marks punctuation issues as correctness suggestions from the inkly source', () => {
