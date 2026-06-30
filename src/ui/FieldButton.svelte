@@ -82,15 +82,15 @@
   .inkly-fb__seg {
     position: relative;
     flex: none;
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     display: grid;
     place-items: center;
     padding: 0;
     border: 0;
     border-radius: 999px;
     background: transparent;
-    font-size: 13px;
+    font-size: 12px;
     line-height: 1;
     color: var(--inkly-text, #1f2430);
     cursor: pointer;
@@ -99,7 +99,10 @@
   .inkly-fb__seg--muted { color: var(--inkly-muted, #6b7280); }
   .inkly-fb__seg--end { margin-right: 2px; }
   .inkly-fb__mark { display: inline-flex; color: var(--inkly-accent, #6366f1); }
-  .inkly-fb__sparkle { line-height: 1; }
+  /* ✨ stays muted at rest so the brand mark leads; colours up when the pill is engaged. */
+  .inkly-fb__sparkle { line-height: 1; filter: grayscale(1); opacity: 0.75; transition: filter 0.12s ease, opacity 0.12s ease; }
+  .inkly-fb__pill:hover .inkly-fb__sparkle,
+  .inkly-fb__pill:focus-within .inkly-fb__sparkle { filter: none; opacity: 1; }
   .inkly-fb__ring {
     position: absolute;
     inset: 0;
@@ -141,8 +144,9 @@
   .inkly-fb__pill:hover .inkly-fb__collapse,
   .inkly-fb__pill:focus-within .inkly-fb__collapse,
   .inkly-fb__collapse--pinned {
-    max-width: 24px;
+    max-width: 22px;
     opacity: 1;
+    overflow: visible; /* once open, let the improvement badge poke out (it was being clipped) */
     /* Opening direction: reveal immediately (no delay). */
     transition: max-width 0.16s ease, opacity 0.16s ease;
   }
