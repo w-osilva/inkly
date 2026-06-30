@@ -82,13 +82,16 @@ export const AI_PROVIDERS: AIProviderPreset[] = [
     id: 'ollama',
     label: 'Ollama (local) — fully open & offline',
     endpoint: 'http://localhost:11434/v1',
-    models: ['qwen2.5', 'qwen3', 'llama3.1', 'gemma3'],
+    // EN/PT-strong picks first; tags chosen to fit a typical 6-8 GB GPU. gemma3:4b is the
+    // best EN+PT balance; qwen2.5:7b is the quality ceiling if it fits VRAM; the 3b/llama
+    // options are the fast, low-VRAM fallbacks. (qwen3's reasoning <think> output is handled.)
+    models: ['gemma3:4b', 'qwen2.5:7b', 'qwen2.5:3b', 'llama3.2:3b'],
     keyUrl: '',
     openSource: true,
     group: 'open',
     privacy: 'local',
     noKey: true,
-    note: 'Runs on your machine. Needs Ollama running with the extension origin allowed (OLLAMA_ORIGINS). qwen2.5 is the simplest pick; qwen3 is newer (its reasoning <think> output is handled).',
+    note: 'Runs on your machine. Needs Ollama running with the extension origin allowed (OLLAMA_ORIGINS). gemma3:4b is a strong EN+PT pick; drop to a :3b model if VRAM is tight.',
   },
   // ---- Hosted proprietary (full flexibility) ----
   {
