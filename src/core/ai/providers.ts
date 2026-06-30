@@ -68,7 +68,10 @@ export const AI_PROVIDERS: AIProviderPreset[] = [
     id: 'cerebras',
     label: 'Cerebras — high throughput',
     endpoint: 'https://api.cerebras.ai/v1',
-    models: ['llama-3.3-70b', 'qwen-3-32b'],
+    // Cerebras returns 404 for unknown model IDs and rotates its roster often; gpt-oss-120b
+    // is the current production model (zai-glm-4.7 is a preview — may be discontinued).
+    // Check https://inference-docs.cerebras.ai/models/overview if a model 404s.
+    models: ['gpt-oss-120b', 'zai-glm-4.7'],
     keyUrl: 'https://cloud.cerebras.ai',
     openSource: true,
     group: 'open',
