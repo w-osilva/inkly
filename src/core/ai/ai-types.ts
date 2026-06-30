@@ -1,4 +1,4 @@
-export type AICapability = 'rewrite' | 'translate' | 'synonyms' | 'analyze' | 'improve' | 'define';
+export type AICapability = 'rewrite' | 'translate' | 'synonyms' | 'analyze' | 'improve' | 'define' | 'correct';
 
 export interface AIConfig {
   provider: 'openai-compatible';

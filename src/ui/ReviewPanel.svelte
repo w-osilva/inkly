@@ -9,10 +9,16 @@
     <div class="inkly-rv__head">
       <span class="inkly-rv__mark" aria-hidden="true"><InklyMark size={17} /></span>
       <b>Review suggestions</b>
-      <span class="inkly-rv__count">{reviewState.total}</span>
+      {#if !reviewState.clear}<span class="inkly-rv__count">{reviewState.total}</span>{/if}
       <button class="inkly-rv__x" aria-label="Close" onclick={() => reviewState.onClose?.()}>×</button>
     </div>
 
+    {#if reviewState.clear}
+      <p class="inkly-rv__clear"><span class="inkly-rv__check" aria-hidden="true">✓</span> Looks good — nothing to fix.</p>
+      <div class="inkly-rv__foot">
+        <button class="inkly-rv__accept" onclick={() => reviewState.onClose?.()}>Done</button>
+      </div>
+    {:else}
     <p class="inkly-rv__cat">{reviewState.category}{reviewState.title ? ` · ${reviewState.title}` : ''}</p>
 
     <div class="inkly-rv__preview">
@@ -45,6 +51,7 @@
         <button class="inkly-rv__arrow" aria-label="Next" onclick={() => reviewState.onNext?.()}>›</button>
       </span>
     </div>
+    {/if}
   </div>
 {/if}
 
@@ -78,6 +85,11 @@
   .inkly-rv__x:hover { color: var(--inkly-text, #15172b); }
   .inkly-rv__cat {
     margin: 0 0 8px; font-size: 11.5px; font-weight: 600; color: var(--inkly-muted, #6a6c84);
+  }
+  .inkly-rv__clear { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font-size: 13.5px; }
+  .inkly-rv__check {
+    display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; border-radius: 999px;
+    background: var(--inkly-accent-tint, #eef0fe); color: var(--inkly-accent, #6366f1); font-weight: 700; font-size: 12px;
   }
   .inkly-rv__preview { margin: 0 0 14px; font-size: 13.5px; line-height: 1.5; word-break: break-word; }
   .inkly-rv__line { margin: 0; padding: 4px 8px; border-radius: 6px; }

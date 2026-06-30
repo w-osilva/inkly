@@ -112,6 +112,21 @@ export function buildMessages(req: AIRequest): ChatMessage[] {
       ' "missing comma", "clearer word", "wordy"). At most 5, most impactful first. If nothing needs changing, return [].';
     return [{ role: 'system', content: system }, { role: 'user', content: req.text }];
   }
+  if (req.capability === 'correct') {
+    // Sentence-level correction: far higher recall on a small local model than "extract JSON
+    // edits". We diff the result against the input to recover precise, targeted fixes.
+    const system =
+      'You are a meticulous proofreader. Return the user\'s text with every grammar, spelling,' +
+      ' punctuation and clear word-choice ERROR fixed — including wrong/conflicting verb tense and' +
+      ' doubled auxiliaries (e.g. "I was have been in Paris last week" → "I was in Paris last week"),' +
+      ' wrong verb forms, missing or wrong words, and missing commas in a list.' +
+      ' Change as LITTLE as possible: fix only what is wrong, preserve the meaning, facts, tone and' +
+      ' the author\'s wording everywhere else. Do not rephrase for style, do not add or remove ideas,' +
+      ' do not answer or comment on the text.' +
+      ' Return ONLY the corrected text — no quotes, labels, preamble, or explanation. If it is already' +
+      ' correct, return it unchanged.';
+    return [{ role: 'system', content: system }, { role: 'user', content: req.text }];
+  }
   if (req.capability === 'define') {
     const inLang = req.options?.defineLang ? ` Write the definition in ${req.options.defineLang}.` : '';
     const system =

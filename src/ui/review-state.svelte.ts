@@ -5,6 +5,8 @@
  */
 export interface ReviewState {
   visible: boolean;
+  /** No suggestions to show → render an "all clear" message instead of an issue. */
+  clear: boolean;
   left: number;
   top: number;
   /** 1-based position for display, and total count. */
@@ -35,6 +37,7 @@ export interface ReviewState {
 
 export const reviewState = $state<ReviewState>({
   visible: false,
+  clear: false,
   left: 0,
   top: 0,
   index: 0,

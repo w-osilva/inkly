@@ -36,7 +36,8 @@ import { categoryLabel, LANG_NAME, dictCode } from '../core/i18n';
 import { ruleExplanation } from '../core/rule-descriptions';
 import { getSelectionInfo, type SelectionInfo } from '../core/selection';
 import { expandToSentence, isSingleWord } from '../core/sentence';
-import { parseImprovements, type Improvement } from '../core/ai/parse-improvements';
+import { parseImprovements } from '../core/ai/parse-improvements';
+import { diffEdits } from '../core/ai/diff-edits';
 import { stripThinking } from '../core/ai/strip-thinking';
 import { textareaSpanRects } from '../ui/textarea-rects';
 
@@ -185,30 +186,26 @@ export default defineContentScript({
       // Tier 1 (deterministic). The AI verification tier (runAutoImprove) always runs next and
       // folds its findings into the same `current` set via recomputeCurrent().
       ruleSuggestions = [...raw, ...punct].filter(toolOn).filter(langOk);
-      // Drop AI findings whose target no longer exists (applied/edited away).
-      aiImprovements = aiImprovements.filter((im) => text.includes(im.original) && !appliedText.has(im.original));
+      // AI corrections are offset-based against the previous text; if the text changed they're
+      // stale, so drop them until the next verify pass repopulates them.
+      if (text !== lastImproveText) aiSuggestions = [];
       recomputeCurrent();
       scheduleAutoImprove();
     }
     const runCheck = debounce(runCheckNow, 400);
 
     // The single source of truth for the field's suggestions: deterministic rules + the AI
-    // verification tier, merged by priority (rules win overlaps, so the AI complements rather
-    // than duplicates) and filtered for dismissed/suppressed/just-applied text. Everything —
-    // the underlines, the review panel and the widget count — reads from `current`.
+    // verification tier, merged so the AI's holistic correction WINS the span it covers (so
+    // "waz have been" → "was" supersedes the naive "waz" → "was"), then filtered for
+    // dismissed/suppressed/just-applied text. Everything — underlines, review, count — reads
+    // from `current`.
     function recomputeCurrent() {
       if (!activeField) { current = []; drawUnderlines(); return; }
       const text = getFieldText(activeField, activeType);
-      // Quality funnel: don't let the AI pile uncertain edits onto a sentence that still has a
-      // hard (correctness) error — the result is conflicting junk. The rule fix owns that
-      // sentence; once it's applied the AI re-runs and refines the now-clean sentence. AI still
-      // contributes freely to sentences with no hard error.
-      const dirty = ruleSuggestions
-        .filter((s) => s.severity === 'correctness')
-        .map((s) => expandToSentence(text, s.offset, s.offset + s.length));
-      const inDirtySentence = (s: Suggestion) => dirty.some((d) => s.offset >= d.start && s.offset < d.end);
-      const ai = aiSuggestionList().filter((s) => !inDirtySentence(s));
-      const merged = mergeSuggestions([...ruleSuggestions, ...ai], priority());
+      // AI corrections outrank the rules on overlap (they fix the whole broken span, not just a
+      // token). Non-overlapping AI finds keep their own ('suggestion') tier.
+      const pri = { ...priority(), byok: 99, 'chrome-ai': 99 } as Record<string, number>;
+      const merged = mergeSuggestions([...ruleSuggestions, ...aiSuggestions], pri);
       current = merged
         .filter((s) => !dismissed.has(suggestionKey(s)))
         .filter((s) => !isSuppressed(s, text.slice(s.offset, s.offset + s.length), disabledCategories, dictionary))
@@ -219,86 +216,59 @@ export default defineContentScript({
       updateFieldButton();
     }
 
-    // AI writing improvements live in their OWN list (not in `current`), so grammar
-    // underlines and the grammar review stay clean. They surface via a separate ✨
-    // field button. `current` is grammar/spelling (Harper) only.
-    let aiImprovements: Improvement[] = [];
-
-    // Automatic writing suggestions on typing pause: on-device when a built-in model
-    // exists (free), otherwise the user's BYOK key. Gated by the autoSuggest setting so a
-    // cost-conscious user can turn off the BYOK passes. Results surface inline (and in the
-    // ✨ panel). Errors/rate-limits are swallowed silently — no cost surprises, no spam.
-    // Count of in-flight AI improvement passes → drives the ✨ button spinner. A counter
-    // (not a boolean) so overlapping passes don't clear the spinner prematurely.
+    // AI verification tier: the corrections produced by the correct→diff pass, as Suggestions.
+    // Replaced wholesale on each pass; cleared when the text changes (offsets go stale).
+    let aiSuggestions: Suggestion[] = [];
+    // Counter (not boolean) so overlapping passes don't clear the spinner prematurely.
     let improveInFlight = 0;
     function setImproveLoading() {
       fieldButtonState.improveLoading = improveInFlight > 0;
-    }
-
-    // Text spans the deterministic review already flags, so the AI improve pass can avoid them.
-    function flaggedSnippets(text: string): string[] {
-      return current
-        .map((s) => text.slice(s.offset, s.offset + s.length).trim())
-        .filter((t) => t.length > 0);
-    }
-    // Build the improve options: tone + the already-flagged snippets (so the model skips them).
-    function improveOptions(text: string): Record<string, string> {
-      const o: Record<string, string> = {};
-      if (defaultTone) o.tone = defaultTone;
-      const known = [...new Set(flaggedSnippets(text))];
-      if (known.length) o.known = known.join(' | ');
-      return o;
-    }
-    // Safety net: drop AI improvements that overlap a span the review already flags, so the
-    // two layers never notify the same text even if the model ignores the hint.
-    function dropFlagged(text: string, imps: Improvement[]): Improvement[] {
-      const flagged = flaggedSnippets(text);
-      if (!flagged.length) return imps;
-      return imps.filter((im) => !flagged.some((f) => f.includes(im.original) || im.original.includes(f)));
     }
 
     // ---- AI consumption guards (the AI tier is the only paid/throttled call) ----
     let aiUnavailable = false;   // no on-device model AND no key → stop auto passes this session
     let lastImproveText = '';    // text of the last AI pass → don't re-call for identical text
 
-    // Total characters that sit OUTSIDE any sentence with a hard (correctness) error. The AI's
-    // findings inside those sentences are filtered by the quality funnel, so if there's no
-    // meaningful clean text the call would be wasted — skip it.
-    function cleanContentLength(text: string): number {
-      const ranges = ruleSuggestions
-        .filter((s) => s.severity === 'correctness')
-        .map((s) => expandToSentence(text, s.offset, s.offset + s.length))
-        .sort((a, b) => a.start - b.start);
-      let dirty = 0, cursor = -1;
-      for (const r of ranges) {
-        const start = Math.max(r.start, cursor);
-        if (r.end > start) { dirty += r.end - start; cursor = Math.max(cursor, r.end); }
-      }
-      return text.trim().length - dirty;
-    }
-
+    // The AI verification pass: ask the model for the minimally-corrected text, then DIFF it
+    // against the original to recover precise, targeted edits. Sentence-level correction has far
+    // higher recall on small local models than "extract JSON edits". Each edit becomes a
+    // Suggestion that supersedes the rules' atomic fix where they overlap.
     async function runAutoImprove() {
       const field = activeField;
       const type = activeType;
       if (!enabled || !aiImproveEnabled() || suppressAutoImprove || !field || aiUnavailable) return;
       const text = getFieldText(field, type);
       if (text.trim().length < 12) return;
-      if (text === lastImproveText) return;          // nothing changed since the last AI pass
-      if (cleanContentLength(text) < 12) return;      // everything is in error-sentences → funnel would drop it all
+      if (text === lastImproveText) return; // nothing changed since the last AI pass
       lastImproveText = text;
       const myCheck = checkSeq;
       improveInFlight++;
       setImproveLoading();
       try {
-        const res = await runAI({ capability: 'improve', text, options: improveOptions(text) }, crypto.randomUUID());
+        const res = await runAI({ capability: 'correct', text }, crypto.randomUUID());
         if (!res.ok) {
-          // No on-device model AND no/failed key → stop hammering for this field session.
-          if (res.error === 'no-builtin' || res.error === 'no-api-key') aiUnavailable = true;
+          if (res.error === 'no-builtin' || res.error === 'no-api-key') aiUnavailable = true; // stop hammering
           return;
         }
         if (checkSeq !== myCheck || activeField !== field) return;
-        aiImprovements = dropFlagged(text, parseImprovements(res.text).filter((im) => text.includes(im.original)));
-        recomputeCurrent(); // fold the AI findings into the single unified suggestion set
+        const ruleHit = (e: { offset: number; length: number }) =>
+          ruleSuggestions.find((r) => e.offset < r.offset + r.length && r.offset < e.offset + e.length);
+        aiSuggestions = diffEdits(text, res.text.trim())
+          .filter((e) => !appliedText.has(text.slice(e.offset, e.offset + e.length)))
+          .map((e) => {
+            const hit = ruleHit(e); // overlaps a rule error → it's a correction; else a softer suggestion
+            return makeSuggestion({
+              offset: e.offset,
+              length: e.length,
+              replacements: [e.replacement],
+              message: hit ? 'Suggested correction.' : 'Consider this revision.',
+              ruleId: 'AICorrection',
+              category: 'Grammar',
+              severity: hit ? hit.severity : 'suggestion',
+              source: 'byok',
+            });
+          });
+        recomputeCurrent();
       } finally {
         improveInFlight--;
         setImproveLoading();
@@ -306,30 +276,6 @@ export default defineContentScript({
     }
     // 2s pause-after-typing: long enough to coalesce a burst of keystrokes into one AI call.
     const scheduleAutoImprove = debounce(() => { void runAutoImprove(); }, 2000);
-
-    // AI writing improvements as inline suggestions: locate each in the live text and map
-    // to the subjective ('suggestion') tier so they underline distinctly from grammar.
-    function aiSuggestionList(): Suggestion[] {
-      if (!activeField || !aiImproveEnabled() || aiImprovements.length === 0) return [];
-      const text = getFieldText(activeField, activeType);
-      const out: Suggestion[] = [];
-      for (const im of aiImprovements) {
-        if (appliedText.has(im.original)) continue; // don't re-suggest what we just applied
-        const offset = text.indexOf(im.original);
-        if (offset === -1) continue;
-        out.push(makeSuggestion({
-          offset,
-          length: im.original.length,
-          replacements: [im.improved],
-          message: im.reason || 'Consider rephrasing for clarity.',
-          ruleId: 'AIImprovement',
-          category: 'Style',
-          severity: 'suggestion',
-          source: 'byok',
-        }));
-      }
-      return out;
-    }
 
     // Re-promote our top-layer overlay to the FRONT of the top layer. Page top-layer
     // elements (e.g. a docs "Copy" popover) shown after us would otherwise sit in front;
@@ -427,6 +373,7 @@ export default defineContentScript({
     }
 
     function renderReviewItem() {
+      if (reviewState.clear) return; // the "all clear" panel has no item to render
       if (!activeField || current.length === 0) { hideReview(); return; }
       reviewIndex = Math.max(0, Math.min(reviewIndex, current.length - 1));
       const s = current[reviewIndex];
@@ -446,9 +393,16 @@ export default defineContentScript({
       renderer.highlight(getSpanRects(activeField, activeType, s.offset, s.length), s.severity);
     }
 
-    function openReview() {
-      if (!activeField || current.length === 0) return;
+    async function openReview() {
+      if (!activeField) return;
+      // No suggestions? Re-verify (the field may have changed without a check), then either
+      // open the issues or confirm there's nothing to fix — clicking should never feel dead.
+      if (current.length === 0) {
+        await runCheckNow();
+        if (current.length === 0) { showAllClear(); return; }
+      }
       raiseOverlay();
+      reviewState.clear = false;
       reviewIndex = 0;
       hideCard();
       hideAIPanel();
@@ -462,8 +416,23 @@ export default defineContentScript({
       reviewState.visible = true;
     }
 
+    // "All clear" confirmation when the widget is clicked with no suggestions.
+    function showAllClear() {
+      if (!activeField) return;
+      raiseOverlay();
+      hideCard();
+      hideAIPanel();
+      reviewIndex = 0;
+      reviewState.clear = true;
+      reviewState.total = 0;
+      reviewState.onClose = hideReview;
+      positionReview();
+      reviewState.visible = true;
+    }
+
     function hideReview() {
       reviewState.visible = false;
+      reviewState.clear = false;
       reviewState.onAccept = null;
       reviewState.onPick = null;
       reviewState.onDismiss = null;
@@ -519,19 +488,14 @@ export default defineContentScript({
       cardState.severity = s.severity;
       cardState.left = pos.left;
       cardState.top = pos.top;
-      const isAI = s.ruleId === 'AIImprovement';
-      // Capture the flagged text BEFORE applying (after apply the slice is the replacement).
-      const origText = activeField ? getFieldText(activeField, activeType).slice(s.offset, s.offset + s.length) : '';
-      // Drop the just-acted-on suggestion from the right source list so its underline
-      // disappears immediately. Grammar lives in `current`; AI suggestions are derived
-      // from `aiImprovements`.
+      const isAI = s.source === 'byok' || s.source === 'chrome-ai';
+      // Drop the just-acted-on suggestion so its underline disappears immediately. Both rules
+      // and AI corrections live in `current` now; also drop it from the AI source list so the
+      // next recompute (before a fresh verify) doesn't re-add it.
       const dropSuggestion = () => {
-        if (isAI) {
-          aiImprovements = aiImprovements.filter((im) => !(im.improved === s.replacements[0] && im.original === origText));
-        } else {
-          const key = suggestionKey(s);
-          current = current.filter((c) => suggestionKey(c) !== key);
-        }
+        const key = suggestionKey(s);
+        current = current.filter((c) => suggestionKey(c) !== key);
+        aiSuggestions = aiSuggestions.filter((c) => suggestionKey(c) !== key);
       };
       cardState.onApply = (replacement: string) => {
         if (activeField) applyEdit(() => applyReplacement(activeField!, activeType, s, replacement));
@@ -833,7 +797,7 @@ export default defineContentScript({
         current = [];
         ruleSuggestions = [];
         hitRects = [];
-        aiImprovements = [];
+        aiSuggestions = [];
         renderer.clear();
         fieldButtonState.visible = false;
         hideReview();
@@ -851,8 +815,8 @@ export default defineContentScript({
           }
         }
         // Turning the AI-improve tool off clears any pending inline AI suggestions now.
-        if (!aiImproveEnabled() && aiImprovements.length > 0) {
-          aiImprovements = [];
+        if (!aiImproveEnabled() && aiSuggestions.length > 0) {
+          aiSuggestions = [];
           updateFieldButton();
           drawUnderlines();
         }
@@ -918,7 +882,7 @@ export default defineContentScript({
       current = [];
       ruleSuggestions = [];
       hitRects = [];
-      aiImprovements = [];
+      aiSuggestions = [];
       renderer.clear();
       fieldButtonState.visible = false;
       hideReview();
@@ -943,7 +907,7 @@ export default defineContentScript({
       suppressAutoImprove = false;
       appliedText.clear();
       dismissed.clear();
-      aiImprovements = [];
+      aiSuggestions = [];
       hideCard();
       hideAIPanel();
       renderer.clear();

@@ -45,6 +45,7 @@ const server = createServer((req, res) => {
       const tag = toneMatch ? `[${toneMatch[1].toLowerCase()}]` : '';
       const translateMatch = systemText.match(/translate the user'?s text into (\w+)/i);
       const isSynonyms = /thesaurus|synonyms/i.test(systemText);
+      const isCorrect = /meticulous proofreader|corrected text/i.test(systemText);
       const isImprove = /careful (writing assistant|proofreader)|JSON array of objects/i.test(systemText);
       const isAnalyze = /writing coach/i.test(systemText);
       const isDefine = /concise dictionary|define the user/i.test(systemText);
@@ -58,6 +59,12 @@ const server = createServer((req, res) => {
           { sense: 'first sense', synonyms: ['alpha', 'beta'] },
           { sense: 'second sense', synonyms: ['gamma'] },
         ]);
+      } else if (isCorrect) {
+        // Return the minimally-corrected text; the client diffs it into targeted edits.
+        content = userText
+          .replace(/\bteh\b/g, 'the')
+          .replace(/\bwaz\b/g, 'was')
+          .replace(/was have been/g, 'was'); // doubled auxiliary the rules can't catch
       } else if (isImprove) {
         // Return one applicable edit whose "original" is an exact substring of the input.
         if (userText.includes('proof')) {
