@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { diffEdits } from '../src/core/ai/diff-edits';
+import { diffEdits, preservesEntities } from '../src/core/ai/diff-edits';
 
 const apply = (s: string, edits: ReturnType<typeof diffEdits>) => {
   // apply right-to-left so earlier offsets stay valid
@@ -56,5 +56,28 @@ describe('diffEdits', () => {
     const b = 'Hello there.';
     const edits = diffEdits(a, b);
     expect(apply(a, edits)).toBe(b);
+  });
+});
+
+describe('preservesEntities', () => {
+  const a = 'I had been in Santos before I went to Greece';
+  it('rejects an edit that deletes a proper noun', () => {
+    // model "correction" drops "Greece"
+    const edit = diffEdits(a, 'I had been in Santos before I went to')[0];
+    expect(preservesEntities(a, edit)).toBe(false);
+  });
+  it('rejects an edit that swaps a proper noun for another', () => {
+    const edit = diffEdits(a, 'I had been in Santos before I went to Italy')[0];
+    expect(preservesEntities(a, edit)).toBe(false);
+  });
+  it('rejects dropping a number', () => {
+    const src = 'I paid 250 dollars';
+    const edit = diffEdits(src, 'I paid dollars')[0];
+    expect(preservesEntities(src, edit)).toBe(false);
+  });
+  it('allows fixes that touch only lowercase/function words', () => {
+    const src = 'I was have been in Greece';
+    const edit = diffEdits(src, 'I was in Greece')[0]; // drops "have been" (no entities)
+    expect(preservesEntities(src, edit)).toBe(true);
   });
 });

@@ -37,7 +37,7 @@ import { ruleExplanation } from '../core/rule-descriptions';
 import { getSelectionInfo, type SelectionInfo } from '../core/selection';
 import { expandToSentence, isSingleWord } from '../core/sentence';
 import { parseImprovements } from '../core/ai/parse-improvements';
-import { diffEdits } from '../core/ai/diff-edits';
+import { diffEdits, preservesEntities } from '../core/ai/diff-edits';
 import { stripThinking } from '../core/ai/strip-thinking';
 import { textareaSpanRects } from '../ui/textarea-rects';
 
@@ -255,6 +255,7 @@ export default defineContentScript({
           ruleSuggestions.find((r) => e.offset < r.offset + r.length && r.offset < e.offset + e.length);
         aiSuggestions = diffEdits(text, res.text.trim())
           .filter((e) => !appliedText.has(text.slice(e.offset, e.offset + e.length)))
+          .filter((e) => preservesEntities(text, e)) // never silently drop a name/number the user wrote
           .map((e) => {
             const hit = ruleHit(e); // overlaps a rule error → it's a correction; else a softer suggestion
             return makeSuggestion({

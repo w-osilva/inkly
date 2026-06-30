@@ -56,3 +56,14 @@ export function diffEdits(original: string, corrected: string): Edit[] {
   if (i < n || j < mlen) pushEdit(i, n, j, mlen);
   return edits;
 }
+
+/**
+ * Guard against a weak model destroying meaning: reject an edit that drops a proper noun or a
+ * number the user wrote (e.g. "…went to Greece" → "…went to"). An entity is "kept" only if it
+ * still appears in the replacement. Lowercase words and function words are fair game.
+ */
+export function preservesEntities(original: string, e: Edit): boolean {
+  const removed = original.slice(e.offset, e.offset + e.length);
+  const entities = removed.match(/\b[A-Z][\w']*|\d[\d.,]*/g) ?? [];
+  return entities.every((t) => e.replacement.includes(t));
+}

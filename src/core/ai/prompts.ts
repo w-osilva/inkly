@@ -121,8 +121,9 @@ export function buildMessages(req: AIRequest): ChatMessage[] {
       ' doubled auxiliaries (e.g. "I was have been in Paris last week" → "I was in Paris last week"),' +
       ' wrong verb forms, missing or wrong words, and missing commas in a list.' +
       ' Change as LITTLE as possible: fix only what is wrong, preserve the meaning, facts, tone and' +
-      ' the author\'s wording everywhere else. Do not rephrase for style, do not add or remove ideas,' +
-      ' do not answer or comment on the text.' +
+      ' the author\'s wording everywhere else. NEVER delete or change names, places, numbers, or facts,' +
+      ' and never drop a clause that carries meaning. Do not rephrase for style, do not add or remove' +
+      ' ideas, do not answer or comment on the text. When in doubt, leave the text unchanged.' +
       ' Return ONLY the corrected text — no quotes, labels, preamble, or explanation. If it is already' +
       ' correct, return it unchanged.';
     return [{ role: 'system', content: system }, { role: 'user', content: req.text }];
