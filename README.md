@@ -83,6 +83,29 @@ Load it unpacked in **Chrome / Edge / Brave**: open `chrome://extensions`, enabl
 
 Correction works with zero setup. For the AI features, open **Options** (the "Tools & AI…" link in the popup), pick a provider, and paste a key. The key lives in `chrome.storage.local` and is sent only to your chosen endpoint. With Chrome's built-in AI available, no key is needed. For a fully open/local AI, run **Ollama** and select it.
 
+## Run AI locally with Ollama (free & private)
+
+Want the AI features with **no key, no cost, and nothing leaving your machine**? Run [Ollama](https://ollama.com) with an open model. **`gemma3:4b`** is a great default for English + Portuguese; it needs ~3–4 GB of VRAM (a 6 GB GPU is plenty). On lighter hardware use **`qwen2.5:3b`**.
+
+1. **Install** Ollama (ollama.com) and pull a model:
+   ```bash
+   ollama pull gemma3:4b
+   ```
+2. **Allow the extension to reach Ollama.** Ollama blocks cross-origin requests by default, so you must allow the extension origin via `OLLAMA_ORIGINS` — this is the one step people miss:
+   - **macOS / Linux:**
+     ```bash
+     OLLAMA_ORIGINS='chrome-extension://*' ollama serve
+     ```
+   - **Windows (PowerShell):** the app usually runs already, so set it persistently and restart Ollama from the tray:
+     ```powershell
+     setx OLLAMA_ORIGINS "chrome-extension://*"
+     # then quit Ollama from the system tray and reopen it
+     ```
+   Verify it's up: `curl http://localhost:11434/api/tags`.
+3. In **Options → AI provider** pick **Ollama** and set the model to exactly what you pulled (e.g. `gemma3:4b`). Done — fully local, free, private.
+
+> Tip: the first request loads the model into memory (a little slow); subsequent ones are fast. Bigger models = better suggestions but more VRAM — `gemma3:4b` is the sweet spot for most laptops.
+
 ## Self-host LanguageTool (optional)
 
 By default LanguageTool uses the public API (`api.languagetool.org`), which is rate-limited (~20 req/min, ~20 KB/request) and sees your text. Running it locally removes both limits and keeps everything on your machine — the **rules are the same open-source engine**, so detection quality matches the public API (it does **not** unlock Premium rules).
