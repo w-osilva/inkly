@@ -251,9 +251,13 @@ export default defineContentScript({
           return;
         }
         if (checkSeq !== myCheck || activeField !== field) return;
+        const corrected = res.text.trim();
+        // Implausibly longer output ⇒ the model added a preamble/explanation ("Here is the
+        // corrected text: …") rather than just correcting — diffing it would produce garbage.
+        if (corrected.length > text.length * 1.6 + 40) return;
         const ruleHit = (e: { offset: number; length: number }) =>
           ruleSuggestions.find((r) => e.offset < r.offset + r.length && r.offset < e.offset + e.length);
-        aiSuggestions = diffEdits(text, res.text.trim())
+        aiSuggestions = diffEdits(text, corrected)
           .filter((e) => !appliedText.has(text.slice(e.offset, e.offset + e.length)))
           .filter((e) => preservesEntities(text, e)) // never silently drop a name/number the user wrote
           .map((e) => {

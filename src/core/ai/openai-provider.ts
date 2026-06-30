@@ -7,7 +7,12 @@ export interface HttpRequest {
   body: string;
 }
 
-export function buildHttpRequest(config: AIConfig, messages: ChatMessage[], stream = false): HttpRequest {
+export function buildHttpRequest(
+  config: AIConfig,
+  messages: ChatMessage[],
+  stream = false,
+  temperature?: number,
+): HttpRequest {
   const base = config.endpoint.replace(/\/$/, '');
   return {
     url: `${base}/chat/completions`,
@@ -15,7 +20,14 @@ export function buildHttpRequest(config: AIConfig, messages: ChatMessage[], stre
       'Content-Type': 'application/json',
       Authorization: `Bearer ${config.apiKey}`,
     },
-    body: JSON.stringify({ model: config.model, messages: withThinkingOff(config.model, messages), stream }),
+    body: JSON.stringify({
+      model: config.model,
+      messages: withThinkingOff(config.model, messages),
+      stream,
+      // Low temperature for factual tasks keeps a small local model from "inventing" (e.g.
+      // deleting a proper noun); creative tasks get more room. Omitted ⇒ provider default.
+      ...(temperature !== undefined ? { temperature } : {}),
+    }),
   };
 }
 

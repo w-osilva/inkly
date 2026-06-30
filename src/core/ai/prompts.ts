@@ -1,6 +1,15 @@
-import { AIRequest } from './ai-types';
+import { AIRequest, AICapability } from './ai-types';
 
 export interface ChatMessage { role: 'system' | 'user'; content: string; }
+
+/**
+ * Sampling temperature per task. Correction/translation/definition must be faithful, so keep
+ * it low — a small local model at the default ~0.8 will "improve" correct text or drop words.
+ * Rewrite and synonyms want some creative range.
+ */
+export function temperatureFor(capability: AICapability): number {
+  return capability === 'rewrite' || capability === 'synonyms' ? 0.7 : 0.2;
+}
 
 // Concrete guidance per tone so each one visibly changes the output (a bare "use a X
 // tone" barely moves a model). Falls back to the raw tone word for anything unlisted.

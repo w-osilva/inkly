@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { buildMessages } from '../src/core/ai/prompts';
+import { buildMessages, temperatureFor } from '../src/core/ai/prompts';
+
+describe('temperatureFor', () => {
+  it('is low for factual tasks and higher for creative ones', () => {
+    expect(temperatureFor('correct')).toBeLessThanOrEqual(0.3);
+    expect(temperatureFor('translate')).toBeLessThanOrEqual(0.3);
+    expect(temperatureFor('rewrite')).toBeGreaterThan(0.5);
+    expect(temperatureFor('synonyms')).toBeGreaterThan(0.5);
+  });
+});
 
 describe('buildMessages', () => {
   it('rewrite: system instructs to return only the rewritten text; user carries the text', () => {

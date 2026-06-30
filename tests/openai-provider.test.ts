@@ -32,6 +32,10 @@ describe('buildHttpRequest', () => {
     const body = JSON.parse(buildHttpRequest({ ...config, model: 'qwen2.5' }, messages).body);
     expect(body.messages).toEqual(messages);
   });
+  it('includes temperature only when provided', () => {
+    expect('temperature' in JSON.parse(buildHttpRequest(config, messages).body)).toBe(false);
+    expect(JSON.parse(buildHttpRequest(config, messages, false, 0.2).body).temperature).toBe(0.2);
+  });
 });
 
 describe('parseChatCompletion', () => {

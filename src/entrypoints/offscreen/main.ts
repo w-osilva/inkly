@@ -1,7 +1,7 @@
 import { LocalLinter, Dialect, createBinaryModuleFromUrl, type Linter } from 'harper.js';
 import type { PlainLint, OffscreenLintRequest, LintResponse } from '../../core/providers/harper-messages';
 import { hasKey } from '../../core/ai/ai-config';
-import { buildMessages } from '../../core/ai/prompts';
+import { buildMessages, temperatureFor } from '../../core/ai/prompts';
 import { buildHttpRequest } from '../../core/ai/openai-provider';
 import { splitSSE, deltaFromEvent } from '../../core/ai/sse';
 import type { AIConfig, AIRequest, AIResponse } from '../../core/ai/ai-types';
@@ -99,7 +99,7 @@ async function runAI(request: AIRequest, config: AIConfig, streamId: string): Pr
   if (!hasKey(config)) return (await synFallback()) ?? { ok: false, error: 'no-api-key' };
   try {
     const messages = buildMessages(request);
-    const req = buildHttpRequest(config, messages, true); // stream
+    const req = buildHttpRequest(config, messages, true, temperatureFor(request.capability)); // stream
     const res = await fetch(req.url, { method: 'POST', headers: req.headers, body: req.body });
     if (!res.ok || !res.body) return (await synFallback()) ?? { ok: false, error: `http ${res.status}` };
     const reader = res.body.getReader();
