@@ -34,26 +34,42 @@ export function diffEdits(original: string, corrected: string): Edit[] {
     }
   }
 
-  const edits: Edit[] = [];
+  // Standard LCS walk → a stream of match/delete/insert ops over tokens.
+  type Op = { kind: 'match'; a: number } | { kind: 'del'; a: number } | { kind: 'ins'; b: number };
+  const ops: Op[] = [];
   let i = 0, j = 0;
-  const pushEdit = (ai0: number, ai1: number, bj0: number, bj1: number) => {
-    const offset = ai0 < n ? A[ai0].start : original.length;
-    const end = ai1 > ai0 ? A[ai1 - 1].start + A[ai1 - 1].text.length : offset;
-    const replacement = B.slice(bj0, bj1).map((t) => t.text).join('');
-    if (end - offset > 0 || replacement.length > 0) edits.push({ offset, length: end - offset, replacement });
-  };
-
   while (i < n && j < mlen) {
-    if (A[i].text === B[j].text) { i++; j++; continue; }
-    // Walk the changed run until the sequences realign (greedy along the LCS).
-    const ai0 = i, bj0 = j;
-    while (i < n && j < mlen && A[i].text !== B[j].text) {
-      if (dp[i + 1][j] >= dp[i][j + 1]) i++; else j++;
-    }
-    pushEdit(ai0, i, bj0, j);
+    if (A[i].text === B[j].text) { ops.push({ kind: 'match', a: i }); i++; j++; }
+    else if (dp[i + 1][j] >= dp[i][j + 1]) { ops.push({ kind: 'del', a: i }); i++; }
+    else { ops.push({ kind: 'ins', b: j }); j++; }
   }
-  // Tail: deletion (A left over) or insertion (B left over).
-  if (i < n || j < mlen) pushEdit(i, n, j, mlen);
+  while (i < n) { ops.push({ kind: 'del', a: i }); i++; }
+  while (j < mlen) { ops.push({ kind: 'ins', b: j }); j++; }
+
+  // Coalesce each run of adjacent del/ins into one edit; a `replacement` paired with a deleted
+  // span becomes a clean replace ("Greece" → "Greece."), not a delete + a stray insert.
+  const edits: Edit[] = [];
+  let pending: Edit | null = null;
+  let aPos = 0; // char offset in `original` just past the last matched/deleted token
+  const flush = () => {
+    if (pending && (pending.length > 0 || pending.replacement.length > 0)) edits.push(pending);
+    pending = null;
+  };
+  for (const op of ops) {
+    if (op.kind === 'match') {
+      flush();
+      aPos = A[op.a].start + A[op.a].text.length;
+    } else if (op.kind === 'del') {
+      const tok = A[op.a];
+      if (!pending) pending = { offset: tok.start, length: 0, replacement: '' };
+      pending.length = tok.start + tok.text.length - pending.offset;
+      aPos = tok.start + tok.text.length;
+    } else {
+      if (!pending) pending = { offset: aPos, length: 0, replacement: '' };
+      pending.replacement += B[op.b].text;
+    }
+  }
+  flush();
   return edits;
 }
 

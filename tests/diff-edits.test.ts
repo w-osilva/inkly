@@ -57,6 +57,16 @@ describe('diffEdits', () => {
     const edits = diffEdits(a, b);
     expect(apply(a, edits)).toBe(b);
   });
+
+  it('adds a final period after a proper noun without duplicating it', () => {
+    const a = 'I went to Greece';
+    const b = 'I went to Greece.';
+    const edits = diffEdits(a, b);
+    expect(edits).toHaveLength(1);
+    expect(apply(a, edits)).toBe(b); // "Greece." — never "GreeceGreece."
+    // the edit replaces "Greece" with "Greece.", so the entity is preserved
+    expect(preservesEntities(a, edits[0])).toBe(true);
+  });
 });
 
 describe('preservesEntities', () => {
