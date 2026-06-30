@@ -538,6 +538,7 @@ export default defineContentScript({
       const s = current[reviewIndex];
       if (!s || !activeField) return;
       applyEdit(() => applyReplacement(activeField!, activeType, s, rep));
+      suppressAutoImprove = false; // a deterministic fix → let the AI re-judge the new sentence
       // Text changed → re-check for valid offsets; runCheckNow re-renders the panel.
       await runCheckNow();
       if (current.length === 0) hideReview();
@@ -596,7 +597,10 @@ export default defineContentScript({
       cardState.onApply = (replacement: string) => {
         if (activeField) applyEdit(() => applyReplacement(activeField!, activeType, s, replacement));
         appliedText.add(replacement); // leave the applied result alone (no flip-flop)
-        if (isAI) suppressAutoImprove = true; // applying an AI clarity fix shouldn't spawn more
+        // Applying an AI clarity fix shouldn't spawn more (avoids circles); but applying a
+        // deterministic grammar/spelling fix SHOULD wake the AI to re-judge the new sentence
+        // (e.g. "waz"→"was" yields "I was have been …", which only the AI can catch).
+        suppressAutoImprove = isAI;
         // Drop it now so its underline/count update immediately; the text changed, so
         // re-check for the authoritative set (other offsets have shifted).
         dropSuggestion();
