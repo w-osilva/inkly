@@ -66,7 +66,7 @@ async function runAI(request: AIRequest, config: AIConfig, streamId: string): Pr
   // key) — only fall back to AI when the word isn't found. Skipped under e2e (the mock
   // LLM provides deterministic results without hitting the network).
   if (request.capability === 'define' && !import.meta.env.VITE_INKLY_E2E) {
-    const def = await lookupDefinition(request.text, request.options?.defineLang || 'en');
+    const def = await lookupDefinition(request.text, request.options?.defineCode || 'en');
     if (def !== null) return { ok: true, text: def };
   }
   // On-device (Gemini Nano) is the FREE fallback for users without a key. When the user

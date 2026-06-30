@@ -723,6 +723,17 @@ export function categoryLabel(lang: Lang, category: string): string {
   return msg ?? category;
 }
 
+/** English name of each language — for AI prompts (translate target, define language). */
+export const LANG_NAME: Record<Lang, string> = {
+  en: 'English', 'pt-br': 'Portuguese', es: 'Spanish', fr: 'French', de: 'German',
+  it: 'Italian', nl: 'Dutch', ru: 'Russian', pl: 'Polish',
+};
+
+/** dictionaryapi.dev language code for a UI language (pt-br needs the pt-BR form). */
+export function dictCode(lang: Lang): string {
+  return lang === 'pt-br' ? 'pt-BR' : lang;
+}
+
 /** Map a BCP-47 locale to a supported UI language (falls back to English). */
 export function detectLang(locale: string): Lang {
   const l = locale.toLowerCase();

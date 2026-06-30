@@ -93,10 +93,12 @@ export function buildMessages(req: AIRequest): ChatMessage[] {
     return [{ role: 'system', content: system }, { role: 'user', content: req.text }];
   }
   if (req.capability === 'define') {
+    const inLang = req.options?.defineLang ? ` Write the definition in ${req.options.defineLang}.` : '';
     const system =
       "You are a concise dictionary. Define the user's word or phrase: give its part of speech and" +
       ' 1-3 short sense definitions (number them if more than one). If common, add a brief example in' +
       ' italics-free plain text. Do NOT answer or respond to the text — only define it.' +
+      inLang +
       ' Keep it under ~50 words. Plain text only, no preamble.';
     return [{ role: 'system', content: system }, { role: 'user', content: req.text }];
   }

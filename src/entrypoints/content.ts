@@ -32,7 +32,7 @@ import FieldButton from '../ui/FieldButton.svelte';
 import { fieldButtonState } from '../ui/field-button-state.svelte';
 import ReviewPanel from '../ui/ReviewPanel.svelte';
 import { reviewState } from '../ui/review-state.svelte';
-import { categoryLabel } from '../core/i18n';
+import { categoryLabel, LANG_NAME, dictCode } from '../core/i18n';
 import { ruleExplanation } from '../core/rule-descriptions';
 import { getSelectionInfo, type SelectionInfo } from '../core/selection';
 import { expandToSentence, isSingleWord } from '../core/sentence';
@@ -733,9 +733,12 @@ export default defineContentScript({
       } else if (capability === 'improve') {
         if (aiPanelState.tone) options.tone = aiPanelState.tone;
       } else if (capability === 'translate') {
-        options.targetLang = lang === 'pt-br' ? 'Portuguese' : 'English';
+        // Translate INTO the UI language in use.
+        options.targetLang = LANG_NAME[lang];
       } else if (capability === 'define') {
-        options.defineLang = lang === 'pt-br' ? 'pt-BR' : 'en';
+        // Define IN the UI language: a code for the dictionary API, a name for the AI fallback.
+        options.defineCode = dictCode(lang);
+        options.defineLang = LANG_NAME[lang];
       }
       const res = await runAI({ capability, text: aText, options }, streamId);
       // Guard: if the panel was dismissed/hidden meanwhile, or a newer call started, drop the result.
