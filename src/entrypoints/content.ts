@@ -218,9 +218,12 @@ export default defineContentScript({
       const field = activeField;
       const type = activeType;
       if (!enabled || !aiImproveEnabled() || suppressAutoImprove || !field) return;
-      // AI runs ALONGSIDE LanguageTool — LT is the base, but it misses things (e.g. a wrong
-      // verb form like "to eating"), so AI catches the gaps. Overlaps with LT/Harper are
-      // deduped by priority in the merge (rules win), so AI only adds what they missed.
+      // Hold the automatic AI pass until the deterministic review (Harper/LanguageTool/
+      // punctuation) is clear, so the two layers don't flag the same span and double-notify.
+      // The ✨ button still fetches improvements on demand at any time.
+      if (current.length > 0) return;
+      // AI catches what the rule engines miss (e.g. a wrong verb form like "to eating") once
+      // the basic errors are resolved. Any residual overlap is deduped by priority in the merge.
       const text = getFieldText(field, type);
       if (text.trim().length < 12) return;
       const myCheck = checkSeq;
