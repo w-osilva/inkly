@@ -12,9 +12,9 @@ const server = createServer((req, res) => {
       const matches = [];
       const reallyAt = text.indexOf('really');
       if (reallyAt !== -1) matches.push({
-        offset: reallyAt, length: 6, message: 'Consider a stronger word',
+        offset: reallyAt, length: 6, message: 'Word form',
         replacements: [{ value: 'very' }],
-        rule: { id: 'REALLY', issueType: 'style', category: { name: 'Style' } },
+        rule: { id: 'REALLY', issueType: 'grammar', category: { name: 'Grammar' } },
       });
       // Overlaps Harper's "teh"→"the" so e2e can prove priority order picks the winner.
       const tehAt = text.indexOf('teh');

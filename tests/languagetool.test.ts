@@ -19,6 +19,15 @@ describe('checkLanguageTool', () => {
     expect(out[1]).toMatchObject({ category: 'Spelling', replacements: ['This', 'Thus'] });
   });
 
+  it('drops style/word-choice matches (left to the AI improve layer)', async () => {
+    const out = await checkLanguageTool('x', 'https://lt/v2', 'auto', fakeFetch([
+      { offset: 0, length: 8, replacements: [{ value: 'famished' }], rule: { id: 'WORD_VARIETY', issueType: 'style' } },
+      { offset: 9, length: 3, replacements: [{ value: 'the' }], rule: { id: 'SP', issueType: 'misspelling' } },
+    ]));
+    expect(out).toHaveLength(1);
+    expect(out[0].category).toBe('Spelling');
+  });
+
   it('trims a trailing slash on the endpoint', async () => {
     const fetchFn = vi.fn(fakeFetch([]));
     await checkLanguageTool('x', 'https://lt.example/v2/', 'auto', fetchFn);
