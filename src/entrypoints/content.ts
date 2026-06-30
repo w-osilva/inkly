@@ -255,20 +255,25 @@ export default defineContentScript({
         // Implausibly longer output ⇒ the model added a preamble/explanation ("Here is the
         // corrected text: …") rather than just correcting — diffing it would produce garbage.
         if (corrected.length > text.length * 1.6 + 40) return;
+        // The most-severe rule this edit overlaps, if any. When the AI just refines an error a
+        // rule already caught, we keep that rule's category/severity/explanation — only the
+        // suggested fix is the AI's. Pure AI finds (no overlap) get a soft, generic label.
         const ruleHit = (e: { offset: number; length: number }) =>
-          ruleSuggestions.find((r) => e.offset < r.offset + r.length && r.offset < e.offset + e.length);
+          ruleSuggestions
+            .filter((r) => e.offset < r.offset + r.length && r.offset < e.offset + e.length)
+            .sort((a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity])[0];
         aiSuggestions = diffEdits(text, corrected)
           .filter((e) => !appliedText.has(text.slice(e.offset, e.offset + e.length)))
           .filter((e) => preservesEntities(text, e)) // never silently drop a name/number the user wrote
           .map((e) => {
-            const hit = ruleHit(e); // overlaps a rule error → it's a correction; else a softer suggestion
+            const hit = ruleHit(e);
             return makeSuggestion({
               offset: e.offset,
               length: e.length,
               replacements: [e.replacement],
-              message: hit ? 'Suggested correction.' : 'Consider this revision.',
-              ruleId: 'AICorrection',
-              category: 'Grammar',
+              message: hit ? hit.message : 'Consider this revision.',
+              ruleId: hit ? hit.ruleId : 'AICorrection',
+              category: hit ? hit.category : 'Grammar',
               severity: hit ? hit.severity : 'suggestion',
               source: 'byok',
             });
