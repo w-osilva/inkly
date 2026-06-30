@@ -135,13 +135,16 @@
     max-width: 0;
     overflow: hidden;
     opacity: 0;
-    transition: max-width 0.16s ease, opacity 0.16s ease;
+    /* Closing direction: wait before collapsing, so the mouse can reach the icons. */
+    transition: max-width 0.16s ease 0.45s, opacity 0.16s ease 0.45s;
   }
   .inkly-fb__pill:hover .inkly-fb__collapse,
   .inkly-fb__pill:focus-within .inkly-fb__collapse,
   .inkly-fb__collapse--pinned {
     max-width: 24px;
     opacity: 1;
+    /* Opening direction: reveal immediately (no delay). */
+    transition: max-width 0.16s ease, opacity 0.16s ease;
   }
 
   @media (prefers-reduced-motion: reduce) {
