@@ -150,6 +150,11 @@ export default defineContentScript({
     // typing, so it must not lift the pause).
     let programmaticEdit = false;
     let suppressAutoImprove = false;
+    // Text we just applied — don't let any engine immediately re-flag it (e.g. LanguageTool
+    // suggesting "occasionally on weekends" right after you accepted "on weekends
+    // occasionally"). Cleared when the user actually types. Text-based, so offset shifts
+    // from other edits don't matter.
+    const appliedText = new Set<string>();
     function applyEdit(fn: () => void) {
       programmaticEdit = true;
       try { fn(); } finally { programmaticEdit = false; }
@@ -180,6 +185,11 @@ export default defineContentScript({
       current = current.filter(
         (s) => !isSuppressed(s, text.slice(s.offset, s.offset + s.length), disabledCategories, dictionary),
       );
+      // Don't re-flag text we just applied (stops accept → re-suggest flip-flop).
+      current = current.filter((s) => !appliedText.has(text.slice(s.offset, s.offset + s.length)));
+      // Drop improvements whose target no longer exists (applied or edited away) so the
+      // ✨ count/panel don't keep marking already-fixed text.
+      aiImprovements = aiImprovements.filter((im) => text.includes(im.original) && !appliedText.has(im.original));
       if (cardState.visible) hideCard();
       drawUnderlines();
       if (reviewState.visible) renderReviewItem();
@@ -248,7 +258,10 @@ export default defineContentScript({
     }
 
     function improvementsToState() {
-      return aiImprovements.map((im) => ({ from: im.original, to: im.improved, reason: im.reason }));
+      const text = activeField ? getFieldText(activeField, activeType) : '';
+      return aiImprovements
+        .filter((im) => text.includes(im.original) && !appliedText.has(im.original))
+        .map((im) => ({ from: im.original, to: im.improved, reason: im.reason }));
     }
 
     function showImprovePanel() {
@@ -267,6 +280,7 @@ export default defineContentScript({
           const off = full.indexOf(im.original);
           if (off !== -1) applyEdit(() => applyRange(activeField!, activeType, off, off + im.original.length, im.improved));
         }
+        if (im) appliedText.add(im.improved); // leave the applied result alone
         suppressAutoImprove = true; // don't auto-suggest more until the user types again
         aiImprovements = aiImprovements.filter((_, idx) => idx !== i);
         aiPanelState.improvements = improvementsToState();
@@ -324,6 +338,7 @@ export default defineContentScript({
       const text = getFieldText(activeField, activeType);
       const out: Suggestion[] = [];
       for (const im of aiImprovements) {
+        if (appliedText.has(im.original)) continue; // don't re-suggest what we just applied
         const offset = text.indexOf(im.original);
         if (offset === -1) continue;
         out.push(makeSuggestion({
@@ -401,10 +416,13 @@ export default defineContentScript({
       const r = activeField.getBoundingClientRect();
       // Off-screen / detached field → hide rather than park the widget at 0,0.
       if (r.width === 0 && r.height === 0) { fieldButtonState.visible = false; return; }
-      const hasText = getFieldText(activeField, activeType).trim().length > 0;
+      const fieldText = getFieldText(activeField, activeType);
+      const hasText = fieldText.trim().length > 0;
+      // Only improvements whose target still exists (and weren't just applied) count.
+      const liveImprovements = aiImprovements.filter((im) => fieldText.includes(im.original) && !appliedText.has(im.original));
       // Show the widget whenever there's text to act on (so the ✨ improve button is
       // always reachable), or there are grammar issues / improvements pending.
-      if (!hasText && current.length === 0 && aiImprovements.length === 0) {
+      if (!hasText && current.length === 0 && liveImprovements.length === 0) {
         fieldButtonState.visible = false;
         return;
       }
@@ -414,7 +432,7 @@ export default defineContentScript({
       fieldButtonState.left = Math.max(8, r.right - GROUP_W - INSET);
       fieldButtonState.top = top;
       fieldButtonState.count = current.length; // grammar/spelling (Harper) only
-      fieldButtonState.improveCount = aiImprovements.length;
+      fieldButtonState.improveCount = liveImprovements.length;
       fieldButtonState.severity = current.reduce(
         (acc, s) => (SEVERITY_RANK[s.severity] > SEVERITY_RANK[acc] ? s.severity : acc),
         'suggestion' as Suggestion['severity'],
@@ -530,13 +548,14 @@ export default defineContentScript({
       cardState.left = pos.left;
       cardState.top = pos.top;
       const isAI = s.ruleId === 'AIImprovement';
+      // Capture the flagged text BEFORE applying (after apply the slice is the replacement).
+      const origText = activeField ? getFieldText(activeField, activeType).slice(s.offset, s.offset + s.length) : '';
       // Drop the just-acted-on suggestion from the right source list so its underline
       // disappears immediately. Grammar lives in `current`; AI suggestions are derived
       // from `aiImprovements`.
       const dropSuggestion = () => {
         if (isAI) {
-          const origAt = activeField ? getFieldText(activeField, activeType).slice(s.offset, s.offset + s.length) : '';
-          aiImprovements = aiImprovements.filter((im) => !(im.improved === s.replacements[0] && im.original === origAt));
+          aiImprovements = aiImprovements.filter((im) => !(im.improved === s.replacements[0] && im.original === origText));
         } else {
           const key = suggestionKey(s);
           current = current.filter((c) => suggestionKey(c) !== key);
@@ -544,6 +563,7 @@ export default defineContentScript({
       };
       cardState.onApply = (replacement: string) => {
         if (activeField) applyEdit(() => applyReplacement(activeField!, activeType, s, replacement));
+        appliedText.add(replacement); // leave the applied result alone (no flip-flop)
         if (isAI) suppressAutoImprove = true; // applying an AI clarity fix shouldn't spawn more
         // Drop it now so its underline/count update immediately; the text changed, so
         // re-check for the authoritative set (other offsets have shifted).
@@ -757,6 +777,7 @@ export default defineContentScript({
               const off = full.indexOf(im.original);
               if (off !== -1) applyEdit(() => applyRange(activeField!, activeType, off, off + im.original.length, im.improved));
             }
+            if (im) appliedText.add(im.improved);
             suppressAutoImprove = true;
             imps.splice(i, 1);
             aiPanelState.improvements = toState();
@@ -910,8 +931,9 @@ export default defineContentScript({
         runCheck();
         return;
       }
-      // Real typing lifts the auto-improve pause and invalidates everything stale.
+      // Real typing lifts the auto-improve pause and re-enables suggestions everywhere.
       suppressAutoImprove = false;
+      appliedText.clear();
       dismissed.clear();
       aiImprovements = [];
       hideCard();
