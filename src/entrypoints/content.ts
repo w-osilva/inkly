@@ -214,26 +214,45 @@ export default defineContentScript({
       fieldButtonState.improveLoading = improveInFlight > 0;
     }
 
+    // Text spans the deterministic review already flags, so the AI improve pass can avoid them.
+    function flaggedSnippets(text: string): string[] {
+      return current
+        .map((s) => text.slice(s.offset, s.offset + s.length).trim())
+        .filter((t) => t.length > 0);
+    }
+    // Build the improve options: tone + the already-flagged snippets (so the model skips them).
+    function improveOptions(text: string): Record<string, string> {
+      const o: Record<string, string> = {};
+      if (defaultTone) o.tone = defaultTone;
+      const known = [...new Set(flaggedSnippets(text))];
+      if (known.length) o.known = known.join(' | ');
+      return o;
+    }
+    // Safety net: drop AI improvements that overlap a span the review already flags, so the
+    // two layers never notify the same text even if the model ignores the hint.
+    function dropFlagged(text: string, imps: Improvement[]): Improvement[] {
+      const flagged = flaggedSnippets(text);
+      if (!flagged.length) return imps;
+      return imps.filter((im) => !flagged.some((f) => f.includes(im.original) || im.original.includes(f)));
+    }
+
     async function runAutoImprove() {
       const field = activeField;
       const type = activeType;
       if (!enabled || !aiImproveEnabled() || suppressAutoImprove || !field) return;
-      // Hold the automatic AI pass until the deterministic review (Harper/LanguageTool/
-      // punctuation) is clear, so the two layers don't flag the same span and double-notify.
-      // The ✨ button still fetches improvements on demand at any time.
-      if (current.length > 0) return;
-      // AI catches what the rule engines miss (e.g. a wrong verb form like "to eating") once
-      // the basic errors are resolved. Any residual overlap is deduped by priority in the merge.
+      // AI runs ALONGSIDE the review (Harper/LanguageTool/punctuation). We hand it the spans
+      // already flagged so it doesn't re-suggest them, and drop any overlap as a safety net —
+      // so both layers run continuously without double-notifying the same text.
       const text = getFieldText(field, type);
       if (text.trim().length < 12) return;
       const myCheck = checkSeq;
       improveInFlight++;
       setImproveLoading();
       try {
-        const res = await runAI({ capability: 'improve', text, options: defaultTone ? { tone: defaultTone } : {} }, crypto.randomUUID());
+        const res = await runAI({ capability: 'improve', text, options: improveOptions(text) }, crypto.randomUUID());
         if (!res.ok) return; // no on-device model AND no/failed BYOK — silent
         if (checkSeq !== myCheck || activeField !== field) return;
-        aiImprovements = parseImprovements(res.text).filter((im) => text.includes(im.original));
+        aiImprovements = dropFlagged(text, parseImprovements(res.text).filter((im) => text.includes(im.original)));
         updateFieldButton();
         drawUnderlines(); // surface the new suggestions inline
       } finally {
@@ -311,7 +330,7 @@ export default defineContentScript({
       setImproveLoading();
       let res;
       try {
-        res = await runAI({ capability: 'improve', text, options: defaultTone ? { tone: defaultTone } : {} }, crypto.randomUUID());
+        res = await runAI({ capability: 'improve', text, options: improveOptions(text) }, crypto.randomUUID());
       } finally {
         improveInFlight--;
         setImproveLoading();
@@ -323,7 +342,7 @@ export default defineContentScript({
         aiPanelState.onDismiss = () => hideAIPanel();
         return;
       }
-      aiImprovements = parseImprovements(res.text).filter((im) => text.includes(im.original));
+      aiImprovements = dropFlagged(text, parseImprovements(res.text).filter((im) => text.includes(im.original)));
       updateFieldButton();
       drawUnderlines(); // surface inline too
       if (aiImprovements.length === 0) {

@@ -88,6 +88,10 @@ export function buildMessages(req: AIRequest): ChatMessage[] {
   if (req.capability === 'improve') {
     const tone = req.options?.tone;
     const toneClause = tone ? ` When style is the issue, prefer phrasing that is ${TONE_GUIDE[tone] ?? tone}.` : '';
+    const known = req.options?.known;
+    const knownClause = known
+      ? ` A separate checker already flags these spans — do NOT repeat or touch them, suggest only OTHER improvements: ${known}.`
+      : '';
     const system =
       'You are a careful writing assistant working ALONGSIDE a basic spell/grammar checker. Catch what' +
       ' that checker misses and improve the writing: wrong verb forms (e.g. "to eating" → "to eat"),' +
@@ -99,6 +103,7 @@ export function buildMessages(req: AIRequest): ChatMessage[] {
       ' spelling or capitalization typos (the checker handles those). Do NOT respond to the text.' +
       ' Each "original" must be a SHORT span — a word or a few words, never the whole text.' +
       toneClause +
+      knownClause +
       ' Return ONLY a JSON array of objects {"original","improved","reason"}, where "original" is an EXACT' +
       ' substring of the input, "improved" is the fix, and "reason" is a short phrase (e.g. "verb form",' +
       ' "missing comma", "clearer word", "wordy"). At most 5, most impactful first. If nothing needs changing, return [].';
