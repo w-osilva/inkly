@@ -83,6 +83,27 @@ Load it unpacked in **Chrome / Edge / Brave**: open `chrome://extensions`, enabl
 
 Correction works with zero setup. For the AI features, open **Options** (the "Tools & AI…" link in the popup), pick a provider, and paste a key. The key lives in `chrome.storage.local` and is sent only to your chosen endpoint. With Chrome's built-in AI available, no key is needed. For a fully open/local AI, run **Ollama** and select it.
 
+## Self-host LanguageTool (optional)
+
+By default LanguageTool uses the public API (`api.languagetool.org`), which is rate-limited (~20 req/min, ~20 KB/request) and sees your text. Running it locally removes both limits and keeps everything on your machine — the **rules are the same open-source engine**, so detection quality matches the public API (it does **not** unlock Premium rules).
+
+```bash
+docker run -d --name languagetool -p 8010:8010 erikvl87/languagetool
+```
+
+Then set **Options → LanguageTool → endpoint** to `http://localhost:8010/v2`. Inkly fetches LanguageTool from the service worker (host permission), so `localhost` works; **Picky** mode behaves the same.
+
+**For parity with the public API**, add the optional **n-gram data** — it powers context-sensitive confusion rules (*their/there*, *its/it's*). Without it a local server is slightly weaker on those. Download a language's n-gram set from the [LanguageTool n-gram page](https://dev.languagetool.org/finding-errors-using-n-gram-data), mount it, and point the engine at it:
+
+```bash
+docker run -d --name languagetool -p 8010:8010 \
+  -v /path/to/ngrams:/ngrams \
+  -e langtool_languageModel=/ngrams \
+  erikvl87/languagetool
+```
+
+A fully open + local stack is then **Harper (offline) + self-hosted LanguageTool + Ollama** — no third party at all.
+
 ## Development
 
 ```bash
