@@ -64,9 +64,15 @@ export function buildMessages(req: AIRequest): ChatMessage[] {
     ];
   }
   if (req.capability === 'synonyms') {
+    const ctx = req.options?.context;
+    const contextClause = ctx
+      ? ` The word is used in this sentence: "${ctx}". Lead with — and focus on — the sense that` +
+        ' fits THIS sentence; you may add other common senses after it.'
+      : '';
     const system =
       "You are an expert thesaurus. For the user's exact word or phrase, give the strongest synonyms" +
       ' — the words a careful writer would actually reach for — grouped by distinct sense.' +
+      contextClause +
       ' Quality over quantity: list only natural, idiomatic alternatives that are genuinely' +
       ' interchangeable; two excellent options beat four mediocre ones. Omit rare, archaic, jargon,' +
       ' or only loosely-related words.' +

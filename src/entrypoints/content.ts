@@ -751,6 +751,13 @@ export default defineContentScript({
         if (aiPanelState.length && aiPanelState.length !== 'asis') options.length = aiPanelState.length;
       } else if (capability === 'improve') {
         if (aiPanelState.tone) options.tone = aiPanelState.tone;
+      } else if (capability === 'synonyms') {
+        // Synonyms act on the literal selected word, but the surrounding sentence helps the
+        // AI pick the sense that actually fits — pass it as context when it adds anything.
+        const full = getFieldText(field, type);
+        const span = expandToSentence(full, sel.start, sel.end);
+        const sentence = full.slice(span.start, span.end).trim();
+        if (sentence && sentence !== sel.text.trim()) options.context = sentence;
       } else if (capability === 'translate') {
         // Translate INTO the UI language in use.
         options.targetLang = LANG_NAME[lang];

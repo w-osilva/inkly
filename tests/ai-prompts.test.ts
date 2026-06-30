@@ -48,6 +48,15 @@ describe('buildMessages', () => {
     expect(msgs[0].content.toLowerCase()).toMatch(/json|sense/);
     expect(msgs[msgs.length - 1]).toEqual({ role: 'user', content: 'happy' });
   });
+  it('synonyms: includes the surrounding sentence as context when provided', () => {
+    const msgs = buildMessages({
+      capability: 'synonyms',
+      text: 'light',
+      options: { context: 'The box was very light.' },
+    });
+    expect(msgs[0].content).toContain('The box was very light.');
+    expect(msgs[0].content.toLowerCase()).toContain('this sentence');
+  });
   it('analyze: asks for brief feedback', () => {
     const msgs = buildMessages({ capability: 'analyze', text: 'some text' });
     expect(msgs[0].content.toLowerCase()).toMatch(/analyz|feedback/);
