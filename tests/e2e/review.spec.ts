@@ -7,11 +7,13 @@ test('field button opens the review panel; navigate + accept', async ({ context 
   await editor.click();
   await editor.type('i woud like an pizza');
 
-  // Field button appears once Harper (cold WASM) has produced issues.
-  const btn = page.locator('css=.inkly-fb__btn--grammar');
+  // Widget appears once Harper (cold WASM) has produced issues; open it, then the
+  // grammar-suggestions entry in its menu.
+  const btn = page.locator('css=.inkly-fb__btn');
   await expect(btn).toBeVisible({ timeout: 30_000 });
 
   await btn.click();
+  await page.locator('css=.inkly-fb__item[data-act="grammar"]').click();
   const rv = page.locator('css=.inkly-rv');
   await expect(rv).toBeVisible({ timeout: 5_000 });
 

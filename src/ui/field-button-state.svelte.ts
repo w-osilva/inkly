@@ -17,10 +17,12 @@ export interface FieldButtonState {
   improveLoading: boolean;
   /** Highest-priority severity among grammar issues — drives the main badge color. */
   severity: Severity;
-  /** Open the grammar review (the ink-drop button). */
+  /** Open the grammar review. */
   onOpen: (() => void) | null;
-  /** Open / run AI writing improvements (the separate ✨ button). */
+  /** Open / run AI writing improvements. */
   onOpenImprove: (() => void) | null;
+  /** Turn inkly off for the current site (from the widget menu). */
+  onDisableSite: (() => void) | null;
 }
 
 export const fieldButtonState = $state<FieldButtonState>({
@@ -33,4 +35,5 @@ export const fieldButtonState = $state<FieldButtonState>({
   severity: 'correctness',
   onOpen: null,
   onOpenImprove: null,
+  onDisableSite: null,
 });

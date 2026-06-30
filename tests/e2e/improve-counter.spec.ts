@@ -25,10 +25,11 @@ for (const f of [
     await editor.click();
     await editor.type('teh world');
 
-    const grammar = page.locator('css=.inkly-fb__badge--err');
+    const grammar = page.locator('css=.inkly-fb__badge');
     await expect(grammar).toHaveText('1', { timeout: 30_000 });
 
-    await page.locator('css=.inkly-fb__btn--improve').click();
+    await page.locator('css=.inkly-fb__btn').click();
+    await page.locator('css=.inkly-fb__item[data-act="improve"]').click();
     const apply = page.locator('css=.inkly-ai__imp .inkly-ai__chip');
     await expect(apply.first()).toBeVisible({ timeout: 10_000 });
     await apply.first().click(); // mock corrects "teh" → "the", clearing the only error

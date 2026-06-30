@@ -10,7 +10,7 @@ async function setAIConfig(context: import('@playwright/test').BrowserContext) {
   });
 }
 
-test('the corner ✨ button runs improvements and applies one', async ({ context }) => {
+test('the widget menu runs improvements and applies one', async ({ context }) => {
   await setAIConfig(context);
   const page = await context.newPage();
   await page.goto('/contenteditable.html');
@@ -18,10 +18,11 @@ test('the corner ✨ button runs improvements and applies one', async ({ context
   await editor.click();
   await editor.type('hello world');
 
-  // The separate improvements button (distinct from the grammar drop).
-  const improveBtn = page.locator('css=.inkly-fb__btn--improve');
-  await expect(improveBtn).toBeVisible({ timeout: 30_000 });
-  await improveBtn.click();
+  // Open the single widget, then the Improve action in its menu.
+  const widget = page.locator('css=.inkly-fb__btn');
+  await expect(widget).toBeVisible({ timeout: 30_000 });
+  await widget.click();
+  await page.locator('css=.inkly-fb__item[data-act="improve"]').click();
 
   // On-demand improve lists applicable edits; Apply replaces the text.
   const apply = page.locator('css=.inkly-ai__imp .inkly-ai__chip');
@@ -38,7 +39,8 @@ test('applying one improvement keeps the others in the panel', async ({ context 
   await editor.click();
   await editor.type('i wanna proof a pizza'); // mock returns two edits
 
-  await page.locator('css=.inkly-fb__btn--improve').click();
+  await page.locator('css=.inkly-fb__btn').click();
+  await page.locator('css=.inkly-fb__item[data-act="improve"]').click();
   const items = page.locator('css=.inkly-ai__imp');
   await expect(items).toHaveCount(2, { timeout: 10_000 });
   await page.locator('css=.inkly-ai__imp .inkly-ai__chip').first().click(); // apply one

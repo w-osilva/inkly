@@ -248,7 +248,7 @@ export default defineContentScript({
 
     function positionImprovePanel() {
       const W = 300, H = 160, GAP = 8;
-      let left = fieldButtonState.left + 56 - W; // right-align near the widget
+      let left = fieldButtonState.left + 28 - W; // right-align near the widget
       let top = fieldButtonState.top - H - GAP;
       if (top < 8) top = fieldButtonState.top + 32 + GAP;
       if (left < 8) left = 8;
@@ -427,7 +427,7 @@ export default defineContentScript({
         fieldButtonState.visible = false;
         return;
       }
-      const SIZE = 28, INSET = 6, GROUP_W = SIZE * 2 + 4; // two buttons side by side
+      const SIZE = 28, INSET = 6, GROUP_W = SIZE; // a single round widget
       // Bottom-right for tall fields; vertically centered for short ones (inputs).
       const top = r.height < SIZE + INSET * 2 ? r.top + (r.height - SIZE) / 2 : r.bottom - SIZE - INSET;
       fieldButtonState.left = Math.max(8, r.right - GROUP_W - INSET);
@@ -440,7 +440,15 @@ export default defineContentScript({
       );
       fieldButtonState.onOpen = openReview;
       fieldButtonState.onOpenImprove = openImprovePanel;
+      fieldButtonState.onDisableSite = disableForSite;
       fieldButtonState.visible = true;
+    }
+
+    // Turn inkly off for this host from the widget menu. Persisting the override fires the
+    // storage listener above, which flips `enabled` and tears the in-page UI down.
+    async function disableForSite() {
+      const cur = await getSettings();
+      await setSettings({ ...cur, siteOverrides: { ...cur.siteOverrides, [host]: false } });
     }
 
     // ---- Review panel: step through the field's issues with Accept/Dismiss + prev/next ----
