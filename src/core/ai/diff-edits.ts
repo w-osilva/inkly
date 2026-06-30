@@ -70,7 +70,24 @@ export function diffEdits(original: string, corrected: string): Edit[] {
     }
   }
   flush();
-  return edits;
+
+  // Merge edits separated only by whitespace WHEN one side is a pure insertion/deletion —
+  // otherwise a single logical change like "bought" → "will buy" splits into "bought"→"will"
+  // + insert "buy" (the space between them matched), surfacing as two incoherent suggestions.
+  // Two independent word substitutions ("has"→"have", "a"→"an") stay separate.
+  const isPure = (x: Edit) => x.length === 0 || x.replacement.length === 0;
+  const merged: Edit[] = [];
+  for (const e of edits) {
+    const last = merged[merged.length - 1];
+    const gap = last ? original.slice(last.offset + last.length, e.offset) : null;
+    if (last && gap !== null && /^\s*$/.test(gap) && (isPure(last) || isPure(e))) {
+      last.replacement += gap + e.replacement;
+      last.length = e.offset + e.length - last.offset;
+    } else {
+      merged.push({ ...e });
+    }
+  }
+  return merged;
 }
 
 // Function/auxiliary words a correction may legitimately delete (e.g. "I was have been" →

@@ -58,6 +58,14 @@ describe('diffEdits', () => {
     expect(apply(a, edits)).toBe(b);
   });
 
+  it('keeps a "word → two words" change as ONE edit (not two incoherent ones)', () => {
+    const a = 'I bought an apple tomorrow';
+    const b = 'I will buy an apple tomorrow';
+    const edits = diffEdits(a, b);
+    expect(edits).toHaveLength(1); // "bought" → "will buy", not "bought"→"will" + insert "buy"
+    expect(apply(a, edits)).toBe(b);
+  });
+
   it('adds a final period after a proper noun without duplicating it', () => {
     const a = 'I went to Greece';
     const b = 'I went to Greece.';

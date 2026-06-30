@@ -65,6 +65,7 @@ const server = createServer((req, res) => {
           .replace(/\bteh\b/g, 'the')
           .replace(/\bwaz\b/g, 'was')
           .replace(/was have been/g, 'was') // doubled auxiliary the rules can't catch
+          .replace(/bought (.*) tomorrow/g, 'will buy $1 tomorrow') // one logical change: bought → will buy
           .replace(/ to Greece/g, ' to'); // a BAD "correction" (drops a proper noun) → guard must reject it
       } else if (isImprove) {
         // Return one applicable edit whose "original" is an exact substring of the input.
