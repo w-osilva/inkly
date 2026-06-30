@@ -273,7 +273,9 @@ export default defineContentScript({
               replacements: [e.replacement],
               message: hit ? hit.message : 'Consider this revision.',
               ruleId: hit ? hit.ruleId : 'AICorrection',
-              category: hit ? hit.category : 'Grammar',
+              // Overlaps a rule → keep its canonical category & severity; a pure AI find is a
+              // soft 'Enhancement' (which the taxonomy maps to the 'suggestion' tier).
+              category: hit ? hit.category : 'Enhancement',
               severity: hit ? hit.severity : 'suggestion',
               source: 'byok',
             });

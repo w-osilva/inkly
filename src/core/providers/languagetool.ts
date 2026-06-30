@@ -1,4 +1,5 @@
 import { type Suggestion, makeSuggestion } from '../types';
+import { normalizeCategory } from '../lint-categories';
 
 /**
  * LanguageTool provider (open-source grammar/style/punctuation engine). Opt-in: the user
@@ -20,18 +21,11 @@ interface LTMatch {
   rule?: { id?: string; issueType?: string; category?: { name?: string } };
 }
 
+// Normalise LanguageTool's `issueType` (ITS standard) into inkly's canonical taxonomy,
+// falling back to the rule's category name, then Grammar.
 function categoryFor(issueType?: string, fallback?: string): string {
-  switch (issueType) {
-    case 'misspelling': return 'Spelling';
-    case 'typographical':
-    case 'whitespace':
-    case 'punctuation': return 'Punctuation';
-    case 'grammar': return 'Grammar';
-    case 'style':
-    case 'locale-violation':
-    case 'register': return 'Style';
-    default: return fallback || 'Grammar';
-  }
+  if (issueType) return normalizeCategory(issueType);
+  return normalizeCategory(fallback);
 }
 
 /** Run a LanguageTool check. `endpoint` is the API base (…/v2); we POST to {endpoint}/check. */

@@ -1,4 +1,5 @@
 import { Suggestion, makeSuggestion } from '../types';
+import { normalizeCategory } from '../lint-categories';
 import { PlainLint } from './harper-messages';
 
 /**
@@ -14,7 +15,7 @@ export function plainLintToSuggestion(lint: PlainLint): Suggestion {
     replacements: lint.replacements,
     message: lint.message,
     ruleId: lint.ruleName,
-    category: lint.kind,
+    category: normalizeCategory(lint.kind),
     source: 'harper',
   });
 }

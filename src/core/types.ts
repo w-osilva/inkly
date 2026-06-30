@@ -1,3 +1,5 @@
+import { severityForCategory } from './lint-categories';
+
 export type FieldType =
   | 'textarea'
   | 'input'
@@ -32,19 +34,13 @@ export interface Suggestion {
   source: SuggestionSource;
 }
 
-/** Categories that represent objective errors (red underline). */
-const CORRECTNESS_CATEGORIES = new Set([
-  'Spelling', 'Typo', 'Grammar', 'Agreement', 'Punctuation', 'Capitalization',
-]);
-
 /**
- * Derive severity deterministically: any AI source is a subjective
- * "suggestion"; otherwise correctness categories map to 'correctness' and
- * everything else (style/clarity/unknown) maps to 'clarity'.
+ * Severity follows the canonical category taxonomy (see lint-categories) — it's a property of
+ * the TYPE, not the layer that found it. So a Spelling error is 'correctness' whether Harper,
+ * LanguageTool or the AI surfaced it. The category must be normalised by the engine first.
  */
-export function severityFor(category: string, source: SuggestionSource): Severity {
-  if (source === 'chrome-ai' || source === 'byok') return 'suggestion';
-  return CORRECTNESS_CATEGORIES.has(category) ? 'correctness' : 'clarity';
+export function severityFor(category: string): Severity {
+  return severityForCategory(category);
 }
 
 /** Higher = wins when two suggestions overlap. Deterministic engines beat AI. */
@@ -80,7 +76,7 @@ export function makeSuggestion(partial: Partial<Suggestion> & {
     ruleId: '',
     category,
     source,
-    severity: partial.severity ?? severityFor(category, source),
+    severity: partial.severity ?? severityFor(category),
     ...partial,
   };
 }
