@@ -40,10 +40,11 @@ export async function checkLanguageTool(
   endpoint: string,
   language = 'auto',
   fetchFn: typeof fetch = fetch,
+  level: 'default' | 'picky' = 'default',
 ): Promise<Suggestion[]> {
   if (!text.trim() || !endpoint) return [];
   const url = `${endpoint.replace(/\/+$/, '')}/check`;
-  const body = new URLSearchParams({ text, language, level: 'default' });
+  const body = new URLSearchParams({ text, language, level });
   try {
     const res = await fetchFn(url, {
       method: 'POST',

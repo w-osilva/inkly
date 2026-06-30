@@ -81,7 +81,9 @@ export default defineBackground(() => {
       const lt = getSettings().then((s) => {
         // Under e2e, only call a local (mock) LanguageTool — never the real public API.
         const e2eOk = !import.meta.env.VITE_INKLY_E2E || /localhost|127\.0\.0\.1/.test(s.languageToolEndpoint);
-        return isToolEnabled(s, 'languagetool') && e2eOk ? checkLanguageTool(text, s.languageToolEndpoint) : [];
+        return isToolEnabled(s, 'languagetool') && e2eOk
+          ? checkLanguageTool(text, s.languageToolEndpoint, 'auto', undefined, s.languageToolPicky ? 'picky' : 'default')
+          : [];
       });
       Promise.all([harper, lt])
         .then(([res, ltExtra]) => {

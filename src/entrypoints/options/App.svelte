@@ -54,6 +54,7 @@
   let disabled = $state<string[]>([]);
   let actionsDisabled = $state<string[]>([]);
   let ltEndpoint = $state(DEFAULT_LT_ENDPOINT);
+  let ltPicky = $state(false);
   // Enabled broad grammar engines (in priority order) — 2+ means redundant overlap.
   const overlappingOn = $derived(order.filter((id) => BROAD_GRAMMAR_TOOLS.includes(id) && !disabled.includes(id)));
 
@@ -70,6 +71,7 @@
     disabled = [...settings.correctionDisabled];
     actionsDisabled = [...settings.selectionActionsDisabled];
     ltEndpoint = settings.languageToolEndpoint;
+    ltPicky = settings.languageToolPicky;
     lang = effectiveLang(settings, navigator.language);
     builtins = detected;
     loaded = true;
@@ -85,6 +87,7 @@
       correctionDisabled: [...disabled],
       selectionActionsDisabled: [...actionsDisabled],
       languageToolEndpoint: ltEndpoint.trim() || DEFAULT_LT_ENDPOINT,
+      languageToolPicky: ltPicky,
     });
   }
   const toolOn = (id: string) => !disabled.includes(id);
@@ -155,6 +158,7 @@
               <div class="tool-sub">
                 <input type="url" bind:value={ltEndpoint} onblur={persistTools} placeholder={DEFAULT_LT_ENDPOINT} aria-label={t(lang, 'options.ltServer')} />
                 <p class="hint">{t(lang, 'options.ltPrivacy')}</p>
+                <label class="lt-picky"><input type="checkbox" checked={ltPicky} onchange={() => { ltPicky = !ltPicky; void persistTools(); }} /> {t(lang, 'options.ltPicky')}</label>
               </div>
             {/if}
           </li>
@@ -295,6 +299,8 @@
   .tool-sub { margin: 8px 0 2px 26px; }
   .tool-sub input { width: 100%; }
   .tool-sub .hint { margin: 4px 0 0; }
+  .lt-picky { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 13px; }
+  .lt-picky input { width: auto; margin: 0; }
   .tool-reorder { display: flex; flex-direction: column; line-height: 0.8; }
   .tool-move {
     border: 0; background: none; cursor: pointer; color: var(--inkly-muted);

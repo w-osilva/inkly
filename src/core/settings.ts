@@ -24,6 +24,8 @@ export interface Settings {
   selectionActionsDisabled: string[];
   /** LanguageTool API base (…/v2). Public API by default; point to a self-hosted server for privacy. */
   languageToolEndpoint: string;
+  /** Run LanguageTool at level=picky — more advanced style/wordiness checks (free; can be noisier). */
+  languageToolPicky: boolean;
 }
 
 export const DEFAULT_LT_ENDPOINT = 'https://api.languagetool.org/v2';
@@ -42,6 +44,7 @@ export const DEFAULT_SETTINGS: Settings = {
   correctionDisabled: [],
   selectionActionsDisabled: [],
   languageToolEndpoint: DEFAULT_LT_ENDPOINT,
+  languageToolPicky: false,
 };
 
 const KEY = 'inkly:settings';
@@ -85,6 +88,7 @@ function normalize(raw: unknown): Settings {
     correctionDisabled,
     selectionActionsDisabled: strArray(o.selectionActionsDisabled),
     languageToolEndpoint: typeof o.languageToolEndpoint === 'string' && o.languageToolEndpoint ? o.languageToolEndpoint : DEFAULT_LT_ENDPOINT,
+    languageToolPicky: typeof o.languageToolPicky === 'boolean' ? o.languageToolPicky : DEFAULT_SETTINGS.languageToolPicky,
   };
 }
 
