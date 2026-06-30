@@ -20,9 +20,6 @@ interface LTMatch {
   rule?: { id?: string; issueType?: string; category?: { name?: string } };
 }
 
-// Style-ish issue types are left to the AI improve layer, not surfaced by LanguageTool.
-const STYLE_ISSUE_TYPES = new Set(['style', 'register', 'locale-violation']);
-
 function categoryFor(issueType?: string, fallback?: string): string {
   switch (issueType) {
     case 'misspelling': return 'Spelling';
@@ -55,10 +52,10 @@ export async function checkLanguageTool(
     });
     if (!res.ok) return [];
     const data = (await res.json()) as { matches?: LTMatch[] };
-    // Keep LanguageTool to CORRECTION (spelling/grammar/punctuation) and drop its
-    // style/word-choice/register suggestions — those (e.g. "starving" → "famished")
-    // overlap and compete with the AI "improve" layer, which owns clarity/word choice.
-    return (data.matches ?? []).filter((m) => !STYLE_ISSUE_TYPES.has(m.rule?.issueType ?? '')).map((m) =>
+    // LanguageTool is the strong base: it covers grammar, spelling, punctuation AND
+    // style/word-choice. The AI "improve" layer is a fallback/on-demand complement, so we
+    // surface all of LanguageTool's match types here.
+    return (data.matches ?? []).map((m) =>
       makeSuggestion({
         offset: m.offset,
         length: m.length,

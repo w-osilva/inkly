@@ -6,9 +6,11 @@ async function configure(context: import('@playwright/test').BrowserContext, aut
   let [sw] = context.serviceWorkers();
   if (!sw) sw = await context.waitForEvent('serviceworker');
   await sw.evaluate(async (auto) => {
-    // AI config lives in storage.local; settings live in storage.sync.
+    // AI config lives in storage.local; settings live in storage.sync. AI auto-improve is a
+    // FALLBACK to LanguageTool, so disable LanguageTool here to exercise the AI inline path.
+    const correctionDisabled = auto ? ['languagetool'] : ['languagetool', 'aiImprove'];
     await chrome.storage.local.set({ 'inkly:ai': { provider: 'openai-compatible', endpoint: 'http://localhost:5199/v1', apiKey: 'k', model: 'm' } });
-    await chrome.storage.sync.set({ 'inkly:settings': { globalEnabled: true, siteOverrides: {}, disabledCategories: [], dictionary: [], uiLanguage: 'auto', defaultTone: '', theme: 'auto', autoSuggest: auto } });
+    await chrome.storage.sync.set({ 'inkly:settings': { globalEnabled: true, siteOverrides: {}, disabledCategories: [], dictionary: [], uiLanguage: 'auto', defaultTone: '', theme: 'auto', correctionDisabled } });
   }, autoSuggest);
 }
 
