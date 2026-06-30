@@ -42,7 +42,7 @@ Most writing assistants make you choose: **powerful** (Grammarly — closed, pai
 ### 🤖 AI, on your terms (select text → act)
 - **Rewrite** with a **tone slider** (Casual ↔ Formal), optional **style** (Confident · Technical · Simple), and **length** (shorter ↔ longer).
 - **Improve** — inline suggestions for clarity & word choice that rules miss (e.g. *"to eating"* → *"to eat"*), shown right under the text.
-- **Synonyms** (free thesaurus API → AI fallback for context & other languages), **Define** (free dictionary API → AI fallback, in your language), **Translate** (into your UI language).
+- **Synonyms** (AI: context-aware, grouped by sense → free thesaurus fallback when AI is unavailable), **Define** (free dictionary API → AI fallback, in your language), **Translate** (into your UI language).
 - Streaming responses. Invoke via the selection toolbar, **Alt+I**, or the right-click menu.
 - **Bring your own provider** — any OpenAI-compatible API: OpenAI, **Groq**, OpenRouter, Anthropic, Gemini, **Ollama** (local). Keys are stored per-provider, locally, and sent only to the endpoint you chose. Privacy labels (`no-train` / `local`) help you pick.
 - Uses Chrome's **built-in on-device AI** (Gemini Nano / Rewriter / Proofreader) automatically when available — free and private.

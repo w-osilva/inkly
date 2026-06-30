@@ -65,11 +65,17 @@ export function buildMessages(req: AIRequest): ChatMessage[] {
   }
   if (req.capability === 'synonyms') {
     const system =
-      "You are a thesaurus. Give synonyms for the user's exact word or phrase, grouped by sense." +
-      ' Each synonym must be a real alternative (a single word or short phrase) that could replace the' +
-      ' input in a sentence — not a definition, not the input itself.' +
+      "You are an expert thesaurus. For the user's exact word or phrase, give the strongest synonyms" +
+      ' — the words a careful writer would actually reach for — grouped by distinct sense.' +
+      ' Quality over quantity: list only natural, idiomatic alternatives that are genuinely' +
+      ' interchangeable; two excellent options beat four mediocre ones. Omit rare, archaic, jargon,' +
+      ' or only loosely-related words.' +
+      ' Every synonym must drop straight into a sentence in place of the input with no other edits:' +
+      ' keep the same part of speech and inflection (tense, number, -ing/-ed form) and a similar' +
+      ' register/formality. Never return the input itself, antonyms, definitions, or near-duplicates' +
+      ' of another option. Within each group, order from the closest, most natural choice to the least.' +
       ' Return ONLY a JSON array of objects {"sense","synonyms"}, where "sense" is a 2-4 word label for' +
-      ' that meaning and "synonyms" is an array of up to 4 alternatives.' +
+      ' that meaning and "synonyms" is an array of 1-4 alternatives.' +
       ' At most 4 groups, most common sense first. No prose, no code fences, no trailing text.';
     return [{ role: 'system', content: system }, { role: 'user', content: req.text }];
   }

@@ -70,13 +70,14 @@ async function runAI(request: AIRequest, config: AIConfig, streamId: string): Pr
     const def = await lookupDefinition(request.text, request.options?.defineCode || 'en');
     if (def !== null) return { ok: true, text: def };
   }
-  // Synonyms prefer the free, key-less Datamuse thesaurus; only fall back to AI (context-
-  // aware, sense-grouped, multilingual) when it returns nothing — e.g. a phrase or a
-  // non-English word. Skipped under e2e (the mock LLM gives deterministic results).
-  if (request.capability === 'synonyms' && !import.meta.env.VITE_INKLY_E2E) {
+  // Synonyms: AI leads (context-aware, sense-grouped, multilingual). The free, key-less
+  // Datamuse thesaurus is only a fallback for when AI is unavailable (no key + no on-device
+  // model) or fails — its flat English list beats showing nothing. Skipped under e2e.
+  const synFallback = async (): Promise<AIResponse | null> => {
+    if (request.capability !== 'synonyms' || import.meta.env.VITE_INKLY_E2E) return null;
     const syns = await lookupSynonyms(request.text);
-    if (syns !== null) return { ok: true, text: syns };
-  }
+    return syns !== null ? { ok: true, text: syns } : null;
+  };
   // On-device (Gemini Nano) is the FREE fallback for users without a key. When the user
   // has configured a BYOK provider they chose it on purpose (e.g. Groq — fast, higher
   // quality than Nano), so we go straight to it: Nano is both slower and weaker, which
@@ -92,15 +93,15 @@ async function runAI(request: AIRequest, config: AIConfig, streamId: string): Pr
     const builtin = await tryChromeAI(request);
     if (builtin !== null) return { ok: true, text: builtin };
     // Automatic free-only passes never spend BYOK quota.
-    if (request.builtinOnly) return { ok: false, error: 'no-builtin' };
+    if (request.builtinOnly) return (await synFallback()) ?? { ok: false, error: 'no-builtin' };
   }
   // BYOK — stream the OpenAI-compatible SSE response.
-  if (!hasKey(config)) return { ok: false, error: 'no-api-key' };
+  if (!hasKey(config)) return (await synFallback()) ?? { ok: false, error: 'no-api-key' };
   try {
     const messages = buildMessages(request);
     const req = buildHttpRequest(config, messages, true); // stream
     const res = await fetch(req.url, { method: 'POST', headers: req.headers, body: req.body });
-    if (!res.ok || !res.body) return { ok: false, error: `http ${res.status}` };
+    if (!res.ok || !res.body) return (await synFallback()) ?? { ok: false, error: `http ${res.status}` };
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
@@ -121,7 +122,7 @@ async function runAI(request: AIRequest, config: AIConfig, streamId: string): Pr
     }
     return { ok: true, text: full.trim() };
   } catch (err) {
-    return { ok: false, error: String((err as Error)?.message ?? err) };
+    return (await synFallback()) ?? { ok: false, error: String((err as Error)?.message ?? err) };
   }
 }
 
