@@ -48,8 +48,26 @@ export function applyRange(
 ): boolean {
   if (type === 'textarea' || type === 'input') {
     const field = el as HTMLTextAreaElement | HTMLInputElement;
+    // Prefer execCommand: it edits through the browser's native text-insertion path, so the
+    // change lands on the field's undo stack (Ctrl+Z reverts it) and React sees a real input
+    // event. Setting `.value` directly (the fallback) is faster but wipes native undo history.
+    field.focus();
+    field.setSelectionRange(start, end);
+    let ok = false;
+    try {
+      ok = replacement === ''
+        ? document.execCommand('delete')
+        : document.execCommand('insertText', false, replacement);
+    } catch {
+      ok = false;
+    }
+    if (ok) return true;
+    // Fallback for engines without execCommand (jsdom, very old browsers): native setter +
+    // React tracker patch. This path is not undoable, but real Chromium uses execCommand above.
     const cur = field.value;
     setNativeValue(field, cur.slice(0, start) + replacement + cur.slice(end));
+    const caret = start + replacement.length;
+    field.setSelectionRange(caret, caret);
     field.dispatchEvent(new Event('input', { bubbles: true }));
     return true;
   }
