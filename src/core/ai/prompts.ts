@@ -77,19 +77,17 @@ export function buildMessages(req: AIRequest): ChatMessage[] {
     const tone = req.options?.tone;
     const toneClause = tone ? ` When style is the issue, prefer phrasing that is ${TONE_GUIDE[tone] ?? tone}.` : '';
     const system =
-      'You are a writing-quality editor — NOT a spell/grammar checker (a separate tool already handles' +
-      ' spelling, capitalization, punctuation, and basic grammar/agreement, so IGNORE those entirely).' +
-      ' Focus ONLY on what those rules cannot: unclear or wordy phrasing, weak or vague word choice,' +
-      ' awkward/clunky sentences, and redundancy — improve clarity and flow at the phrase/sentence level' +
+      'You are a careful writing assistant working ALONGSIDE a basic spell/grammar checker. Catch what' +
+      ' that checker misses and improve the writing: wrong verb forms (e.g. "to eating" → "to eat"),' +
+      ' wrong or missing words, awkward or unclear phrasing, weak/vague word choice, and redundancy —' +
       ' while strictly preserving the meaning, facts, intent, and the author\'s voice.' +
-      ' Do NOT respond to the text. Do NOT fix spelling/capitalization/punctuation or flag mere' +
-      ' grammar/agreement errors — only rephrase for clearer, stronger writing.' +
-      ' Each "original" should be a meaningful span (a few words up to one short clause), not the whole text.' +
+      ' Don\'t bother with simple spelling, capitalization, or punctuation typos (the checker handles' +
+      ' those). Do NOT respond to the text.' +
+      ' Each "original" must be a SHORT span — a word or a few words, never the whole text.' +
       toneClause +
       ' Return ONLY a JSON array of objects {"original","improved","reason"}, where "original" is an EXACT' +
-      ' substring of the input, "improved" is the clearer rephrasing, and "reason" is a short phrase' +
-      ' (e.g. "wordy", "clearer word"). At most 5, most impactful first. If the writing is already clear,' +
-      ' return [].';
+      ' substring of the input, "improved" is the fix, and "reason" is a short phrase (e.g. "verb form",' +
+      ' "clearer word", "wordy"). At most 5, most impactful first. If nothing needs changing, return [].';
     return [{ role: 'system', content: system }, { role: 'user', content: req.text }];
   }
   if (req.capability === 'define') {

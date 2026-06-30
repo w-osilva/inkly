@@ -207,10 +207,9 @@ export default defineContentScript({
       const field = activeField;
       const type = activeType;
       if (!enabled || !aiImproveEnabled() || suppressAutoImprove || !field) return;
-      // AI auto-improve is a FALLBACK: when LanguageTool is the active base it already
-      // covers grammar/style/word-choice inline, so don't auto-compete. The manual ✨
-      // button still runs AI on demand regardless.
-      if (!correctionDisabled.includes('languagetool')) return;
+      // AI runs ALONGSIDE LanguageTool — LT is the base, but it misses things (e.g. a wrong
+      // verb form like "to eating"), so AI catches the gaps. Overlaps with LT/Harper are
+      // deduped by priority in the merge (rules win), so AI only adds what they missed.
       const text = getFieldText(field, type);
       if (text.trim().length < 12) return;
       const myCheck = checkSeq;
