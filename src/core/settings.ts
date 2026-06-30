@@ -44,7 +44,9 @@ export const DEFAULT_SETTINGS: Settings = {
   correctionDisabled: [],
   selectionActionsDisabled: [],
   languageToolEndpoint: DEFAULT_LT_ENDPOINT,
-  languageToolPicky: false,
+  // On by default: picky unlocks LanguageTool's advanced punctuation/style rules (e.g.
+  // missing end-of-paragraph period) — the coverage users expect, free via the public API.
+  languageToolPicky: true,
 };
 
 const KEY = 'inkly:settings';
