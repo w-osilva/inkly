@@ -8,6 +8,9 @@ import type { Severity } from '../core/types';
 export interface FieldButtonState {
   visible: boolean;
   left: number;
+  /** Distance from the viewport's right edge to the widget's right edge (px). The widget is
+   * right-anchored so its hover pill can expand leftwards without shifting or clipping. */
+  right: number;
   top: number;
   /** Grammar/spelling issue count (Harper). */
   count: number;
@@ -28,6 +31,7 @@ export interface FieldButtonState {
 export const fieldButtonState = $state<FieldButtonState>({
   visible: false,
   left: 0,
+  right: 0,
   top: 0,
   count: 0,
   improveCount: 0,

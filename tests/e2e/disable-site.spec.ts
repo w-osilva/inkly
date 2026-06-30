@@ -14,8 +14,8 @@ test('widget menu disables inkly for the site', async ({ context }) => {
   await expect(widget).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('css=div.inkly-underline').first()).toBeVisible({ timeout: 5_000 });
 
-  await widget.click();
-  await page.locator('css=.inkly-fb__item[data-act="disable"]').click();
+  await widget.focus();
+  await page.locator('css=.inkly-fb__act[data-act="disable"]').click();
 
   // UI is torn down: the widget and underlines disappear.
   await expect(widget).toHaveCount(0, { timeout: 5_000 });

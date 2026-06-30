@@ -431,6 +431,7 @@ export default defineContentScript({
       // Bottom-right for tall fields; vertically centered for short ones (inputs).
       const top = r.height < SIZE + INSET * 2 ? r.top + (r.height - SIZE) / 2 : r.bottom - SIZE - INSET;
       fieldButtonState.left = Math.max(8, r.right - GROUP_W - INSET);
+      fieldButtonState.right = Math.max(8, window.innerWidth - (r.right - INSET));
       fieldButtonState.top = top;
       fieldButtonState.count = current.length; // grammar/spelling (Harper) only
       fieldButtonState.improveCount = liveImprovements.length;
