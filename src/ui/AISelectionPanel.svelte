@@ -157,7 +157,10 @@
         <button class="inkly-ai__btn inkly-ai__btn--ghost" onclick={() => (aiPanelState.phase = 'actions')}>Back</button>
       </div>
     {:else if aiPanelState.phase === 'loading'}
-      {#if aiPanelState.streamingText}
+      <!-- Stream live text only where the raw output IS the result (rewrite/translate).
+           Structured capabilities (synonyms/improve/define) would flash partial JSON before
+           it parses into pills, so we keep the loader until the result is complete. -->
+      {#if aiPanelState.streamingText && (aiPanelState.capability === 'rewrite' || aiPanelState.capability === 'translate')}
         <p class="inkly-ai__result">{aiPanelState.streamingText}</p>
       {:else}
         <span class="inkly-ai__loading">{LOADING_LABELS[aiPanelState.capability] ?? 'Working…'}</span>
