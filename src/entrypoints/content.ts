@@ -902,17 +902,22 @@ export default defineContentScript({
       runCheck();
     });
     ctx.addEventListener(document, 'input', (e) => {
-      if (e.target === activeField) {
-        // Real typing (not our own applied edit) lifts the auto-improve pause.
-        if (!programmaticEdit) suppressAutoImprove = false;
-        // Text changed → offsets stale: drop dismissals, improvements, and any open card.
-        dismissed.clear();
-        aiImprovements = [];
-        hideCard();
-        hideAIPanel();
-        renderer.clear();
+      if (e.target !== activeField) return;
+      if (programmaticEdit) {
+        // Our own applied edit: the apply handler keeps the remaining improvements (they
+        // relocate by text match) and re-renders. Just re-lint grammar for shifted offsets;
+        // do NOT wipe the list or tear down the panel, or applying one would drop the rest.
         runCheck();
+        return;
       }
+      // Real typing lifts the auto-improve pause and invalidates everything stale.
+      suppressAutoImprove = false;
+      dismissed.clear();
+      aiImprovements = [];
+      hideCard();
+      hideAIPanel();
+      renderer.clear();
+      runCheck();
     });
     ctx.addEventListener(document, 'focusout', (e) => {
       // Only the tracked field's own blur matters here. Focus churn *inside* our shadow

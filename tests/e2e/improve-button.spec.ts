@@ -29,3 +29,19 @@ test('the corner ✨ button runs improvements and applies one', async ({ context
   await apply.first().click();
   await expect(editor).toContainText('IMPROVED: hello world');
 });
+
+test('applying one improvement keeps the others in the panel', async ({ context }) => {
+  await setAIConfig(context);
+  const page = await context.newPage();
+  await page.goto('/contenteditable.html');
+  const editor = page.locator('#editor');
+  await editor.click();
+  await editor.type('i wanna proof a pizza'); // mock returns two edits
+
+  await page.locator('css=.inkly-fb__btn--improve').click();
+  const items = page.locator('css=.inkly-ai__imp');
+  await expect(items).toHaveCount(2, { timeout: 10_000 });
+  await page.locator('css=.inkly-ai__imp .inkly-ai__chip').first().click(); // apply one
+  // The other improvement must still be listed (not wiped by the applied edit).
+  await expect(items).toHaveCount(1);
+});
